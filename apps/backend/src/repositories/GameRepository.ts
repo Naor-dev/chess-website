@@ -1,46 +1,30 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Game, GameStatus } from '@prisma/client';
 import * as Sentry from '@sentry/node';
 
-// Type definitions for Game model (matches Prisma schema)
-// These will be replaced by generated Prisma types after prisma generate
-export interface Game {
-  id: string;
-  userId: string;
-  status: GameStatus;
-  difficultyLevel: number;
-  timeControlType: string;
-  currentFen: string;
-  movesHistory: string[];
-  timeLeftUser: number;
-  timeLeftEngine: number;
-  result: string | null;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-export enum GameStatus {
-  ACTIVE = 'ACTIVE',
-  FINISHED = 'FINISHED',
-  ABANDONED = 'ABANDONED',
-}
-
-export interface CreateGameData {
+// Type aliases for cleaner API
+export type CreateGameData = {
   userId: string;
   difficultyLevel: number;
   timeControlType: string;
   currentFen: string;
   timeLeftUser: number;
   timeLeftEngine: number;
-}
+};
 
-export interface UpdateGameData {
-  currentFen?: string;
-  movesHistory?: string[];
-  timeLeftUser?: number;
-  timeLeftEngine?: number;
-  status?: GameStatus;
-  result?: string;
-}
+export type UpdateGameData = Partial<
+  Pick<
+    Game,
+    | 'currentFen'
+    | 'movesHistory'
+    | 'timeLeftUser'
+    | 'timeLeftEngine'
+    | 'status'
+    | 'result'
+  >
+>;
+
+// Re-export Prisma types for use by services
+export { Game, GameStatus };
 
 export class GameRepository {
   constructor(private readonly prisma: PrismaClient) {}
@@ -58,29 +42,32 @@ export class GameRepository {
         movesHistory: [],
         status: GameStatus.ACTIVE,
       },
-    }) as Promise<Game>;
+    });
   }
 
   async findById(gameId: string): Promise<Game | null> {
     return this.prisma.game.findUnique({
       where: { id: gameId },
-    }) as Promise<Game | null>;
+    });
   }
 
-  async findByIdAndUserId(gameId: string, userId: string): Promise<Game | null> {
+  async findByIdAndUserId(
+    gameId: string,
+    userId: string
+  ): Promise<Game | null> {
     return this.prisma.game.findFirst({
       where: {
         id: gameId,
         userId,
       },
-    }) as Promise<Game | null>;
+    });
   }
 
   async findByUserId(userId: string): Promise<Game[]> {
     return this.prisma.game.findMany({
       where: { userId },
       orderBy: { updatedAt: 'desc' },
-    }) as Promise<Game[]>;
+    });
   }
 
   async findActiveByUserId(userId: string): Promise<Game[]> {
@@ -90,7 +77,7 @@ export class GameRepository {
         status: GameStatus.ACTIVE,
       },
       orderBy: { updatedAt: 'desc' },
-    }) as Promise<Game[]>;
+    });
   }
 
   async update(gameId: string, data: UpdateGameData): Promise<Game> {
@@ -103,7 +90,7 @@ export class GameRepository {
     return this.prisma.game.update({
       where: { id: gameId },
       data,
-    }) as Promise<Game>;
+    });
   }
 
   async addMove(gameId: string, move: string, newFen: string): Promise<Game> {
@@ -118,7 +105,7 @@ export class GameRepository {
         movesHistory: [...game.movesHistory, move],
         currentFen: newFen,
       },
-    }) as Promise<Game>;
+    });
   }
 
   async finishGame(gameId: string, result: string): Promise<Game> {
@@ -134,6 +121,6 @@ export class GameRepository {
         status: GameStatus.FINISHED,
         result,
       },
-    }) as Promise<Game>;
+    });
   }
 }
