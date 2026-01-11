@@ -50,3 +50,6 @@ dev/
 
 # Claude cache
 .claude/tsc-cache/
+
+# Large skills (keep local only)
+.claude/skills/web-design-knowledge/
