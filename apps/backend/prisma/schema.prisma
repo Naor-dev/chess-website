@@ -1,0 +1,46 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id          String   @id @default(uuid())
+  googleId    String   @unique @map("google_id")
+  email       String   @unique
+  displayName String   @map("display_name")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  games Game[]
+
+  @@map("users")
+}
+
+model Game {
+  id              String     @id @default(uuid())
+  userId          String     @map("user_id")
+  status          GameStatus @default(ACTIVE)
+  difficultyLevel Int        @map("difficulty_level")
+  timeControlType String     @map("time_control_type")
+  currentFen      String     @map("current_fen")
+  movesHistory    String[]   @map("moves_history")
+  timeLeftUser    Int        @map("time_left_user")
+  timeLeftEngine  Int        @map("time_left_engine")
+  result          String?
+  createdAt       DateTime   @default(now()) @map("created_at")
+  updatedAt       DateTime   @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("games")
+}
+
+enum GameStatus {
+  ACTIVE
+  FINISHED
+  ABANDONED
+}
