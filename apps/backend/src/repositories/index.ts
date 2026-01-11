@@ -1,3 +1,4 @@
+export { BaseRepository } from './BaseRepository';
 export { GameRepository } from './GameRepository';
 export { UserRepository } from './UserRepository';
 export type {
