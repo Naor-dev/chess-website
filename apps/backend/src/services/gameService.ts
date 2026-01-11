@@ -15,10 +15,7 @@ export class GameService {
     void this.gameRepository;
   }
 
-  async createGame(
-    userId: string,
-    input: CreateGameInput
-  ): Promise<GameResponse> {
+  async createGame(userId: string, input: CreateGameInput): Promise<GameResponse> {
     Sentry.addBreadcrumb({
       message: 'Creating new game',
       category: 'game',
@@ -63,11 +60,7 @@ export class GameService {
     throw new Error('GameService.listGames not implemented');
   }
 
-  async makeMove(
-    gameId: string,
-    userId: string,
-    move: MakeMoveInput
-  ): Promise<MoveResponse> {
+  async makeMove(gameId: string, userId: string, move: MakeMoveInput): Promise<MoveResponse> {
     Sentry.addBreadcrumb({
       message: 'Making move',
       category: 'game',
@@ -133,7 +126,10 @@ export class GameService {
     result?: string;
   } {
     if (chess.isCheckmate()) {
-      return { isOver: true, result: chess.turn() === 'w' ? 'engine_win_checkmate' : 'user_win_checkmate' };
+      return {
+        isOver: true,
+        result: chess.turn() === 'w' ? 'engine_win_checkmate' : 'user_win_checkmate',
+      };
     }
     if (chess.isStalemate()) {
       return { isOver: true, result: 'draw_stalemate' };

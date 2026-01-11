@@ -15,12 +15,7 @@ export type CreateGameData = {
 export type UpdateGameData = Partial<
   Pick<
     Game,
-    | 'currentFen'
-    | 'movesHistory'
-    | 'timeLeftUser'
-    | 'timeLeftEngine'
-    | 'status'
-    | 'result'
+    'currentFen' | 'movesHistory' | 'timeLeftUser' | 'timeLeftEngine' | 'status' | 'result'
   >
 >;
 
@@ -78,10 +73,7 @@ export class GameRepository extends BaseRepository {
    * @param userId - The user's unique identifier
    * @returns The game or null if not found or not owned by user
    */
-  async findByIdAndUserId(
-    gameId: string,
-    userId: string
-  ): Promise<Game | null> {
+  async findByIdAndUserId(gameId: string, userId: string): Promise<Game | null> {
     return this.executeWithErrorHandling(
       'findByIdAndUserId',
       () =>
@@ -201,9 +193,7 @@ export class GameRepository extends BaseRepository {
    * @param userId - The user's unique identifier
    * @returns Count of games grouped by status
    */
-  async countByStatus(
-    userId: string
-  ): Promise<{ status: GameStatus; count: number }[]> {
+  async countByStatus(userId: string): Promise<{ status: GameStatus; count: number }[]> {
     return this.executeWithErrorHandling(
       'countByStatus',
       async () => {

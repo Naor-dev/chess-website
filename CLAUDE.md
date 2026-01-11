@@ -5,12 +5,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Project Overview
 
 An interactive chess website allowing users to:
+
 - Sign in with Google OAuth
 - Play chess against an AI engine (Stockfish)
 - Choose difficulty levels (1-5) and time controls
 - Save games and continue later
 
-**Status:** Infrastructure complete, starting feature development
+**Status:** Infrastructure and database complete, starting feature development
 
 ## Development Commands
 
@@ -63,20 +64,25 @@ chess-website/
 **Layered architecture:** routes → controllers → services → repositories
 
 Key patterns:
+
 - **Controllers** extend `BaseController` for standardized responses + Sentry integration
 - **Services** contain business logic with Sentry breadcrumbs
-- **Repositories** handle database access via Prisma
+- **Repositories** extend `BaseRepository` with `executeWithErrorHandling()` for automatic Sentry capture
 - **Config** via `src/config/unifiedConfig.ts` (NEVER use process.env directly)
 - **Validation** via Zod schemas from `@chess-website/shared`
 - **Error tracking** via Sentry (`src/instrument.ts` must be first import)
+- **Database** via Prisma singleton at `src/database/prisma.ts`
 
 Key files:
+
 - `src/instrument.ts` - Sentry initialization (MUST be imported first in app.ts)
 - `src/app.ts` - Express setup with middleware
 - `src/config/unifiedConfig.ts` - Type-safe configuration
+- `src/database/prisma.ts` - Prisma client singleton with retry logic
 - `src/controllers/BaseController.ts` - `handleError(error, res, operation)` pattern
+- `src/repositories/BaseRepository.ts` - `executeWithErrorHandling()` for all DB operations
 - `src/services/gameService.ts` - Game business logic
-- `src/repositories/GameRepository.ts` - Database access
+- `src/repositories/GameRepository.ts` - Game database access
 
 ### Frontend (apps/frontend)
 
@@ -95,11 +101,27 @@ Import in apps: `import { GameResponse, createGameSchema } from '@chess-website/
 
 ## Backend Development Rules
 
-1. **All errors to Sentry** - Use `Sentry.captureException()` or `this.handleError(error, res, 'operation')`
+1. **All errors to Sentry** - Use `this.executeWithErrorHandling()` in repositories or `this.handleError()` in controllers
 2. **Never use process.env** - Always use `import { config } from './config/unifiedConfig'`
 3. **Controllers extend BaseController** - Use `handleSuccess()`, `handleError()`, `handleValidationError()`
-4. **Add Sentry breadcrumbs** - Call `Sentry.addBreadcrumb()` for important operations
+4. **Repositories extend BaseRepository** - Use `executeWithErrorHandling(operation, fn, context)` for all DB operations
 5. **Validate all input** - Use Zod schemas from shared package
+
+## Database Patterns
+
+```typescript
+// Repository method pattern - always use executeWithErrorHandling
+async findById(id: string): Promise<Entity | null> {
+  return this.executeWithErrorHandling(
+    'findById',
+    () => this.prisma.entity.findUnique({ where: { id } }),
+    { id }
+  );
+}
+
+// Prisma client usage - import from database/prisma.ts
+import { prisma, connectWithRetry, verifyConnection } from '../database/prisma';
+```
 
 ## Key Resources
 
@@ -112,6 +134,7 @@ Project ID: `PVT_kwHOA4D8Lc4BMYoB`
 Status Field ID: `PVTSSF_lAHOA4D8Lc4BMYoBzg7ro58`
 
 Status option IDs:
+
 - Backlog: `f75ad846`
 - Ready: `61e4505c`
 - In progress: `47fc9ee4`
@@ -155,6 +178,7 @@ gh api graphql -f query='
 ## Available Agents
 
 Use the Task tool with these specialized agents:
+
 - **Plan** - Design implementation plans before coding
 - **code-architecture-reviewer** - Review code for best practices
 - **refactor-planner** - Plan refactoring strategies
@@ -163,11 +187,13 @@ Use the Task tool with these specialized agents:
 ## Current Progress
 
 **Done:**
+
 - #90: Frontend project (Next.js)
 - #91: Backend project (Express)
+- #92: Database setup (PostgreSQL + Prisma)
 
 **Ready:**
-- #92: Database setup (PostgreSQL + Prisma migrations)
+
 - #93: CI/CD pipeline
 - #94: Hosting
 - #95: Environment variables

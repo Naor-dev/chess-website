@@ -41,10 +41,7 @@ export abstract class BaseController {
     res.status(statusCode).json(response);
   }
 
-  protected handleValidationError(
-    res: Response,
-    details: Record<string, string[]>
-  ): void {
+  protected handleValidationError(res: Response, details: Record<string, string[]>): void {
     const response: ApiError = {
       success: false,
       error: 'Validation failed',
@@ -72,11 +69,7 @@ export abstract class BaseController {
     res.status(401).json(response);
   }
 
-  protected addBreadcrumb(
-    message: string,
-    category: string,
-    data?: Record<string, unknown>
-  ): void {
+  protected addBreadcrumb(message: string, category: string, data?: Record<string, unknown>): void {
     Sentry.addBreadcrumb({
       message,
       category,

@@ -1,0 +1,78 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    name: Build, Lint & Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Required for gitleaks
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Code Quality
+      - name: Check formatting
+        run: pnpm format:check
+
+      - name: Run linting
+        run: pnpm lint
+
+      # Prisma Validation
+      - name: Validate Prisma schema
+        run: pnpm --filter @chess-website/backend exec prisma validate
+
+      - name: Generate Prisma client
+        run: pnpm --filter @chess-website/backend exec prisma generate
+
+      - name: Check migrations status
+        run: pnpm --filter @chess-website/backend exec prisma migrate status
+        env:
+          DATABASE_URL: "postgresql://user:pass@localhost:5432/test_db"
+        continue-on-error: true # DB not available in CI, just validates migration files
+
+      # Build & Test
+      - name: Build all packages
+        run: pnpm build
+
+      - name: Run tests
+        run: pnpm test
+
+      # Security
+      - name: Dependency audit
+        run: pnpm audit --audit-level=high
+        continue-on-error: true # Don't fail CI on audit warnings
+
+      - name: License compliance check
+        run: |
+          npx license-checker --onlyAllow 'MIT;Apache-2.0;BSD-2-Clause;BSD-3-Clause;ISC;CC0-1.0;Unlicense;0BSD;CC-BY-4.0;Python-2.0;BlueOak-1.0.0' --summary
+        continue-on-error: true # Report but don't fail
+
+      - name: Secret scanning (Gitleaks)
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -73,10 +73,7 @@ export abstract class BaseRepository {
    * @param message - Description of the operation
    * @param data - Additional data to include
    */
-  protected addBreadcrumb(
-    message: string,
-    data?: Record<string, unknown>
-  ): void {
+  protected addBreadcrumb(message: string, data?: Record<string, unknown>): void {
     Sentry.addBreadcrumb({
       message,
       category: 'database',
