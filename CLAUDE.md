@@ -11,7 +11,7 @@ An interactive chess website allowing users to:
 - Choose difficulty levels (1-5) and time controls
 - Save games and continue later
 
-**Status:** Infrastructure and database complete, starting feature development
+**Status:** Infrastructure, database, and CI/CD complete - starting feature development
 
 ## Development Commands
 
@@ -184,6 +184,20 @@ Use the Task tool with these specialized agents:
 - **refactor-planner** - Plan refactoring strategies
 - **frontend-error-fixer** - Debug frontend errors
 
+## CI/CD Pipeline
+
+GitHub Actions workflows in `.github/workflows/`:
+
+| Workflow                 | Purpose                             | Trigger                 |
+| ------------------------ | ----------------------------------- | ----------------------- |
+| `ci.yml`                 | Build, Lint, Test, Prisma, Security | Every push/PR to main   |
+| `codeql.yml`             | SAST Analysis                       | Every push/PR + Weekly  |
+| `container-security.yml` | Container Scan (Trivy)              | When Dockerfiles change |
+
+**CI checks include:** format, lint, prisma validate/generate, build, test, dependency audit, license check, Gitleaks secret scanning.
+
+**Local pre-push hook:** `.husky/pre-push` runs CI checks before every push (local only, not in git).
+
 ## Current Progress
 
 **Done:**
@@ -191,10 +205,10 @@ Use the Task tool with these specialized agents:
 - #90: Frontend project (Next.js)
 - #91: Backend project (Express)
 - #92: Database setup (PostgreSQL + Prisma)
+- #93: CI/CD pipeline (GitHub Actions)
 
 **Ready:**
 
-- #93: CI/CD pipeline
 - #94: Hosting
 - #95: Environment variables
 - #96: HTTPS and domain
