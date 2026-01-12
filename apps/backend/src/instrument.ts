@@ -7,10 +7,7 @@ Sentry.init({
   environment: config.sentry.environment,
   enabled: config.sentry.enabled,
   tracesSampleRate: config.server.nodeEnv === 'production' ? 0.1 : 1.0,
-  integrations: [
-    Sentry.httpIntegration(),
-    Sentry.expressIntegration(),
-  ],
+  integrations: [Sentry.httpIntegration(), Sentry.expressIntegration()],
 });
 
 export { Sentry };

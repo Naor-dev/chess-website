@@ -1,0 +1,63 @@
+name: Container Security Scan
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - '**/Dockerfile*'
+      - 'docker-compose*.yml'
+      - '.github/workflows/container-security.yml'
+  pull_request:
+    branches: [main, master]
+    paths:
+      - '**/Dockerfile*'
+      - 'docker-compose*.yml'
+
+jobs:
+  check-dockerfiles:
+    name: Check for Dockerfiles
+    runs-on: ubuntu-latest
+    outputs:
+      has_dockerfiles: ${{ steps.check.outputs.has_dockerfiles }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check if Dockerfiles exist
+        id: check
+        run: |
+          if find . -name "Dockerfile*" | grep -q .; then
+            echo "has_dockerfiles=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_dockerfiles=false" >> $GITHUB_OUTPUT
+            echo "No Dockerfiles found - skipping container scan"
+          fi
+
+  scan:
+    name: Trivy Container Scan
+    needs: check-dockerfiles
+    if: needs.check-dockerfiles.outputs.has_dockerfiles == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Find and scan Dockerfiles
+        run: |
+          echo "Found Dockerfiles:"
+          find . -name "Dockerfile*" -type f
+
+      - name: Build and scan backend image
+        if: hashFiles('apps/backend/Dockerfile') != ''
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: 'apps/backend'
+          format: 'table'
+          severity: 'CRITICAL,HIGH'
+
+      - name: Build and scan frontend image
+        if: hashFiles('apps/frontend/Dockerfile') != ''
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: 'apps/frontend'
+          format: 'table'
+          severity: 'CRITICAL,HIGH'

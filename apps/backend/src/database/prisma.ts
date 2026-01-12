@@ -39,10 +39,7 @@ if (config.server.nodeEnv !== 'production') {
  * @param maxRetries - Maximum number of connection attempts
  * @param delayMs - Delay between retries in milliseconds
  */
-export async function connectWithRetry(
-  maxRetries = 5,
-  delayMs = 2000
-): Promise<void> {
+export async function connectWithRetry(maxRetries = 5, delayMs = 2000): Promise<void> {
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
       await prisma.$connect();
@@ -87,8 +84,7 @@ export async function verifyConnection(): Promise<{
     await prisma.user.count();
     return { connected: true };
   } catch (error) {
-    const errorMessage =
-      error instanceof Error ? error.message : 'Unknown error';
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     Sentry.captureException(error, {
       tags: { operation: 'database_verification' },
     });

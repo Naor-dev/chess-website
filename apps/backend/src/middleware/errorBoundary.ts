@@ -3,12 +3,7 @@ import * as Sentry from '@sentry/node';
 import type { ApiError } from '@chess-website/shared';
 import { config } from '../config/unifiedConfig';
 
-export function errorBoundary(
-  err: Error,
-  _req: Request,
-  res: Response,
-  _next: NextFunction
-): void {
+export function errorBoundary(err: Error, _req: Request, res: Response, _next: NextFunction): void {
   // Capture to Sentry
   Sentry.captureException(err, {
     tags: { handler: 'errorBoundary' },

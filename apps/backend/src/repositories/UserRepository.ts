@@ -26,11 +26,9 @@ export class UserRepository extends BaseRepository {
    * @returns The created user
    */
   async create(data: CreateUserData): Promise<User> {
-    return this.executeWithErrorHandling(
-      'create',
-      () => this.prisma.user.create({ data }),
-      { email: data.email }
-    );
+    return this.executeWithErrorHandling('create', () => this.prisma.user.create({ data }), {
+      email: data.email,
+    });
   }
 
   /**
@@ -126,8 +124,6 @@ export class UserRepository extends BaseRepository {
    * @returns Total user count
    */
   async count(): Promise<number> {
-    return this.executeWithErrorHandling('count', () =>
-      this.prisma.user.count()
-    );
+    return this.executeWithErrorHandling('count', () => this.prisma.user.count());
   }
 }

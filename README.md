@@ -11,6 +11,7 @@ Born from 6 months of real-world use managing a complex TypeScript microservices
 ## What's Inside
 
 **Production-tested infrastructure for:**
+
 - ✅ **Auto-activating skills** via hooks
 - ✅ **Modular skill pattern** (500-line rule with progressive disclosure)
 - ✅ **Specialized agents** for complex tasks
@@ -33,6 +34,7 @@ Born from 6 months of real-world use managing a complex TypeScript microservices
 **The breakthrough feature:** Skills that actually activate when you need them.
 
 **What you need:**
+
 1. The skill-activation hooks (2 files)
 2. A skill or two relevant to your work
 3. 15 minutes
@@ -44,6 +46,7 @@ Born from 6 months of real-world use managing a complex TypeScript microservices
 Browse the [skills catalog](.claude/skills/) and copy what you need.
 
 **Available:**
+
 - **backend-dev-guidelines** - Node.js/Express/TypeScript patterns
 - **frontend-dev-guidelines** - React/TypeScript/MUI v7 patterns
 - **skill-developer** - Meta-skill for creating skills
@@ -55,6 +58,7 @@ Browse the [skills catalog](.claude/skills/) and copy what you need.
 ### 🤖 I want specialized agents
 
 10 production-tested agents for complex tasks:
+
 - Code architecture review
 - Refactoring assistance
 - Documentation generation
@@ -72,6 +76,7 @@ Browse the [skills catalog](.claude/skills/) and copy what you need.
 **Problem:** Claude Code skills just sit there. You have to remember to use them.
 
 **Solution:** UserPromptSubmit hook that:
+
 - Analyzes your prompts
 - Checks file context
 - Automatically suggests relevant skills
@@ -82,6 +87,7 @@ Browse the [skills catalog](.claude/skills/) and copy what you need.
 ### Production-Tested Patterns
 
 These aren't theoretical examples - they're extracted from:
+
 - ✅ 6 microservices in production
 - ✅ 50,000+ lines of TypeScript
 - ✅ React frontend with complex data grids
@@ -143,13 +149,13 @@ dev/
 
 ### 🎨 Skills (5)
 
-| Skill | Lines | Purpose | Best For |
-|-------|-------|---------|----------|
-| [**skill-developer**](.claude/skills/skill-developer/) | 426 | Creating and managing skills | Meta-development |
-| [**backend-dev-guidelines**](.claude/skills/backend-dev-guidelines/) | 304 | Express/Prisma/Sentry patterns | Backend APIs |
-| [**frontend-dev-guidelines**](.claude/skills/frontend-dev-guidelines/) | 398 | React/MUI v7/TypeScript | React frontends |
-| [**route-tester**](.claude/skills/route-tester/) | 389 | Testing authenticated routes | API testing |
-| [**error-tracking**](.claude/skills/error-tracking/) | ~250 | Sentry integration | Error monitoring |
+| Skill                                                                  | Lines | Purpose                        | Best For         |
+| ---------------------------------------------------------------------- | ----- | ------------------------------ | ---------------- |
+| [**skill-developer**](.claude/skills/skill-developer/)                 | 426   | Creating and managing skills   | Meta-development |
+| [**backend-dev-guidelines**](.claude/skills/backend-dev-guidelines/)   | 304   | Express/Prisma/Sentry patterns | Backend APIs     |
+| [**frontend-dev-guidelines**](.claude/skills/frontend-dev-guidelines/) | 398   | React/MUI v7/TypeScript        | React frontends  |
+| [**route-tester**](.claude/skills/route-tester/)                       | 389   | Testing authenticated routes   | API testing      |
+| [**error-tracking**](.claude/skills/error-tracking/)                   | ~250  | Sentry integration             | Error monitoring |
 
 **All skills follow the modular pattern** - main file + resource files for progressive disclosure.
 
@@ -157,14 +163,14 @@ dev/
 
 ### 🪝 Hooks (6)
 
-| Hook | Type | Essential? | Customization |
-|------|------|-----------|---------------|
-| skill-activation-prompt | UserPromptSubmit | ✅ YES | ✅ None needed |
-| post-tool-use-tracker | PostToolUse | ✅ YES | ✅ None needed |
-| tsc-check | Stop | ⚠️ Optional | ⚠️ Heavy - monorepo only |
-| trigger-build-resolver | Stop | ⚠️ Optional | ⚠️ Heavy - monorepo only |
-| error-handling-reminder | Stop | ⚠️ Optional | ⚠️ Moderate |
-| stop-build-check-enhanced | Stop | ⚠️ Optional | ⚠️ Moderate |
+| Hook                      | Type             | Essential?  | Customization            |
+| ------------------------- | ---------------- | ----------- | ------------------------ |
+| skill-activation-prompt   | UserPromptSubmit | ✅ YES      | ✅ None needed           |
+| post-tool-use-tracker     | PostToolUse      | ✅ YES      | ✅ None needed           |
+| tsc-check                 | Stop             | ⚠️ Optional | ⚠️ Heavy - monorepo only |
+| trigger-build-resolver    | Stop             | ⚠️ Optional | ⚠️ Heavy - monorepo only |
+| error-handling-reminder   | Stop             | ⚠️ Optional | ⚠️ Moderate              |
+| stop-build-check-enhanced | Stop             | ⚠️ Optional | ⚠️ Moderate              |
 
 **Start with the two essential hooks** - they enable skill auto-activation and work out of the box.
 
@@ -174,27 +180,27 @@ dev/
 
 **Standalone - just copy and use!**
 
-| Agent | Purpose |
-|-------|---------|
+| Agent                      | Purpose                                   |
+| -------------------------- | ----------------------------------------- |
 | code-architecture-reviewer | Review code for architectural consistency |
-| code-refactor-master | Plan and execute refactoring |
-| documentation-architect | Generate comprehensive documentation |
-| frontend-error-fixer | Debug frontend errors |
-| plan-reviewer | Review development plans |
-| refactor-planner | Create refactoring strategies |
-| web-research-specialist | Research technical issues online |
-| auth-route-tester | Test authenticated endpoints |
-| auth-route-debugger | Debug auth issues |
-| auto-error-resolver | Auto-fix TypeScript errors |
+| code-refactor-master       | Plan and execute refactoring              |
+| documentation-architect    | Generate comprehensive documentation      |
+| frontend-error-fixer       | Debug frontend errors                     |
+| plan-reviewer              | Review development plans                  |
+| refactor-planner           | Create refactoring strategies             |
+| web-research-specialist    | Research technical issues online          |
+| auth-route-tester          | Test authenticated endpoints              |
+| auth-route-debugger        | Debug auth issues                         |
+| auto-error-resolver        | Auto-fix TypeScript errors                |
 
 **👉 [How agents work →](.claude/agents/README.md)**
 
 ### 💬 Slash Commands (3)
 
-| Command | Purpose |
-|---------|---------|
-| /dev-docs | Create structured dev documentation |
-| /dev-docs-update | Update docs before context reset |
+| Command                     | Purpose                             |
+| --------------------------- | ----------------------------------- |
+| /dev-docs                   | Create structured dev documentation |
+| /dev-docs-update            | Update docs before context reset    |
 | /route-research-for-testing | Research route patterns for testing |
 
 ---
@@ -204,6 +210,7 @@ dev/
 ### Hooks + skill-rules.json = Auto-Activation
 
 **The system:**
+
 1. **skill-activation-prompt hook** runs on every user prompt
 2. Checks **skill-rules.json** for trigger patterns
 3. Suggests relevant skills automatically
@@ -216,6 +223,7 @@ dev/
 **Problem:** Large skills hit context limits
 
 **Solution:** Modular structure
+
 - Main SKILL.md <500 lines (overview + navigation)
 - Resource files <500 lines each (deep dives)
 - Claude loads incrementally as needed
@@ -227,6 +235,7 @@ dev/
 **Problem:** Context resets lose project context
 
 **Solution:** Three-file structure
+
 - `[task]-plan.md` - Strategic plan
 - `[task]-context.md` - Key decisions and files
 - `[task]-tasks.md` - Checklist format
@@ -238,24 +247,31 @@ dev/
 ## ⚠️ Important: What Won't Work As-Is
 
 ### settings.json
+
 The included `settings.json` is an **example only**:
+
 - Stop hooks reference specific monorepo structure
 - Service names (blog-api, etc.) are examples
 - MCP servers may not exist in your setup
 
 **To use it:**
+
 1. Extract ONLY UserPromptSubmit and PostToolUse hooks
 2. Customize or skip Stop hooks
 3. Update MCP server list for your setup
 
 ### Blog Domain Examples
+
 Skills use generic blog examples (Post/Comment/User):
+
 - These are **teaching examples**, not requirements
 - Patterns work for any domain (e-commerce, SaaS, etc.)
 - Adapt the patterns to your business logic
 
 ### Hook Directory Structures
+
 Some hooks expect specific structures:
+
 - `tsc-check.sh` expects service directories
 - Customize based on YOUR project layout
 
@@ -266,23 +282,27 @@ Some hooks expect specific structures:
 **Recommended approach:**
 
 ### Phase 1: Skill Activation (15 min)
+
 1. Copy skill-activation-prompt hook
 2. Copy post-tool-use-tracker hook
 3. Update settings.json
 4. Install hook dependencies
 
 ### Phase 2: Add First Skill (10 min)
+
 1. Pick ONE relevant skill
 2. Copy skill directory
 3. Create/update skill-rules.json
 4. Customize path patterns
 
 ### Phase 3: Test & Iterate (5 min)
+
 1. Edit a file - skill should activate
 2. Ask a question - skill should be suggested
 3. Add more skills as needed
 
 ### Phase 4: Optional Enhancements
+
 - Add agents you find useful
 - Add slash commands
 - Customize Stop hooks (advanced)
@@ -292,13 +312,17 @@ Some hooks expect specific structures:
 ## Getting Help
 
 ### For Users
+
 **Issues with integration?**
+
 1. Check [CLAUDE_INTEGRATION_GUIDE.md](CLAUDE_INTEGRATION_GUIDE.md)
 2. Ask Claude: "Why isn't [skill] activating?"
 3. Open an issue with your project structure
 
 ### For Claude Code
+
 When helping users integrate:
+
 1. **Read CLAUDE_INTEGRATION_GUIDE.md FIRST**
 2. Ask about their project structure
 3. Customize, don't blindly copy
@@ -339,7 +363,6 @@ When helping users integrate:
 
 **Background:**
 This infrastructure was detailed in a post I made to Reddit ["Claude Code is a Beast – Tips from 6 Months of Hardcore Use"](https://www.reddit.com/r/ClaudeAI/comments/1oivjvm/claude_code_is_a_beast_tips_from_6_months_of/). After hundreds of requests, this showcase was created to help the community implement these patterns.
-
 
 ---
 
