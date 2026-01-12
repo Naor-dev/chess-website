@@ -44,9 +44,13 @@ jobs:
       # Prisma Validation
       - name: Validate Prisma schema
         run: pnpm --filter @chess-website/backend exec prisma validate
+        env:
+          DATABASE_URL: "postgresql://user:pass@localhost:5432/test_db"
 
       - name: Generate Prisma client
         run: pnpm --filter @chess-website/backend exec prisma generate
+        env:
+          DATABASE_URL: "postgresql://user:pass@localhost:5432/test_db"
 
       - name: Check migrations status
         run: pnpm --filter @chess-website/backend exec prisma migrate status
