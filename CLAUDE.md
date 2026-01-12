@@ -99,6 +99,12 @@ Key files:
 
 Import in apps: `import { GameResponse, createGameSchema } from '@chess-website/shared'`
 
+## Git/GitHub Rules
+
+1. **NEVER merge PRs** - Only create PRs, user will merge manually
+2. **NEVER push directly to main** - Always use feature branches
+3. **Create PRs with clear descriptions** - Include summary and test plan
+
 ## Backend Development Rules
 
 1. **All errors to Sentry** - Use `this.executeWithErrorHandling()` in repositories or `this.handleError()` in controllers
