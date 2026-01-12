@@ -53,3 +53,6 @@ dev/
 
 # Large skills (keep local only)
 .claude/skills/web-design-knowledge/
+
+# Husky hooks (local only)
+.husky/
