@@ -73,7 +73,7 @@ export const config: UnifiedConfig = {
 export function validateConfig(): void {
   if (config.server.nodeEnv === 'production') {
     if (!config.auth.google.clientId) {
-      throw new Error('GOOGLE_CLIENT_ID is required in production');
+      console.warn('WARNING: GOOGLE_CLIENT_ID not set - Google OAuth login will not work');
     }
     if (config.auth.jwtSecret === 'dev-secret-change-in-production') {
       throw new Error('JWT_SECRET must be set in production');
