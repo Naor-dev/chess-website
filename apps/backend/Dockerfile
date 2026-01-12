@@ -50,7 +50,10 @@ RUN pnpm install --frozen-lockfile --prod --ignore-scripts
 # Copy built files
 COPY --from=builder /app/packages/shared/dist packages/shared/dist/
 COPY --from=builder /app/apps/backend/dist apps/backend/dist/
-COPY --from=builder /app/node_modules/.pnpm/@prisma+client*/node_modules/.prisma node_modules/.prisma/
+
+# Copy Prisma client from builder (includes runtime)
+COPY --from=builder /app/node_modules/.pnpm/@prisma+client@*/node_modules/@prisma/client node_modules/@prisma/client/
+COPY --from=builder /app/node_modules/.pnpm/@prisma+client@*/node_modules/.prisma node_modules/.prisma/
 
 # Set ownership
 RUN chown -R nodejs:nodejs /app
