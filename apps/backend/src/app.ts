@@ -12,6 +12,7 @@ import { config } from './config/unifiedConfig';
 import { errorBoundary } from './middleware/errorBoundary';
 import { requestLogger } from './middleware/requestLogger';
 import routes from './routes';
+import passport from './config/passport';
 
 const app: Application = express();
 
@@ -29,6 +30,9 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 app.use(compression());
+
+// Passport initialization (for OAuth)
+app.use(passport.initialize());
 
 // Logging
 app.use(requestLogger);

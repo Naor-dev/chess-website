@@ -8,6 +8,12 @@ export interface CreateUserData {
   displayName: string;
 }
 
+/** Result of findOrCreate operation */
+export interface FindOrCreateResult {
+  user: User;
+  isNew: boolean;
+}
+
 // Re-export Prisma types for use by services
 export { User };
 
@@ -83,9 +89,9 @@ export class UserRepository extends BaseRepository {
    * Finds an existing user by Google ID or creates a new one.
    * Used during OAuth authentication flow.
    * @param data - User data from OAuth provider
-   * @returns The existing or newly created user
+   * @returns The existing or newly created user with isNew flag
    */
-  async findOrCreate(data: CreateUserData): Promise<User> {
+  async findOrCreate(data: CreateUserData): Promise<FindOrCreateResult> {
     return this.executeWithErrorHandling(
       'findOrCreate',
       async () => {
@@ -93,9 +99,10 @@ export class UserRepository extends BaseRepository {
           where: { googleId: data.googleId },
         });
         if (existing) {
-          return existing;
+          return { user: existing, isNew: false };
         }
-        return this.prisma.user.create({ data });
+        const newUser = await this.prisma.user.create({ data });
+        return { user: newUser, isNew: true };
       },
       { email: data.email }
     );
