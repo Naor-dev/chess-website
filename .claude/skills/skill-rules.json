@@ -183,6 +183,40 @@
                 ]
             }
         },
+        "secure-coding": {
+            "type": "domain",
+            "enforcement": "suggest",
+            "priority": "critical",
+            "description": "Secure coding standards for all code. Never rely on library defaults for security behavior.",
+            "promptTriggers": {
+                "intentPatterns": [
+                    "(create|add|implement|write|build|fix|update|modify|edit).*?(code|function|class|method|service|controller|component|module|handler|route|endpoint|API)"
+                ]
+            },
+            "fileTriggers": {
+                "pathPatterns": [
+                    "**/*.ts",
+                    "**/*.tsx",
+                    "**/*.js",
+                    "**/*.jsx",
+                    "**/*.py",
+                    "**/*.go",
+                    "**/*.java",
+                    "**/*.cs",
+                    "**/*.rb",
+                    "**/*.php",
+                    "**/*.rs",
+                    "**/*.swift",
+                    "**/*.kt"
+                ],
+                "pathExclusions": [
+                    "**/*.test.*",
+                    "**/*.spec.*",
+                    "**/node_modules/**",
+                    "**/__tests__/**"
+                ]
+            }
+        },
         "error-tracking": {
             "type": "domain",
             "enforcement": "suggest",

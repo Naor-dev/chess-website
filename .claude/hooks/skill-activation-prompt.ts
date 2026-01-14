@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-import { readFileSync } from 'fs';
-import { join } from 'path';
+import { readFileSync, appendFileSync, mkdirSync, existsSync } from 'fs';
+import { join, dirname } from 'path';
 
 interface HookInput {
     session_id: string;
@@ -31,6 +31,35 @@ interface MatchedSkill {
     name: string;
     matchType: 'keyword' | 'intent';
     config: SkillRule;
+}
+
+/**
+ * Logs skill activations to a file for tracking
+ */
+function logSkillActivation(
+    projectDir: string,
+    skills: MatchedSkill[],
+    prompt: string
+): void {
+    try {
+        const stateDir = join(projectDir, '.claude', 'hooks', 'state');
+        const logPath = join(stateDir, 'skill-activations.log');
+
+        // Ensure state directory exists
+        if (!existsSync(stateDir)) {
+            mkdirSync(stateDir, { recursive: true });
+        }
+
+        const timestamp = new Date().toISOString();
+        const skillNames = skills.map(s => s.name).join(', ');
+        // Truncate prompt if too long, remove newlines
+        const shortPrompt = prompt.slice(0, 50).replace(/\n/g, ' ');
+        const logLine = `${timestamp} | ${skillNames} | "${shortPrompt}"\n`;
+
+        appendFileSync(logPath, logLine);
+    } catch {
+        // Silent fail - logging should not break the hook
+    }
 }
 
 async function main() {
@@ -79,6 +108,9 @@ async function main() {
 
         // Generate output if matches found
         if (matchedSkills.length > 0) {
+            // Log the activation
+            logSkillActivation(projectDir, matchedSkills, data.prompt);
+
             let output = '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n';
             output += '🎯 SKILL ACTIVATION CHECK\n';
             output += '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n';

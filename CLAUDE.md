@@ -204,6 +204,14 @@ GitHub Actions workflows in `.github/workflows/`:
 
 **Local pre-push hook:** `.husky/pre-push` runs CI checks before every push (local only, not in git).
 
+## Hosting
+
+| Service  | Platform | URL                                               |
+| -------- | -------- | ------------------------------------------------- |
+| Frontend | Vercel   | https://chess-website-frontend-beta.vercel.app    |
+| Backend  | Koyeb    | https://improved-harmonia-yada-2bbdf472.koyeb.app |
+| Database | Supabase | PostgreSQL (managed)                              |
+
 ## Current Progress
 
 **Done:**
@@ -212,9 +220,9 @@ GitHub Actions workflows in `.github/workflows/`:
 - #91: Backend project (Express)
 - #92: Database setup (PostgreSQL + Prisma)
 - #93: CI/CD pipeline (GitHub Actions)
+- #94: Hosting (Vercel + Koyeb + Supabase)
 
 **Ready:**
 
-- #94: Hosting
 - #95: Environment variables
 - #96: HTTPS and domain

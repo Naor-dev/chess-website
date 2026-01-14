@@ -1,12 +1,12 @@
 import { Router } from 'express';
 import { GameController } from '../controllers/GameController';
-// import { authMiddleware } from '../middleware/authMiddleware';
+import { authMiddleware } from '../middleware/authMiddleware';
 
 const router: Router = Router();
 const controller = new GameController();
 
-// TODO: Add authMiddleware when implemented
-// router.use(authMiddleware);
+// Protect all game routes - require authentication
+router.use(authMiddleware);
 
 // POST /api/games - Create new game
 router.post('/', (req, res) => controller.createGame(req, res));
