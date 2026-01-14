@@ -78,17 +78,22 @@ export default function Home() {
             </div>
 
             <div className="flex flex-col gap-3 sm:flex-row">
+              {/* Primary CTA - Green accent for "play/go" action */}
               <button
-                className="flex h-12 items-center justify-center gap-2 rounded-full bg-zinc-900 px-8 font-medium text-white transition-colors hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
+                className="flex h-12 items-center justify-center gap-2 rounded-full bg-emerald-600 px-8 font-medium text-white shadow-sm transition-all hover:bg-emerald-500 hover:shadow-md active:scale-[0.98]"
                 onClick={() => {
                   // TODO: Navigate to new game
                   alert('New game coming soon!');
                 }}
               >
+                <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M8 5v14l11-7z" />
+                </svg>
                 New Game
               </button>
+              {/* Secondary action - Subtle styling */}
               <button
-                className="flex h-12 items-center justify-center rounded-full border border-zinc-300 px-8 font-medium text-zinc-700 transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-900"
+                className="flex h-12 items-center justify-center rounded-full border border-zinc-300 px-8 font-medium text-zinc-600 transition-colors hover:border-zinc-400 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-400 dark:hover:border-zinc-600 dark:hover:bg-zinc-900"
                 onClick={logout}
               >
                 Sign Out
@@ -98,7 +103,7 @@ export default function Home() {
         ) : (
           <button
             onClick={login}
-            className="flex h-14 items-center justify-center gap-3 rounded-full border border-zinc-300 bg-white px-8 font-medium text-zinc-700 shadow-sm transition-all hover:bg-zinc-50 hover:shadow-md dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800"
+            className="flex h-14 items-center justify-center gap-3 rounded-full border border-zinc-200 bg-white px-8 font-medium text-zinc-700 shadow-md transition-all hover:border-zinc-300 hover:shadow-lg active:scale-[0.98] dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:border-zinc-600 dark:hover:bg-zinc-800"
           >
             <GoogleIcon />
             Sign in with Google
