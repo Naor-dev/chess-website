@@ -252,6 +252,91 @@
                     "captureMessage"
                 ]
             }
+        },
+        "ux-advisor": {
+            "type": "domain",
+            "enforcement": "suggest",
+            "priority": "high",
+            "description": "Expert web design guidance backed by 23 design books. Use for color palettes, typography, layouts, UX patterns, responsive design, CSS techniques.",
+            "promptTriggers": {
+                "keywords": [
+                    "UI",
+                    "UX",
+                    "UI/UX",
+                    "user interface",
+                    "user experience",
+                    "design",
+                    "web design",
+                    "color palette",
+                    "color scheme",
+                    "colors",
+                    "typography",
+                    "fonts",
+                    "font family",
+                    "layout",
+                    "page layout",
+                    "grid system",
+                    "spacing",
+                    "responsive design",
+                    "mobile design",
+                    "CSS",
+                    "styling",
+                    "visual design",
+                    "visual hierarchy",
+                    "navigation",
+                    "usability",
+                    "accessibility",
+                    "wireframe",
+                    "mockup",
+                    "prototype",
+                    "landing page",
+                    "dashboard design",
+                    "form design",
+                    "button design",
+                    "card design",
+                    "modal design",
+                    "dark mode",
+                    "light mode",
+                    "theme",
+                    "branding",
+                    "design system",
+                    "design patterns",
+                    "best practices design",
+                    "modern design",
+                    "minimalist",
+                    "clean design"
+                ],
+                "intentPatterns": [
+                    "(what|which|how).*?(color|colors|palette|scheme)",
+                    "(what|which|how).*?(font|typography|typeface)",
+                    "(what|which|how).*?(layout|design|style)",
+                    "(design|style|make).*?(look|better|good|modern|clean|professional)",
+                    "(improve|fix|update).*?(UI|UX|design|look|appearance)",
+                    "(best practice|how to|recommend).*?(UI|UX|design|layout|color|font)",
+                    "(create|build|make).*?(landing page|dashboard|form|modal|button)",
+                    "(responsive|mobile).*?(design|layout|view)",
+                    "(dark mode|light mode|theme).*?(design|implement|add)"
+                ]
+            },
+            "fileTriggers": {
+                "pathPatterns": [
+                    "**/*.css",
+                    "**/*.scss",
+                    "**/*.less",
+                    "**/*.styled.ts",
+                    "**/*.styles.ts",
+                    "**/styles/**",
+                    "**/theme/**"
+                ],
+                "contentPatterns": [
+                    "background-color",
+                    "font-family",
+                    "createTheme",
+                    "ThemeProvider",
+                    "styled-components",
+                    "@emotion"
+                ]
+            }
         }
     },
     "notes": {
