@@ -46,6 +46,7 @@ export function parseExpiresInToMs(value: string): number {
 export interface JwtPayload {
   userId: string;
   email: string;
+  tokenVersion: number; // For token revocation
   sub: string; // Subject (standard claim)
   iss: string; // Issuer (standard claim)
   aud: string; // Audience (standard claim)
@@ -76,6 +77,7 @@ export class AuthService {
     const payload: Omit<JwtPayload, 'iat' | 'exp'> = {
       userId: user.id,
       email: user.email,
+      tokenVersion: user.tokenVersion,
       sub: user.id,
       iss: JWT_ISSUER,
       aud: config.cors.origin,
@@ -87,22 +89,54 @@ export class AuthService {
   }
 
   /**
-   * Verifies a JWT token and returns the payload.
+   * Verifies a JWT token and validates tokenVersion against the database.
+   * This ensures revoked tokens (via logout-all) are rejected.
    * @param token - JWT token to verify
-   * @returns Decoded payload or null if invalid
+   * @returns Decoded payload or null if invalid/revoked
    */
-  verifyToken(token: string): JwtPayload | null {
+  async verifyToken(token: string): Promise<JwtPayload | null> {
     try {
       const decoded = jwt.verify(token, config.auth.jwtSecret, {
+        algorithms: ['HS256'],
         issuer: JWT_ISSUER,
         audience: config.cors.origin,
       }) as JwtPayload;
 
       // Validate required claims
-      if (!decoded.userId || !decoded.email) {
+      if (!decoded.userId || !decoded.email || decoded.tokenVersion === undefined) {
         Sentry.captureMessage('JWT missing required claims', {
           level: 'warning',
-          extra: { hasUserId: !!decoded.userId, hasEmail: !!decoded.email },
+          extra: {
+            hasUserId: !!decoded.userId,
+            hasEmail: !!decoded.email,
+            hasTokenVersion: decoded.tokenVersion !== undefined,
+          },
+        });
+        return null;
+      }
+
+      // Validate tokenVersion against database (enables token revocation)
+      const user = await this.userRepository.findById(decoded.userId);
+      if (!user) {
+        Sentry.addBreadcrumb({
+          message: 'JWT user not found in database',
+          category: 'auth',
+          level: 'warning',
+          data: { userId: decoded.userId },
+        });
+        return null;
+      }
+
+      if (user.tokenVersion !== decoded.tokenVersion) {
+        Sentry.addBreadcrumb({
+          message: 'JWT token version mismatch - token revoked',
+          category: 'auth',
+          level: 'info',
+          data: {
+            userId: decoded.userId,
+            tokenVersion: decoded.tokenVersion,
+            currentVersion: user.tokenVersion,
+          },
         });
         return null;
       }
@@ -181,5 +215,22 @@ export class AuthService {
       email,
       displayName,
     });
+  }
+
+  /**
+   * Invalidates all existing tokens for a user by incrementing tokenVersion.
+   * Used for "logout from all devices" functionality.
+   * @param userId - The user's unique identifier
+   * @returns The updated user with new tokenVersion
+   */
+  async invalidateAllTokens(userId: string): Promise<User> {
+    Sentry.addBreadcrumb({
+      message: 'Invalidating all user tokens',
+      category: 'auth',
+      level: 'info',
+      data: { userId },
+    });
+
+    return this.userRepository.incrementTokenVersion(userId);
   }
 }

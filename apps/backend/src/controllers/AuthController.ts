@@ -126,4 +126,34 @@ export class AuthController extends BaseController {
       this.handleError(error, res, 'AuthController.logout');
     }
   }
+
+  /**
+   * Logs out from all devices by invalidating all tokens.
+   * Increments tokenVersion, making all existing tokens invalid.
+   * POST /api/auth/logout-all
+   */
+  async logoutAll(req: Request, res: Response): Promise<void> {
+    try {
+      const userId = req.userId;
+      if (!userId) {
+        this.handleUnauthorized(res, 'Not authenticated');
+        return;
+      }
+
+      this.addBreadcrumb('User logout from all devices', 'auth', {
+        userId,
+        userEmail: req.userEmail,
+      });
+
+      // Invalidate all existing tokens by incrementing tokenVersion
+      await this.authService.invalidateAllTokens(userId);
+
+      // Clear the current cookie as well
+      res.cookie('token', '', this.getAuthCookieOptions(0));
+
+      this.handleSuccess(res, { message: 'Logged out from all devices successfully' });
+    } catch (error) {
+      this.handleError(error, res, 'AuthController.logoutAll');
+    }
+  }
 }

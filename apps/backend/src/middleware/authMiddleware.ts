@@ -17,9 +17,14 @@ declare global {
 /**
  * Middleware to protect routes requiring authentication.
  * Extracts and validates JWT from Authorization header or cookie.
+ * Validates tokenVersion against DB to support token revocation.
  * Attaches userId and userEmail to request object.
  */
-export function authMiddleware(req: Request, res: Response, next: NextFunction): void {
+export async function authMiddleware(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
   try {
     // Extract token from Authorization header or cookie
     const authHeader = req.headers.authorization;
@@ -37,7 +42,7 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction):
       return;
     }
 
-    const payload = services.authService.verifyToken(token);
+    const payload = await services.authService.verifyToken(token);
 
     if (!payload) {
       const response: ApiError = {
@@ -77,9 +82,14 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction):
 /**
  * Optional auth middleware that attaches user info if token exists
  * but doesn't require authentication.
+ * Validates tokenVersion against DB to support token revocation.
  * Useful for endpoints that behave differently for authenticated users.
  */
-export function optionalAuthMiddleware(req: Request, _res: Response, next: NextFunction): void {
+export async function optionalAuthMiddleware(
+  req: Request,
+  _res: Response,
+  next: NextFunction
+): Promise<void> {
   try {
     const authHeader = req.headers.authorization;
     const cookieToken = req.cookies?.token;
@@ -87,7 +97,7 @@ export function optionalAuthMiddleware(req: Request, _res: Response, next: NextF
     const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : cookieToken;
 
     if (token) {
-      const payload = services.authService.verifyToken(token);
+      const payload = await services.authService.verifyToken(token);
       if (payload) {
         req.userId = payload.userId;
         req.userEmail = payload.email;

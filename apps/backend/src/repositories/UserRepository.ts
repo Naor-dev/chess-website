@@ -133,4 +133,22 @@ export class UserRepository extends BaseRepository {
   async count(): Promise<number> {
     return this.executeWithErrorHandling('count', () => this.prisma.user.count());
   }
+
+  /**
+   * Increments a user's token version, invalidating all existing tokens.
+   * Used for "logout from all devices" functionality.
+   * @param userId - The user's unique identifier
+   * @returns The updated user with new tokenVersion
+   */
+  async incrementTokenVersion(userId: string): Promise<User> {
+    return this.executeWithErrorHandling(
+      'incrementTokenVersion',
+      () =>
+        this.prisma.user.update({
+          where: { id: userId },
+          data: { tokenVersion: { increment: 1 } },
+        }),
+      { userId }
+    );
+  }
 }

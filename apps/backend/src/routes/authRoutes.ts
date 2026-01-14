@@ -56,4 +56,11 @@ router.get('/me', authMiddleware, (req, res) => controller.getCurrentUser(req, r
  */
 router.post('/logout', optionalAuthMiddleware, (req, res) => controller.logout(req, res));
 
+/**
+ * POST /api/auth/logout-all
+ * Logs out from all devices by invalidating all tokens.
+ * Requires valid JWT token.
+ */
+router.post('/logout-all', authMiddleware, (req, res) => controller.logoutAll(req, res));
+
 export default router;
