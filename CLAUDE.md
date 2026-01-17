@@ -11,7 +11,7 @@ An interactive chess website allowing users to:
 - Choose difficulty levels (1-5) and time controls
 - Save games and continue later
 
-**Status:** Infrastructure, database, and CI/CD complete - starting feature development
+**Status:** Infrastructure complete, Google OAuth authentication implemented - continuing feature development
 
 ## Development Commands
 
@@ -88,9 +88,16 @@ Key files:
 
 **Next.js App Router** with feature-based organization
 
-- **API client** at `src/lib/apiClient.ts` (Axios with interceptors)
+- **API client** at `src/lib/apiClient.ts` (Axios with interceptors, `withCredentials: true` for cookies)
+- **Auth API** at `src/lib/authApi.ts` (Google OAuth, logout, user fetching)
+- **Auth state** via `src/contexts/AuthContext.tsx` (useAuth hook)
 - **Query client** at `src/lib/queryClient.ts` (TanStack Query)
 - **Styling** via TailwindCSS
+
+Key auth pages:
+
+- `/auth/callback` - OAuth callback handler
+- `/auth/error` - Auth error display
 
 ### Shared Package (packages/shared)
 
@@ -112,6 +119,20 @@ Import in apps: `import { GameResponse, createGameSchema } from '@chess-website/
 3. **Controllers extend BaseController** - Use `handleSuccess()`, `handleError()`, `handleValidationError()`
 4. **Repositories extend BaseRepository** - Use `executeWithErrorHandling(operation, fn, context)` for all DB operations
 5. **Validate all input** - Use Zod schemas from shared package
+
+## API Response Pattern
+
+**IMPORTANT:** Backend wraps all responses via `handleSuccess()`:
+
+```typescript
+// Backend returns:
+{ "success": true, "data": { /* actual response */ } }
+
+// Frontend must access:
+response.data.data.user  // NOT response.data.user
+```
+
+When adding new API endpoints, ensure frontend correctly navigates the wrapper structure.
 
 ## Database Patterns
 
@@ -177,6 +198,7 @@ gh api graphql -f query='
 
 - **backend-dev-guidelines** - Node.js/Express/TypeScript patterns (auto-activates for backend files)
 - **frontend-dev-guidelines** - React/TypeScript patterns (auto-activates for frontend files)
+- **secure-coding** - Security patterns for auth, JWT, tokens, passwords (auto-activates)
 - **ux-advisor** - Web design guidance (toggle: `/ux-advisor-on`, `/ux-advisor-off`)
 - **route-tester** - Testing authenticated API routes
 - **error-tracking** - Sentry integration patterns
@@ -221,8 +243,26 @@ GitHub Actions workflows in `.github/workflows/`:
 - #92: Database setup (PostgreSQL + Prisma)
 - #93: CI/CD pipeline (GitHub Actions)
 - #94: Hosting (Vercel + Koyeb + Supabase)
+- Google OAuth authentication (PR #107)
 
 **Ready:**
 
 - #95: Environment variables
 - #96: HTTPS and domain
+
+## Authentication Flow
+
+```
+User clicks "Sign in with Google"
+  → Frontend redirects to /api/auth/google
+  → Backend redirects to Google OAuth consent
+  → User grants permission
+  → Google redirects to /api/auth/google/callback
+  → Backend creates/finds user, generates JWT
+  → Sets HTTP-only cookie with JWT
+  → Redirects to /auth/callback
+  → Frontend calls refreshUser()
+  → User sees authenticated UI
+```
+
+Token revocation via `tokenVersion` field - incrementing invalidates all existing JWTs.
