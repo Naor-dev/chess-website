@@ -12,11 +12,12 @@ const apiClient = axios.create({
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
-    // Handle common errors globally
+    // Handle 401 errors - but not for auth routes (expected behavior)
     if (error.response?.status === 401) {
-      // Redirect to login or handle unauthorized
-      if (typeof window !== 'undefined') {
-        window.location.href = '/login';
+      const isAuthRoute = error.config?.url?.includes('/auth/');
+      if (!isAuthRoute && typeof window !== 'undefined') {
+        // Only redirect for non-auth routes
+        window.location.href = '/';
       }
     }
     return Promise.reject(error);
