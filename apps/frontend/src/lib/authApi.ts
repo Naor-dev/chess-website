@@ -11,8 +11,8 @@ export const authApi = {
    */
   async getCurrentUser(): Promise<User | null> {
     try {
-      const response = await apiClient.get<AuthResponse>('/auth/me');
-      return response.data.user;
+      const response = await apiClient.get<{ success: boolean; data: AuthResponse }>('/auth/me');
+      return response.data.data.user;
     } catch {
       return null;
     }
