@@ -11,7 +11,7 @@ An interactive chess website allowing users to:
 - Choose difficulty levels (1-5) and time controls
 - Save games and continue later
 
-**Status:** Authentication, New Game, Game Board UI complete - implementing move handling next
+**Status:** Authentication (BFF pattern), New Game, Game Board, Move Handling complete - implementing engine integration next
 
 ## Development Commands
 
@@ -336,16 +336,17 @@ GitHub Actions workflows in `.github/workflows/`:
 - PR #110: Game Board Page (#75-#78, #20, #21, #27, #42) - chess board display, clocks, status messages
 - Epic 8: Home Page UI (#67-#71) - design, logo, description, centered login
 - PR #111: UI/UX improvements - chess-themed design system, dark mode, animations
+- PR #114: Move handling + BFF auth pattern (#22, #23) - chess.js integration, drag and drop, cross-browser auth
 
 **In Progress:**
 
-- Move handling (#22, #23) - chess.js integration, drag and drop
 - Engine integration (#36) - API endpoint for engine moves
+- #43: Start/stop clock based on turn
 
 **Next Up:**
 
-- #43: Start/stop clock based on turn
 - #79: Make Save button functional
+- Game end detection (checkmate, stalemate, draw)
 
 ## Authentication Flow (BFF Pattern)
 

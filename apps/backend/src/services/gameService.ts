@@ -6,12 +6,17 @@ import type {
   GameResponse,
   GameListItem,
   MoveResponse,
+  DifficultyLevel,
 } from '@chess-website/shared';
 import { TIME_CONTROL_CONFIGS, STARTING_FEN } from '@chess-website/shared';
 import { GameRepository, Game } from '../repositories/GameRepository';
+import type { EngineService } from './engineService';
 
 export class GameService {
-  constructor(private readonly gameRepository: GameRepository) {}
+  constructor(
+    private readonly gameRepository: GameRepository,
+    private readonly engineService?: EngineService
+  ) {}
 
   /**
    * Converts a database Game entity to a GameResponse.
@@ -162,9 +167,84 @@ export class GameService {
     // 5. Update database with user's move
     await this.gameRepository.addMove(gameId, moveResult.san, chess.fen());
 
-    // TODO: Get engine move (#36) - for now just return after user move
-    // The engine move will be implemented when we integrate Stockfish
+    // 6. Get engine move if engine service is available
+    let engineMoveResult: MoveResponse['engineMove'] | undefined;
 
+    if (this.engineService) {
+      try {
+        Sentry.addBreadcrumb({
+          message: 'Requesting engine move',
+          category: 'game',
+          data: { fen: chess.fen(), difficulty: game.difficultyLevel },
+        });
+
+        const engineResult = await this.engineService.getEngineMove(
+          chess.fen(),
+          game.difficultyLevel as DifficultyLevel,
+          [...game.movesHistory, moveResult.san]
+        );
+
+        // 7. Apply engine move
+        const engineMove = chess.move({
+          from: engineResult.move.from,
+          to: engineResult.move.to,
+          promotion: engineResult.move.promotion as 'q' | 'r' | 'b' | 'n' | undefined,
+        });
+
+        if (!engineMove) {
+          Sentry.captureMessage('Engine returned invalid move', {
+            level: 'error',
+            extra: { engineResult, fen: chess.fen() },
+          });
+          throw new Error('Engine returned invalid move');
+        }
+
+        // 8. Check for game end after engine move
+        const engineGameEndCheck = this.checkGameEnd(chess);
+
+        if (engineGameEndCheck.isOver) {
+          // Game ended after engine's move
+          const finishedGame = await this.gameRepository.finishGame(
+            gameId,
+            engineGameEndCheck.result!
+          );
+          await this.gameRepository.addMove(gameId, engineMove.san, chess.fen());
+
+          return {
+            success: true,
+            game: this.toGameResponse({
+              ...finishedGame,
+              currentFen: chess.fen(),
+              movesHistory: [...game.movesHistory, moveResult.san, engineMove.san],
+            }),
+            engineMove: {
+              from: engineResult.move.from,
+              to: engineResult.move.to,
+              promotion: engineResult.move.promotion,
+              san: engineMove.san,
+            },
+          };
+        }
+
+        // 9. Save engine move to database
+        await this.gameRepository.addMove(gameId, engineMove.san, chess.fen());
+
+        engineMoveResult = {
+          from: engineResult.move.from,
+          to: engineResult.move.to,
+          promotion: engineResult.move.promotion,
+          san: engineMove.san,
+        };
+      } catch (error) {
+        // Log engine error but don't fail the user's move
+        Sentry.captureException(error, {
+          extra: { gameId, fen: chess.fen() },
+        });
+        // Continue without engine move - user's move was already saved
+      }
+    }
+
+    // 10. Return updated game state
     const updatedGame = await this.gameRepository.findById(gameId);
     if (!updatedGame) {
       throw new Error('Failed to fetch updated game');
@@ -173,6 +253,7 @@ export class GameService {
     return {
       success: true,
       game: this.toGameResponse(updatedGame),
+      engineMove: engineMoveResult,
     };
   }
 
