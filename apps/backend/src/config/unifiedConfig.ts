@@ -13,6 +13,7 @@ export interface UnifiedConfig {
   auth: {
     jwtSecret: string;
     jwtExpiresIn: string;
+    bffExchangeSecret: string;
     google: {
       clientId: string;
       clientSecret: string;
@@ -43,6 +44,7 @@ export const config: UnifiedConfig = {
   auth: {
     jwtSecret: process.env.JWT_SECRET || 'dev-secret-change-in-production',
     jwtExpiresIn: process.env.JWT_EXPIRES_IN || '7d',
+    bffExchangeSecret: process.env.BFF_EXCHANGE_SECRET || 'dev-bff-secret-change-in-production',
     google: {
       clientId: process.env.GOOGLE_CLIENT_ID || '',
       clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
@@ -77,6 +79,9 @@ export function validateConfig(): void {
     }
     if (config.auth.jwtSecret === 'dev-secret-change-in-production') {
       throw new Error('JWT_SECRET must be set in production');
+    }
+    if (config.auth.bffExchangeSecret === 'dev-bff-secret-change-in-production') {
+      throw new Error('BFF_EXCHANGE_SECRET must be set in production');
     }
   }
 }

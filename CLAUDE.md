@@ -88,9 +88,10 @@ Key files:
 
 **Next.js App Router** with feature-based organization
 
-- **API client** at `src/lib/apiClient.ts` (Axios with interceptors, `withCredentials: true` for cookies)
-- **Auth API** at `src/lib/authApi.ts` (Google OAuth, logout, user fetching)
-- **Game API** at `src/lib/gameApi.ts` (create, get, list games)
+- **BFF API routes** at `src/app/api/` - Handle auth and proxy to backend (first-party cookies)
+- **API client** at `src/lib/apiClient.ts` (Axios with `/api/proxy` base URL)
+- **Auth API** at `src/lib/authApi.ts` (uses local `/api/auth/*` routes)
+- **Game API** at `src/lib/gameApi.ts` (create, get, list games via proxy)
 - **Auth state** via `src/contexts/AuthContext.tsx` (useAuth hook)
 - **Query client** at `src/lib/queryClient.ts` (TanStack Query)
 - **Styling** via TailwindCSS
@@ -205,7 +206,7 @@ const response = await request(app)
   .send({ difficultyLevel: 3, timeControlType: 'blitz_5min' });
 ```
 
-**Current coverage:** 55 tests (25 unit + 30 API integration)
+**Current coverage:** 79 tests (25 gameService + 30 gameController + 24 authController)
 
 ### Playwright UI Testing
 
@@ -346,26 +347,50 @@ GitHub Actions workflows in `.github/workflows/`:
 - #43: Start/stop clock based on turn
 - #79: Make Save button functional
 
-## Authentication Flow
+## Authentication Flow (BFF Pattern)
+
+Uses Backend-for-Frontend pattern for cross-browser cookie support (works in Firefox, Safari, etc.):
 
 ```
 User clicks "Sign in with Google"
-  → Frontend redirects to /api/auth/google
-  → Backend redirects to Google OAuth consent
+  → Frontend redirects to /api/auth/google (Next.js API route)
+  → Next.js redirects to Google OAuth consent
   → User grants permission
-  → Google redirects to /api/auth/google/callback
-  → Backend creates/finds user, generates JWT
-  → Sets HTTP-only cookie with JWT
+  → Google redirects to /api/auth/callback (Next.js API route)
+  → Next.js exchanges code with Google for user info
+  → Next.js calls backend POST /api/auth/exchange with Google user data
+  → Backend finds/creates user, returns JWT
+  → Next.js sets HttpOnly cookie on frontend domain (first-party)
   → Redirects to /auth/callback
-  → Frontend calls refreshUser()
+  → Frontend calls refreshUser() via /api/auth/me
   → User sees authenticated UI
 ```
 
+**Key benefit:** Cookie is set on Vercel domain (first-party), not Koyeb domain (third-party).
+
+**Security hardening:**
+
+- BFF exchange endpoint protected by `BFF_EXCHANGE_SECRET` with constant-time comparison
+- Proxy route uses path allowlist (`games`, `users`, `auth` only)
+- Path traversal protection (blocks `..`, encoded variants, control characters)
+- OAuth redirects use hardcoded paths only (no user input in destinations)
+
 Token revocation via `tokenVersion` field - incrementing invalidates all existing JWTs.
 
-## Game API
+## Backend API Endpoints
 
-**Implemented endpoints:**
+**Auth endpoints (backend):**
+
+| Method | Path                 | Description                                |
+| ------ | -------------------- | ------------------------------------------ |
+| GET    | /api/auth/google     | Initiate Google OAuth (legacy)             |
+| GET    | /api/auth/callback   | Google OAuth callback (legacy)             |
+| GET    | /api/auth/me         | Get current user                           |
+| POST   | /api/auth/logout     | Logout (clear cookie)                      |
+| POST   | /api/auth/logout-all | Invalidate all tokens                      |
+| POST   | /api/auth/exchange   | BFF endpoint: exchange Google info for JWT |
+
+**Game endpoints (backend):**
 
 | Method | Path                      | Description        |
 | ------ | ------------------------- | ------------------ |
@@ -375,6 +400,17 @@ Token revocation via `tokenVersion` field - incrementing invalidates all existin
 | POST   | /api/games/:gameId/move   | Make a move        |
 | POST   | /api/games/:gameId/resign | Resign game (TODO) |
 | POST   | /api/games/:gameId/save   | Save game (TODO)   |
+
+**Frontend BFF routes (Next.js API):**
+
+| Method | Path                 | Description                      |
+| ------ | -------------------- | -------------------------------- |
+| GET    | /api/auth/google     | Redirect to Google OAuth         |
+| GET    | /api/auth/callback   | Handle OAuth, set cookie         |
+| GET    | /api/auth/me         | Get user (proxies to backend)    |
+| POST   | /api/auth/logout     | Clear cookie                     |
+| POST   | /api/auth/logout-all | Invalidate tokens + clear cookie |
+| \*     | /api/proxy/[...path] | Proxy to backend with JWT        |
 
 **Game types (from shared package):**
 
