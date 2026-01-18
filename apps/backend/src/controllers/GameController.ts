@@ -73,15 +73,17 @@ export class GameController extends BaseController {
 
   async makeMove(req: Request, res: Response): Promise<void> {
     try {
-      const { gameId } = req.params;
+      const userId = req.userId;
+      if (!userId) {
+        this.handleUnauthorized(res, 'Not authenticated');
+        return;
+      }
+
+      const gameId = req.params.gameId as string;
       const moveInput = makeMoveSchema.parse(req.body);
 
-      // TODO: Implement with GameService
-      this.handleSuccess(res, {
-        gameId,
-        move: moveInput,
-        message: 'Make move endpoint',
-      });
+      const result = await this.gameService.makeMove(gameId, userId, moveInput);
+      this.handleSuccess(res, result);
     } catch (error) {
       if (error instanceof ZodError) {
         const details: Record<string, string[]> = {};
@@ -92,6 +94,21 @@ export class GameController extends BaseController {
         });
         this.handleValidationError(res, details);
         return;
+      }
+      // Handle specific game errors
+      if (error instanceof Error) {
+        if (error.message === 'Game not found') {
+          this.handleNotFound(res, 'Game not found');
+          return;
+        }
+        if (
+          error.message === 'Game is not active' ||
+          error.message === 'Not your turn' ||
+          error.message === 'Invalid move'
+        ) {
+          res.status(400).json({ success: false, error: error.message });
+          return;
+        }
       }
       this.handleError(error, res, 'GameController.makeMove');
     }

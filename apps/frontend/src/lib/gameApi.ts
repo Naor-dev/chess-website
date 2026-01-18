@@ -1,5 +1,11 @@
 import apiClient from './apiClient';
-import type { CreateGameRequest, GameResponse, GameListItem } from '@chess-website/shared';
+import type {
+  CreateGameRequest,
+  GameResponse,
+  GameListItem,
+  MakeMoveRequest,
+  MoveResponse,
+} from '@chess-website/shared';
 
 /**
  * API service for game operations.
@@ -39,5 +45,19 @@ export const gameApi = {
       '/games'
     );
     return response.data.data.games;
+  },
+
+  /**
+   * Make a move in a game.
+   * @param gameId - The game's unique identifier
+   * @param move - The move to make (from, to, optional promotion)
+   * @returns Move response with updated game state
+   */
+  async makeMove(gameId: string, move: MakeMoveRequest): Promise<MoveResponse> {
+    const response = await apiClient.post<{ success: boolean; data: MoveResponse }>(
+      `/games/${gameId}/move`,
+      move
+    );
+    return response.data.data;
   },
 };
