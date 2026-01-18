@@ -2,22 +2,23 @@ import { Request, Response } from 'express';
 import { BaseController } from './BaseController';
 import { createGameSchema, makeMoveSchema } from '@chess-website/shared';
 import { ZodError } from 'zod';
+import { services } from '../services/serviceContainer';
 
 export class GameController extends BaseController {
+  private gameService = services.gameService;
+
   async createGame(req: Request, res: Response): Promise<void> {
     try {
-      const input = createGameSchema.parse(req.body);
+      const userId = req.userId;
+      if (!userId) {
+        this.handleUnauthorized(res, 'Not authenticated');
+        return;
+      }
 
-      // TODO: Implement game creation with GameService
-      this.handleSuccess(
-        res,
-        {
-          message: 'Game creation endpoint',
-          input,
-        },
-        'Game created successfully',
-        201
-      );
+      const input = createGameSchema.parse(req.body);
+      const game = await this.gameService.createGame(userId, input);
+
+      this.handleSuccess(res, game, 'Game created successfully', 201);
     } catch (error) {
       if (error instanceof ZodError) {
         const details: Record<string, string[]> = {};
@@ -33,10 +34,16 @@ export class GameController extends BaseController {
     }
   }
 
-  async listGames(_req: Request, res: Response): Promise<void> {
+  async listGames(req: Request, res: Response): Promise<void> {
     try {
-      // TODO: Implement with GameService
-      this.handleSuccess(res, { games: [] });
+      const userId = req.userId;
+      if (!userId) {
+        this.handleUnauthorized(res, 'Not authenticated');
+        return;
+      }
+
+      const games = await this.gameService.listGames(userId);
+      this.handleSuccess(res, { games });
     } catch (error) {
       this.handleError(error, res, 'GameController.listGames');
     }
@@ -44,10 +51,21 @@ export class GameController extends BaseController {
 
   async getGame(req: Request, res: Response): Promise<void> {
     try {
-      const { gameId } = req.params;
+      const userId = req.userId;
+      if (!userId) {
+        this.handleUnauthorized(res, 'Not authenticated');
+        return;
+      }
 
-      // TODO: Implement with GameService
-      this.handleSuccess(res, { gameId, message: 'Get game endpoint' });
+      const gameId = req.params.gameId as string;
+      const game = await this.gameService.getGame(gameId, userId);
+
+      if (!game) {
+        this.handleNotFound(res, 'Game not found');
+        return;
+      }
+
+      this.handleSuccess(res, game);
     } catch (error) {
       this.handleError(error, res, 'GameController.getGame');
     }
