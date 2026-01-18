@@ -63,4 +63,18 @@ router.post('/logout', optionalAuthMiddleware, (req, res) => controller.logout(r
  */
 router.post('/logout-all', authMiddleware, (req, res) => controller.logoutAll(req, res));
 
+/**
+ * POST /api/auth/exchange
+ * BFF endpoint: exchanges verified Google user info for a JWT.
+ * Called by the frontend server after it verifies the OAuth code with Google.
+ * This enables the BFF pattern for cross-browser cookie support.
+ *
+ * Security: This endpoint should only be called by the frontend server,
+ * not directly by browsers. In production, consider adding IP/origin validation.
+ *
+ * Body: { googleId: string, email: string, displayName: string }
+ * Response: { success: true, data: { token: string, user: User } }
+ */
+router.post('/exchange', authLimiter, (req, res) => controller.exchange(req, res));
+
 export default router;

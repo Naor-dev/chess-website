@@ -16,7 +16,7 @@ export const authLimiter = rateLimit({
   } as ApiError,
   standardHeaders: true,
   legacyHeaders: false,
-  skip: () => config.server.nodeEnv === 'development',
+  skip: () => config.server.nodeEnv === 'development' || config.server.nodeEnv === 'test',
 });
 
 /**
