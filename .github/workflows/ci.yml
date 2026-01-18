@@ -67,7 +67,7 @@ jobs:
         run: pnpm build
 
       - name: Run tests
-        run: pnpm --filter @chess-website/backend test
+        run: pnpm -r test
         env:
           GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
           GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
