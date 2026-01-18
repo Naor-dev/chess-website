@@ -29,6 +29,7 @@ const mockVerifyToken = jest.fn();
 const mockCreateGame = jest.fn();
 const mockGetGame = jest.fn();
 const mockListGames = jest.fn();
+const mockMakeMove = jest.fn();
 
 jest.mock('../../services/serviceContainer', () => ({
   services: {
@@ -39,6 +40,7 @@ jest.mock('../../services/serviceContainer', () => ({
       createGame: mockCreateGame,
       getGame: mockGetGame,
       listGames: mockListGames,
+      makeMove: mockMakeMove,
     },
     userService: {},
   },
@@ -349,6 +351,212 @@ describe('GameController API', () => {
 
       expect(response.status).toBe(201);
       expect(response.body.success).toBe(true);
+    });
+  });
+
+  describe('POST /api/games/:gameId/move', () => {
+    const newFen = 'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1';
+
+    const mockMoveResponse = {
+      success: true,
+      game: {
+        ...mockGameResponse,
+        currentFen: newFen,
+        movesHistory: ['e4'],
+        currentTurn: 'b' as const,
+      },
+    };
+
+    it('should make a valid move', async () => {
+      mockMakeMove.mockResolvedValue(mockMoveResponse);
+
+      const response = await request(app)
+        .post('/api/games/game-456/move')
+        .set('Authorization', `Bearer ${validToken}`)
+        .send({
+          from: 'e2',
+          to: 'e4',
+        });
+
+      expect(response.status).toBe(200);
+      expect(response.body.success).toBe(true);
+      expect(response.body.data.success).toBe(true);
+      expect(response.body.data.game.currentFen).toBe(newFen);
+      expect(mockMakeMove).toHaveBeenCalledWith('game-456', mockUserId, {
+        from: 'e2',
+        to: 'e4',
+      });
+    });
+
+    it('should make a promotion move', async () => {
+      const promotionResponse = {
+        success: true,
+        game: {
+          ...mockGameResponse,
+          currentFen: 'Qnbqkbnr/1ppppppp/8/8/8/8/1PPPPPPP/RNBQKBNR b KQkq - 0 1',
+          movesHistory: ['a8=Q'],
+        },
+      };
+      mockMakeMove.mockResolvedValue(promotionResponse);
+
+      const response = await request(app)
+        .post('/api/games/game-456/move')
+        .set('Authorization', `Bearer ${validToken}`)
+        .send({
+          from: 'a7',
+          to: 'a8',
+          promotion: 'q',
+        });
+
+      expect(response.status).toBe(200);
+      expect(response.body.success).toBe(true);
+      expect(mockMakeMove).toHaveBeenCalledWith('game-456', mockUserId, {
+        from: 'a7',
+        to: 'a8',
+        promotion: 'q',
+      });
+    });
+
+    it('should return 401 when not authenticated', async () => {
+      const response = await request(app).post('/api/games/game-456/move').send({
+        from: 'e2',
+        to: 'e4',
+      });
+
+      expect(response.status).toBe(401);
+      expect(response.body.success).toBe(false);
+    });
+
+    it('should return 404 when game not found', async () => {
+      mockMakeMove.mockRejectedValue(new Error('Game not found'));
+
+      const response = await request(app)
+        .post('/api/games/non-existent/move')
+        .set('Authorization', `Bearer ${validToken}`)
+        .send({
+          from: 'e2',
+          to: 'e4',
+        });
+
+      expect(response.status).toBe(404);
+      expect(response.body.success).toBe(false);
+    });
+
+    it('should return 400 when game is not active', async () => {
+      mockMakeMove.mockRejectedValue(new Error('Game is not active'));
+
+      const response = await request(app)
+        .post('/api/games/game-456/move')
+        .set('Authorization', `Bearer ${validToken}`)
+        .send({
+          from: 'e2',
+          to: 'e4',
+        });
+
+      expect(response.status).toBe(400);
+      expect(response.body.success).toBe(false);
+      expect(response.body.error).toBe('Game is not active');
+    });
+
+    it('should return 400 when not user turn', async () => {
+      mockMakeMove.mockRejectedValue(new Error('Not your turn'));
+
+      const response = await request(app)
+        .post('/api/games/game-456/move')
+        .set('Authorization', `Bearer ${validToken}`)
+        .send({
+          from: 'e7',
+          to: 'e5',
+        });
+
+      expect(response.status).toBe(400);
+      expect(response.body.success).toBe(false);
+      expect(response.body.error).toBe('Not your turn');
+    });
+
+    it('should return 400 for invalid move', async () => {
+      mockMakeMove.mockRejectedValue(new Error('Invalid move'));
+
+      const response = await request(app)
+        .post('/api/games/game-456/move')
+        .set('Authorization', `Bearer ${validToken}`)
+        .send({
+          from: 'e2',
+          to: 'e5',
+        });
+
+      expect(response.status).toBe(400);
+      expect(response.body.success).toBe(false);
+      expect(response.body.error).toBe('Invalid move');
+    });
+
+    it('should return 400 for invalid square format (from)', async () => {
+      const response = await request(app)
+        .post('/api/games/game-456/move')
+        .set('Authorization', `Bearer ${validToken}`)
+        .send({
+          from: 'e9', // Invalid rank
+          to: 'e4',
+        });
+
+      expect(response.status).toBe(400);
+      expect(response.body.success).toBe(false);
+      expect(response.body.code).toBe('VALIDATION_ERROR');
+    });
+
+    it('should return 400 for invalid square format (to)', async () => {
+      const response = await request(app)
+        .post('/api/games/game-456/move')
+        .set('Authorization', `Bearer ${validToken}`)
+        .send({
+          from: 'e2',
+          to: 'z4', // Invalid file
+        });
+
+      expect(response.status).toBe(400);
+      expect(response.body.success).toBe(false);
+      expect(response.body.code).toBe('VALIDATION_ERROR');
+    });
+
+    it('should return 400 for invalid promotion piece', async () => {
+      const response = await request(app)
+        .post('/api/games/game-456/move')
+        .set('Authorization', `Bearer ${validToken}`)
+        .send({
+          from: 'a7',
+          to: 'a8',
+          promotion: 'k', // Invalid - can't promote to king
+        });
+
+      expect(response.status).toBe(400);
+      expect(response.body.success).toBe(false);
+      expect(response.body.code).toBe('VALIDATION_ERROR');
+    });
+
+    it('should return 400 when missing from square', async () => {
+      const response = await request(app)
+        .post('/api/games/game-456/move')
+        .set('Authorization', `Bearer ${validToken}`)
+        .send({
+          to: 'e4',
+        });
+
+      expect(response.status).toBe(400);
+      expect(response.body.success).toBe(false);
+      expect(response.body.code).toBe('VALIDATION_ERROR');
+    });
+
+    it('should return 400 when missing to square', async () => {
+      const response = await request(app)
+        .post('/api/games/game-456/move')
+        .set('Authorization', `Bearer ${validToken}`)
+        .send({
+          from: 'e2',
+        });
+
+      expect(response.status).toBe(400);
+      expect(response.body.success).toBe(false);
+      expect(response.body.code).toBe('VALIDATION_ERROR');
     });
   });
 });

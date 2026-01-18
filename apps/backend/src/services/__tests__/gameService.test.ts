@@ -338,4 +338,182 @@ describe('GameService', () => {
       expect(result).toEqual({ isOver: false });
     });
   });
+
+  describe('makeMove', () => {
+    const newFen = 'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1';
+
+    it('should make a valid move and update game state', async () => {
+      const mockGame = createMockGame();
+      const updatedGame = createMockGame({ currentFen: newFen, movesHistory: ['e4'] });
+
+      mockGameRepository.findByIdAndUserId.mockResolvedValue(mockGame);
+      mockGameRepository.addMove.mockResolvedValue(updatedGame);
+      mockGameRepository.findById.mockResolvedValue(updatedGame);
+
+      // Mock Chess for the service
+      const mockChessInstance = {
+        turn: jest.fn().mockReturnValue('w'),
+        move: jest.fn().mockReturnValue({ san: 'e4', from: 'e2', to: 'e4' }),
+        fen: jest.fn().mockReturnValue(newFen),
+        isCheck: jest.fn().mockReturnValue(false),
+        isGameOver: jest.fn().mockReturnValue(false),
+        isCheckmate: jest.fn().mockReturnValue(false),
+        isStalemate: jest.fn().mockReturnValue(false),
+        isThreefoldRepetition: jest.fn().mockReturnValue(false),
+        isDraw: jest.fn().mockReturnValue(false),
+        isInsufficientMaterial: jest.fn().mockReturnValue(false),
+      };
+      (Chess as jest.MockedClass<typeof Chess>).mockImplementation(
+        () => mockChessInstance as unknown as Chess
+      );
+
+      const result = await gameService.makeMove(mockGameId, mockUserId, { from: 'e2', to: 'e4' });
+
+      expect(result.success).toBe(true);
+      expect(mockGameRepository.findByIdAndUserId).toHaveBeenCalledWith(mockGameId, mockUserId);
+      expect(mockGameRepository.addMove).toHaveBeenCalledWith(mockGameId, 'e4', newFen);
+    });
+
+    it('should throw error when game not found', async () => {
+      mockGameRepository.findByIdAndUserId.mockResolvedValue(null);
+
+      await expect(
+        gameService.makeMove(mockGameId, mockUserId, { from: 'e2', to: 'e4' })
+      ).rejects.toThrow('Game not found');
+    });
+
+    it('should throw error when game is not active', async () => {
+      const finishedGame = createMockGame({ status: GameStatus.FINISHED });
+      mockGameRepository.findByIdAndUserId.mockResolvedValue(finishedGame);
+
+      await expect(
+        gameService.makeMove(mockGameId, mockUserId, { from: 'e2', to: 'e4' })
+      ).rejects.toThrow('Game is not active');
+    });
+
+    it('should throw error when not user turn', async () => {
+      const mockGame = createMockGame();
+      mockGameRepository.findByIdAndUserId.mockResolvedValue(mockGame);
+
+      // Mock Chess to return black's turn
+      const mockChessInstance = {
+        turn: jest.fn().mockReturnValue('b'),
+      };
+      (Chess as jest.MockedClass<typeof Chess>).mockImplementation(
+        () => mockChessInstance as unknown as Chess
+      );
+
+      await expect(
+        gameService.makeMove(mockGameId, mockUserId, { from: 'e7', to: 'e5' })
+      ).rejects.toThrow('Not your turn');
+    });
+
+    it('should throw error for invalid move', async () => {
+      const mockGame = createMockGame();
+      mockGameRepository.findByIdAndUserId.mockResolvedValue(mockGame);
+
+      // Mock Chess for invalid move
+      const mockChessInstance = {
+        turn: jest.fn().mockReturnValue('w'),
+        move: jest.fn().mockReturnValue(null), // Invalid move returns null
+      };
+      (Chess as jest.MockedClass<typeof Chess>).mockImplementation(
+        () => mockChessInstance as unknown as Chess
+      );
+
+      await expect(
+        gameService.makeMove(mockGameId, mockUserId, { from: 'e2', to: 'e5' })
+      ).rejects.toThrow('Invalid move');
+    });
+
+    it('should finish game on checkmate', async () => {
+      const mockGame = createMockGame();
+      const checkmatedFen = 'some-checkmate-fen';
+      const finishedGame = createMockGame({
+        status: GameStatus.FINISHED,
+        result: 'user_win_checkmate',
+        currentFen: checkmatedFen,
+        movesHistory: ['Qh5', 'Qxf7#'],
+      });
+
+      mockGameRepository.findByIdAndUserId.mockResolvedValue(mockGame);
+      mockGameRepository.finishGame.mockResolvedValue(finishedGame);
+      mockGameRepository.addMove.mockResolvedValue(finishedGame);
+
+      // Mock Chess for checkmate
+      // After white (user) checkmates black (engine), it's black's turn but they're checkmated
+      // The initial turn check passes (white to move), then after the move black is checkmated
+      let turnCallCount = 0;
+      const mockChessInstance = {
+        turn: jest.fn().mockImplementation(() => {
+          turnCallCount++;
+          // First call: before move (white's turn)
+          // Second call: after move for checkGameEnd (black's turn, but checkmated)
+          return turnCallCount === 1 ? 'w' : 'b';
+        }),
+        move: jest.fn().mockReturnValue({ san: 'Qxf7#', from: 'h5', to: 'f7' }),
+        fen: jest.fn().mockReturnValue(checkmatedFen),
+        isCheck: jest.fn().mockReturnValue(true),
+        isGameOver: jest.fn().mockReturnValue(true),
+        isCheckmate: jest.fn().mockReturnValue(true),
+        isStalemate: jest.fn().mockReturnValue(false),
+        isThreefoldRepetition: jest.fn().mockReturnValue(false),
+        isDraw: jest.fn().mockReturnValue(false),
+        isInsufficientMaterial: jest.fn().mockReturnValue(false),
+      };
+      (Chess as jest.MockedClass<typeof Chess>).mockImplementation(
+        () => mockChessInstance as unknown as Chess
+      );
+
+      const result = await gameService.makeMove(mockGameId, mockUserId, { from: 'h5', to: 'f7' });
+
+      expect(result.success).toBe(true);
+      expect(mockGameRepository.finishGame).toHaveBeenCalledWith(mockGameId, 'user_win_checkmate');
+    });
+
+    it('should handle promotion moves', async () => {
+      const mockGame = createMockGame({
+        currentFen: 'rnbqkbnr/Pppppppp/8/8/8/8/1PPPPPPP/RNBQKBNR w KQkq - 0 1',
+      });
+      const promotedFen = 'Qnbqkbnr/1ppppppp/8/8/8/8/1PPPPPPP/RNBQKBNR b KQkq - 0 1';
+      const updatedGame = createMockGame({
+        currentFen: promotedFen,
+        movesHistory: ['a8=Q'],
+      });
+
+      mockGameRepository.findByIdAndUserId.mockResolvedValue(mockGame);
+      mockGameRepository.addMove.mockResolvedValue(updatedGame);
+      mockGameRepository.findById.mockResolvedValue(updatedGame);
+
+      // Mock Chess for promotion
+      const mockChessInstance = {
+        turn: jest.fn().mockReturnValue('w'),
+        move: jest.fn().mockReturnValue({ san: 'a8=Q', from: 'a7', to: 'a8', promotion: 'q' }),
+        fen: jest.fn().mockReturnValue(promotedFen),
+        isCheck: jest.fn().mockReturnValue(false),
+        isGameOver: jest.fn().mockReturnValue(false),
+        isCheckmate: jest.fn().mockReturnValue(false),
+        isStalemate: jest.fn().mockReturnValue(false),
+        isThreefoldRepetition: jest.fn().mockReturnValue(false),
+        isDraw: jest.fn().mockReturnValue(false),
+        isInsufficientMaterial: jest.fn().mockReturnValue(false),
+      };
+      (Chess as jest.MockedClass<typeof Chess>).mockImplementation(
+        () => mockChessInstance as unknown as Chess
+      );
+
+      const result = await gameService.makeMove(mockGameId, mockUserId, {
+        from: 'a7',
+        to: 'a8',
+        promotion: 'q',
+      });
+
+      expect(result.success).toBe(true);
+      expect(mockChessInstance.move).toHaveBeenCalledWith({
+        from: 'a7',
+        to: 'a8',
+        promotion: 'q',
+      });
+    });
+  });
 });
