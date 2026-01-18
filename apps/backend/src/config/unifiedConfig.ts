@@ -23,6 +23,10 @@ export interface UnifiedConfig {
   stockfish: {
     depths: Record<number, number>;
   };
+  engine: {
+    timeout: number; // milliseconds for move analysis
+    initTimeout: number; // milliseconds for engine initialization
+  };
   cors: {
     origin: string;
   };
@@ -60,6 +64,10 @@ export const config: UnifiedConfig = {
       4: 10,
       5: 15,
     },
+  },
+  engine: {
+    timeout: parseInt(process.env.ENGINE_TIMEOUT || '30000', 10), // 30 seconds default
+    initTimeout: parseInt(process.env.ENGINE_INIT_TIMEOUT || '10000', 10), // 10 seconds default
   },
   cors: {
     origin: process.env.CORS_ORIGIN || 'http://localhost:3000',

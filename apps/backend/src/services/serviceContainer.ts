@@ -3,6 +3,7 @@ import { UserRepository } from '../repositories/UserRepository';
 import { GameRepository } from '../repositories/GameRepository';
 import { AuthService } from './authService';
 import { GameService } from './gameService';
+import { EngineService } from './engineService';
 
 /**
  * Service container providing singleton instances of all services.
@@ -14,13 +15,15 @@ class ServiceContainer {
   public readonly userRepository: UserRepository;
   public readonly gameRepository: GameRepository;
   public readonly authService: AuthService;
+  public readonly engineService: EngineService;
   public readonly gameService: GameService;
 
   private constructor() {
     this.userRepository = new UserRepository(prisma);
     this.gameRepository = new GameRepository(prisma);
     this.authService = new AuthService(this.userRepository);
-    this.gameService = new GameService(this.gameRepository);
+    this.engineService = new EngineService();
+    this.gameService = new GameService(this.gameRepository, this.engineService);
   }
 
   public static getInstance(): ServiceContainer {
