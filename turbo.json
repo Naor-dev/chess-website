@@ -1,9 +1,11 @@
 {
   "$schema": "https://turbo.build/schema.json",
+  "globalEnv": ["NODE_ENV"],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
-      "outputs": ["dist/**", ".next/**", "!.next/cache/**"]
+      "outputs": ["dist/**", ".next/**", "!.next/cache/**"],
+      "env": ["BACKEND_URL", "BFF_EXCHANGE_SECRET", "GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET"]
     },
     "dev": {
       "cache": false,
