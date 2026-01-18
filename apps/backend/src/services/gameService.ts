@@ -111,16 +111,69 @@ export class GameService {
       data: { gameId, userId, move },
     });
 
-    // TODO: Implement
     // 1. Fetch game, verify ownership and active status
-    // 2. Validate move with chess.js
-    // 3. Apply move, update FEN
-    // 4. Check for game end conditions
-    // 5. If game continues, get engine move
-    // 6. Update database
-    // 7. Return response with both moves
+    const game = await this.gameRepository.findByIdAndUserId(gameId, userId);
+    if (!game) {
+      throw new Error('Game not found');
+    }
 
-    throw new Error('GameService.makeMove not implemented');
+    if (game.status !== 'ACTIVE') {
+      throw new Error('Game is not active');
+    }
+
+    // 2. Validate move with chess.js
+    const chess = new Chess(game.currentFen);
+
+    // Verify it's the user's turn (white)
+    if (chess.turn() !== 'w') {
+      throw new Error('Not your turn');
+    }
+
+    // 3. Apply move
+    const moveResult = chess.move({
+      from: move.from,
+      to: move.to,
+      promotion: move.promotion,
+    });
+
+    if (!moveResult) {
+      throw new Error('Invalid move');
+    }
+
+    // 4. Check for game end after user move
+    const gameEndCheck = this.checkGameEnd(chess);
+
+    if (gameEndCheck.isOver) {
+      // Game ended after user's move - update and return
+      const finishedGame = await this.gameRepository.finishGame(gameId, gameEndCheck.result!);
+      // Also update the FEN and moves history
+      await this.gameRepository.addMove(gameId, moveResult.san, chess.fen());
+
+      return {
+        success: true,
+        game: this.toGameResponse({
+          ...finishedGame,
+          currentFen: chess.fen(),
+          movesHistory: [...game.movesHistory, moveResult.san],
+        }),
+      };
+    }
+
+    // 5. Update database with user's move
+    await this.gameRepository.addMove(gameId, moveResult.san, chess.fen());
+
+    // TODO: Get engine move (#36) - for now just return after user move
+    // The engine move will be implemented when we integrate Stockfish
+
+    const updatedGame = await this.gameRepository.findById(gameId);
+    if (!updatedGame) {
+      throw new Error('Failed to fetch updated game');
+    }
+
+    return {
+      success: true,
+      game: this.toGameResponse(updatedGame),
+    };
   }
 
   async saveGame(gameId: string, userId: string): Promise<void> {

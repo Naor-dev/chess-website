@@ -1,11 +1,12 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Chessboard } from 'react-chessboard';
+import { Chess, Square } from 'chess.js';
 import { useAuth } from '@/contexts/AuthContext';
 import { gameApi } from '@/lib/gameApi';
-import type { GameResponse } from '@chess-website/shared';
+import type { GameResponse, MakeMoveRequest } from '@chess-website/shared';
 
 function formatTime(ms: number): string {
   if (ms <= 0) return '0:00';
@@ -251,6 +252,15 @@ export default function GamePage() {
   const [game, setGame] = useState<GameResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isMoving, setIsMoving] = useState(false);
+  const [moveError, setMoveError] = useState<string | null>(null);
+
+  // Chess.js instance for client-side validation
+  const currentFen = game?.currentFen;
+  const chess = useMemo(() => {
+    if (!currentFen) return null;
+    return new Chess(currentFen);
+  }, [currentFen]);
 
   const fetchGame = useCallback(async () => {
     try {
@@ -270,6 +280,69 @@ export default function GamePage() {
       fetchGame();
     }
   }, [authLoading, isAuthenticated, fetchGame]);
+
+  // Handle piece drop (drag and drop move)
+  const onDrop = useCallback(
+    (sourceSquare: Square, targetSquare: Square, piece: string): boolean => {
+      if (!game || !chess || isMoving || game.isGameOver) return false;
+      if (game.currentTurn !== 'w') return false; // Not user's turn
+
+      // Check if it's a promotion move
+      const isPromotion =
+        piece[1] === 'P' &&
+        ((piece[0] === 'w' && targetSquare[1] === '8') ||
+          (piece[0] === 'b' && targetSquare[1] === '1'));
+
+      // Validate move client-side first with a test chess instance
+      let newFen: string;
+      try {
+        const testChess = new Chess(game.currentFen);
+        const moveResult = testChess.move({
+          from: sourceSquare,
+          to: targetSquare,
+          promotion: isPromotion ? 'q' : undefined, // Default to queen promotion
+        });
+
+        if (!moveResult) {
+          return false; // Invalid move
+        }
+        newFen = testChess.fen();
+      } catch {
+        return false; // Invalid move
+      }
+
+      // Optimistic update - show the move immediately
+      const previousGame = game;
+      setGame((prev) => (prev ? { ...prev, currentFen: newFen, currentTurn: 'b' } : prev));
+      setIsMoving(true);
+      setMoveError(null);
+
+      // Make the move via API
+      const move: MakeMoveRequest = {
+        from: sourceSquare,
+        to: targetSquare,
+        promotion: isPromotion ? 'q' : undefined,
+      };
+
+      gameApi
+        .makeMove(gameId, move)
+        .then((result) => {
+          setGame(result.game);
+        })
+        .catch((err) => {
+          console.error('Failed to make move:', err);
+          setMoveError('Failed to make move. Please try again.');
+          // Revert to previous state on error
+          setGame(previousGame);
+        })
+        .finally(() => {
+          setIsMoving(false);
+        });
+
+      return true; // Return true immediately for optimistic update
+    },
+    [game, chess, gameId, isMoving]
+  );
 
   // Redirect if not authenticated
   if (!authLoading && !isAuthenticated) {
@@ -384,25 +457,40 @@ export default function GamePage() {
           )}
 
           {/* Chess Board */}
-          <div className="overflow-hidden rounded-2xl shadow-2xl glow">
+          <div className="relative overflow-hidden rounded-2xl shadow-2xl glow">
             <Chessboard
               position={game.currentFen}
               boardWidth={Math.min(
                 400,
                 typeof window !== 'undefined' ? window.innerWidth - 32 : 400
               )}
-              arePiecesDraggable={!game.isGameOver && isUserTurn}
-              onPieceDrop={(sourceSquare, targetSquare) => {
-                console.log('Move:', sourceSquare, '->', targetSquare);
-                return false;
-              }}
+              arePiecesDraggable={!game.isGameOver && isUserTurn && !isMoving}
+              onPieceDrop={onDrop}
               customBoardStyle={{
                 borderRadius: '0',
               }}
               customDarkSquareStyle={{ backgroundColor: '#769656' }}
               customLightSquareStyle={{ backgroundColor: '#eeeed2' }}
             />
+            {/* Moving overlay */}
+            {isMoving && (
+              <div className="absolute inset-0 flex items-center justify-center bg-black/20 backdrop-blur-sm">
+                <div className="flex items-center gap-2 rounded-xl bg-white/90 px-4 py-2 shadow-lg dark:bg-zinc-800/90">
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-emerald-200 border-t-emerald-600" />
+                  <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                    Making move...
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
+
+          {/* Move error message */}
+          {moveError && (
+            <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-center text-sm text-red-600 dark:border-red-800 dark:bg-red-950/40 dark:text-red-400">
+              {moveError}
+            </div>
+          )}
 
           {/* User Clock (bottom) */}
           {showClocks && (
