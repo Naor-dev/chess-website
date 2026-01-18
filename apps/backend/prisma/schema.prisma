@@ -31,6 +31,7 @@ model Game {
   movesHistory    String[]   @map("moves_history")
   timeLeftUser    Int        @map("time_left_user")
   timeLeftEngine  Int        @map("time_left_engine")
+  turnStartedAt   DateTime?  @map("turn_started_at")
   result          String?
   createdAt       DateTime   @default(now()) @map("created_at")
   updatedAt       DateTime   @updatedAt @map("updated_at")

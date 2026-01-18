@@ -77,12 +77,10 @@ jobs:
       # Security
       - name: Dependency audit
         run: pnpm audit --audit-level=high
-        continue-on-error: true # Don't fail CI on audit warnings
 
       - name: License compliance check
         run: |
           npx license-checker --onlyAllow 'MIT;Apache-2.0;BSD-2-Clause;BSD-3-Clause;ISC;CC0-1.0;Unlicense;0BSD;CC-BY-4.0;Python-2.0;BlueOak-1.0.0' --summary
-        continue-on-error: true # Report but don't fail
 
       - name: Secret scanning (Gitleaks)
         uses: gitleaks/gitleaks-action@v2

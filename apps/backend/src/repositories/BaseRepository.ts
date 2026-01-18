@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import * as Sentry from '@sentry/node';
+import { config } from '../config/unifiedConfig';
 
 /**
  * Base repository class providing common database operations and error handling.
@@ -43,7 +44,8 @@ export abstract class BaseRepository {
 
       // Log slow queries in development
       const duration = Date.now() - startTime;
-      if (duration > 100) {
+      if (duration > 100 && config.server.nodeEnv === 'development') {
+        // eslint-disable-next-line no-console
         console.log(`[SLOW QUERY] ${fullOperation} took ${duration}ms`);
       }
 
