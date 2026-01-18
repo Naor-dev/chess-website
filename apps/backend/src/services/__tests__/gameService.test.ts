@@ -342,6 +342,58 @@ describe('GameService', () => {
     });
   });
 
+  describe('saveGame', () => {
+    it('should save game and return timestamp', async () => {
+      const mockGame = createMockGame();
+      const updatedGame = createMockGame({
+        updatedAt: new Date('2026-01-18T12:00:00Z'),
+      });
+
+      mockGameRepository.findByIdAndUserId.mockResolvedValue(mockGame);
+      mockGameRepository.update.mockResolvedValue(updatedGame);
+
+      const result = await gameService.saveGame(mockGameId, mockUserId);
+
+      expect(mockGameRepository.findByIdAndUserId).toHaveBeenCalledWith(mockGameId, mockUserId);
+      expect(mockGameRepository.update).toHaveBeenCalledWith(mockGameId, {});
+      expect(result.savedAt).toBeDefined();
+      expect(typeof result.savedAt).toBe('string');
+      // Verify it's a valid ISO date
+      expect(() => new Date(result.savedAt)).not.toThrow();
+    });
+
+    it('should throw error when game not found', async () => {
+      mockGameRepository.findByIdAndUserId.mockResolvedValue(null);
+
+      await expect(gameService.saveGame(mockGameId, mockUserId)).rejects.toThrow('Game not found');
+    });
+
+    it('should throw error when game is not active (finished)', async () => {
+      const finishedGame = createMockGame({
+        status: GameStatus.FINISHED,
+        result: 'user_win_checkmate',
+      });
+      mockGameRepository.findByIdAndUserId.mockResolvedValue(finishedGame);
+
+      await expect(gameService.saveGame(mockGameId, mockUserId)).rejects.toThrow(
+        'Cannot save a finished game'
+      );
+    });
+
+    it('should throw error when game owned by different user', async () => {
+      mockGameRepository.findByIdAndUserId.mockResolvedValue(null);
+
+      await expect(gameService.saveGame(mockGameId, 'different-user')).rejects.toThrow(
+        'Game not found'
+      );
+
+      expect(mockGameRepository.findByIdAndUserId).toHaveBeenCalledWith(
+        mockGameId,
+        'different-user'
+      );
+    });
+  });
+
   describe('makeMove', () => {
     const newFen = 'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1';
 

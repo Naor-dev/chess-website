@@ -60,4 +60,16 @@ export const gameApi = {
     );
     return response.data.data;
   },
+
+  /**
+   * Save a game (explicit save confirmation).
+   * @param gameId - The game's unique identifier
+   * @returns Save confirmation with timestamp
+   */
+  async saveGame(gameId: string): Promise<{ savedAt: string }> {
+    const response = await apiClient.post<{ success: boolean; data: { savedAt: string } }>(
+      `/games/${gameId}/save`
+    );
+    return response.data.data;
+  },
 };

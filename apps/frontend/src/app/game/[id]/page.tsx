@@ -521,6 +521,8 @@ export default function GamePage() {
   const [isMoving, setIsMoving] = useState(false);
   const [moveError, setMoveError] = useState<string | null>(null);
   const [showGameOverModal, setShowGameOverModal] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveMessage, setSaveMessage] = useState<string | null>(null);
 
   // Local display times for clock ticking (separate from server times)
   const [displayTimeUser, setDisplayTimeUser] = useState<number>(0);
@@ -661,6 +663,27 @@ export default function GamePage() {
     [game, chess, gameId, isMoving]
   );
 
+  // Handle save game
+  const handleSaveGame = async () => {
+    if (!game || isSaving || game.isGameOver) return;
+
+    setIsSaving(true);
+    setSaveMessage(null);
+
+    try {
+      await gameApi.saveGame(gameId);
+      setSaveMessage('Game saved!');
+      // Clear success message after 3 seconds
+      setTimeout(() => setSaveMessage(null), 3000);
+    } catch (err) {
+      console.error('Failed to save game:', err);
+      setSaveMessage('Failed to save');
+      setTimeout(() => setSaveMessage(null), 3000);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   // Redirect if not authenticated
   if (!authLoading && !isAuthenticated) {
     router.push('/');
@@ -739,23 +762,44 @@ export default function GamePage() {
           <DifficultyBadge level={game.difficultyLevel} />
 
           <button
-            onClick={() => {
-              alert('Save game coming soon!');
-            }}
-            className="flex items-center gap-2 rounded-lg bg-emerald-100 px-4 py-2 text-sm font-medium text-emerald-700 transition-colors hover:bg-emerald-200 dark:bg-emerald-900/40 dark:text-emerald-400 dark:hover:bg-emerald-900/60"
+            onClick={handleSaveGame}
+            disabled={isSaving || game.isGameOver}
+            className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
+              saveMessage === 'Game saved!'
+                ? 'bg-emerald-500 text-white'
+                : saveMessage === 'Failed to save'
+                  ? 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400'
+                  : game.isGameOver
+                    ? 'bg-zinc-100 text-zinc-400 cursor-not-allowed dark:bg-zinc-800 dark:text-zinc-600'
+                    : 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-900/40 dark:text-emerald-400 dark:hover:bg-emerald-900/60'
+            }`}
           >
-            <svg
-              className="h-4 w-4"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-            >
-              <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z" />
-              <polyline points="17,21 17,13 7,13 7,21" />
-              <polyline points="7,3 7,8 15,8" />
-            </svg>
-            Save
+            {isSaving ? (
+              <div className="h-4 w-4 animate-spin rounded-full border-2 border-emerald-300 border-t-emerald-700 dark:border-emerald-600 dark:border-t-emerald-300" />
+            ) : saveMessage === 'Game saved!' ? (
+              <svg
+                className="h-4 w-4"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+              >
+                <polyline points="20,6 9,17 4,12" />
+              </svg>
+            ) : (
+              <svg
+                className="h-4 w-4"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
+                <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z" />
+                <polyline points="17,21 17,13 7,13 7,21" />
+                <polyline points="7,3 7,8 15,8" />
+              </svg>
+            )}
+            {saveMessage || 'Save'}
           </button>
         </div>
       </header>

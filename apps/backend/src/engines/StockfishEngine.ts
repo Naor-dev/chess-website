@@ -1,9 +1,6 @@
 import * as Sentry from '@sentry/node';
 import type { ChessEngine, EngineConfig, EngineResult } from './types';
-import { config } from '../config/unifiedConfig';
-import type stockfish from 'stockfish';
-
-type StockfishInstance = ReturnType<typeof stockfish>;
+import { Stockfish } from '@se-oss/stockfish';
 
 // Security: FEN validation regex - defense in depth
 // FEN format: pieces activeColor castling enPassant halfmove fullmove
@@ -26,11 +23,11 @@ const MIN_DEPTH = 1;
  * StockfishEngine - WASM-based Stockfish implementation
  *
  * Uses UCI protocol to communicate with the Stockfish WASM engine.
- * The engine runs in-process via the stockfish npm package.
+ * The engine runs in-process via the @se-oss/stockfish npm package.
  */
 export class StockfishEngine implements ChessEngine {
   readonly name = 'stockfish';
-  private engine: StockfishInstance | null = null;
+  private engine: Stockfish | null = null;
   private ready = false;
 
   async initialize(): Promise<void> {
@@ -44,12 +41,8 @@ export class StockfishEngine implements ChessEngine {
     });
 
     try {
-      // Dynamic import for the stockfish WASM module
-      const stockfish = await import('stockfish');
-      this.engine = stockfish.default();
-
-      // Wait for engine to be ready
-      await this.waitForReady();
+      this.engine = new Stockfish();
+      await this.engine.waitReady();
       this.ready = true;
 
       Sentry.addBreadcrumb({
@@ -60,33 +53,6 @@ export class StockfishEngine implements ChessEngine {
       Sentry.captureException(error);
       throw new Error(`Failed to initialize Stockfish: ${error}`);
     }
-  }
-
-  private waitForReady(): Promise<void> {
-    return new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        reject(new Error('Stockfish initialization timeout'));
-      }, config.engine.initTimeout);
-
-      const handler = (message: string) => {
-        if (message === 'readyok') {
-          clearTimeout(timeout);
-          this.engine?.removeMessageListener(handler);
-          resolve();
-        }
-      };
-
-      this.engine?.addMessageListener(handler);
-      this.sendCommand('uci');
-      this.sendCommand('isready');
-    });
-  }
-
-  private sendCommand(command: string): void {
-    if (!this.engine) {
-      throw new Error('Engine not initialized');
-    }
-    this.engine.postMessage(command);
   }
 
   async getBestMove(fen: string, engineConfig: EngineConfig): Promise<EngineResult> {
@@ -108,80 +74,52 @@ export class StockfishEngine implements ChessEngine {
       data: { fen, depth: safeDepth },
     });
 
-    return new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        this.sendCommand('stop');
-        reject(new Error('Engine analysis timeout'));
-      }, engineConfig.timeout);
+    try {
+      const analysis = await this.engine.analyze(fen, safeDepth);
 
-      let bestMove: string | null = null;
-      let analysisDepth = 0;
+      if (!analysis.bestmove) {
+        throw new Error('No legal moves available');
+      }
+
+      // Parse UCI move format (e.g., e2e4, e7e8q for promotion)
+      const bestMove = analysis.bestmove;
+      const from = bestMove.slice(0, 2);
+      const to = bestMove.slice(2, 4);
+      const promotion = bestMove.length > 4 ? bestMove.slice(4, 5) : undefined;
+
+      // Extract score from analysis lines
       let score: number | undefined;
       let pv: string[] | undefined;
 
-      const handler = (message: string) => {
-        // Parse UCI info messages for analysis data
-        // Security: Use bounded, non-greedy patterns (defense in depth)
-        if (message.startsWith('info') && message.length < 10000) {
-          const depthMatch = message.match(/depth (\d{1,3})/);
-          const scoreMatch = message.match(/score cp (-?\d{1,6})/);
-          const pvMatch = message.match(/pv ([a-h1-8qrbnk\s]{1,500})/);
-
-          if (depthMatch) {
-            analysisDepth = parseInt(depthMatch[1], 10);
-          }
-          if (scoreMatch) {
-            score = parseInt(scoreMatch[1], 10);
-          }
-          if (pvMatch) {
-            pv = pvMatch[1].trim().split(' ');
-          }
+      if (analysis.lines && analysis.lines.length > 0) {
+        const line = analysis.lines[0];
+        if (line.score?.type === 'cp') {
+          score = line.score.value;
         }
-
-        // Best move found
-        if (message.startsWith('bestmove')) {
-          clearTimeout(timeout);
-          this.engine?.removeMessageListener(handler);
-
-          const parts = message.split(' ');
-          bestMove = parts[1];
-
-          if (!bestMove || bestMove === '(none)') {
-            reject(new Error('No legal moves available'));
-            return;
-          }
-
-          // Parse UCI move format (e.g., e2e4, e7e8q for promotion)
-          const from = bestMove.slice(0, 2);
-          const to = bestMove.slice(2, 4);
-          const promotion = bestMove.length > 4 ? bestMove.slice(4, 5) : undefined;
-
-          resolve({
-            move: {
-              from,
-              to,
-              promotion,
-            },
-            depth: analysisDepth,
-            score,
-            pv,
-          });
+        if (line.pv) {
+          pv = line.pv.split(' ');
         }
+      }
+
+      return {
+        move: {
+          from,
+          to,
+          promotion,
+        },
+        depth: safeDepth,
+        score,
+        pv,
       };
-
-      // Engine is guaranteed to exist here (checked at function start)
-      this.engine!.addMessageListener(handler);
-
-      // Set up position and search
-      this.sendCommand('ucinewgame');
-      this.sendCommand(`position fen ${fen}`);
-      this.sendCommand(`go depth ${safeDepth}`);
-    });
+    } catch (error) {
+      Sentry.captureException(error);
+      throw new Error(`Engine analysis failed: ${error}`);
+    }
   }
 
   async dispose(): Promise<void> {
     if (this.engine) {
-      this.sendCommand('quit');
+      this.engine.terminate();
       this.engine = null;
       this.ready = false;
 
@@ -202,6 +140,6 @@ export class StockfishEngine implements ChessEngine {
  */
 export const stockfishProvider = {
   name: 'stockfish',
-  description: 'Stockfish 16 WASM engine',
+  description: 'Stockfish 17.1 WASM engine',
   createEngine: () => new StockfishEngine(),
 };

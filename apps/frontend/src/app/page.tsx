@@ -168,6 +168,22 @@ export default function Home() {
                   Start New Game
                 </button>
                 <button
+                  className="group flex h-12 items-center justify-center gap-2 rounded-xl border border-zinc-300 px-8 font-medium text-zinc-600 transition-all hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-700 dark:border-zinc-700 dark:text-zinc-400 dark:hover:border-emerald-800 dark:hover:bg-emerald-950/30 dark:hover:text-emerald-400"
+                  onClick={() => router.push('/history')}
+                >
+                  <svg
+                    className="h-5 w-5"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  >
+                    <circle cx="12" cy="12" r="10" />
+                    <polyline points="12,6 12,12 16,14" />
+                  </svg>
+                  Game History
+                </button>
+                <button
                   className="flex h-12 items-center justify-center rounded-xl border border-zinc-300 px-8 font-medium text-zinc-600 transition-all hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-800"
                   onClick={logout}
                 >

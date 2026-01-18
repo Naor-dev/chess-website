@@ -11,7 +11,7 @@ An interactive chess website allowing users to:
 - Choose difficulty levels (1-5) and time controls
 - Save games and continue later
 
-**Status:** Authentication (BFF pattern), New Game, Game Board, Move Handling complete - implementing engine integration next
+**Status:** Core game loop complete (auth, new game, board, moves, engine, save, history)
 
 ## Development Commands
 
@@ -83,6 +83,14 @@ Key files:
 - `src/repositories/BaseRepository.ts` - `executeWithErrorHandling()` for all DB operations
 - `src/services/gameService.ts` - Game business logic
 - `src/repositories/GameRepository.ts` - Game database access
+- `src/engines/StockfishEngine.ts` - Stockfish WASM engine wrapper
+
+**Chess Engine:**
+
+- Uses `@se-oss/stockfish` (WASM-based Stockfish 17.1)
+- Defense-in-depth: FEN validation regex before passing to UCI
+- Depth bounds: MIN_DEPTH=1, MAX_DEPTH=30
+- Test with: `cd apps/backend && npx tsx scripts/test-stockfish.ts`
 
 ### Frontend (apps/frontend)
 
@@ -103,6 +111,7 @@ Key pages:
 - `/auth/error` - Auth error display
 - `/game/new` - New game settings (difficulty, time control)
 - `/game/[id]` - Game board with clocks and status
+- `/history` - Game history (active and completed games)
 
 ### Shared Package (packages/shared)
 
@@ -206,7 +215,7 @@ const response = await request(app)
   .send({ difficultyLevel: 3, timeControlType: 'blitz_5min' });
 ```
 
-**Current coverage:** 79 tests (25 gameService + 30 gameController + 24 authController)
+**Current coverage:** 105 tests (29 gameService + 52 gameController + 24 authController)
 
 ### Playwright UI Testing
 
@@ -337,16 +346,18 @@ GitHub Actions workflows in `.github/workflows/`:
 - Epic 8: Home Page UI (#67-#71) - design, logo, description, centered login
 - PR #111: UI/UX improvements - chess-themed design system, dark mode, animations
 - PR #114: Move handling + BFF auth pattern (#22, #23) - chess.js integration, drag and drop, cross-browser auth
+- #36: Stockfish engine integration - AI moves via `@se-oss/stockfish` WASM
+- #79: Save button functional - confirms game state saved
+- Game history page - view active and completed games
 
 **In Progress:**
 
-- Engine integration (#36) - API endpoint for engine moves
 - #43: Start/stop clock based on turn
 
 **Next Up:**
 
-- #79: Make Save button functional
 - Game end detection (checkmate, stalemate, draw)
+- Resign functionality
 
 ## Authentication Flow (BFF Pattern)
 
@@ -400,7 +411,7 @@ Token revocation via `tokenVersion` field - incrementing invalidates all existin
 | GET    | /api/games/:gameId        | Get specific game  |
 | POST   | /api/games/:gameId/move   | Make a move        |
 | POST   | /api/games/:gameId/resign | Resign game (TODO) |
-| POST   | /api/games/:gameId/save   | Save game (TODO)   |
+| POST   | /api/games/:gameId/save   | Save game          |
 
 **Frontend BFF routes (Next.js API):**
 
