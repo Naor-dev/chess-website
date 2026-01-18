@@ -1,5 +1,6 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 
 /**
@@ -44,6 +45,7 @@ function ChessIcon() {
 }
 
 export default function Home() {
+  const router = useRouter();
   const { user, isLoading, isAuthenticated, login, logout } = useAuth();
 
   return (
@@ -81,10 +83,7 @@ export default function Home() {
               {/* Primary CTA - Green accent for "play/go" action */}
               <button
                 className="flex h-12 items-center justify-center gap-2 rounded-full bg-emerald-600 px-8 font-medium text-white shadow-sm transition-all hover:bg-emerald-500 hover:shadow-md active:scale-[0.98]"
-                onClick={() => {
-                  // TODO: Navigate to new game
-                  alert('New game coming soon!');
-                }}
+                onClick={() => router.push('/game/new')}
               >
                 <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
                   <path d="M8 5v14l11-7z" />

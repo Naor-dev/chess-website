@@ -7,12 +7,51 @@ import type {
   GameListItem,
   MoveResponse,
 } from '@chess-website/shared';
-import { GameRepository } from '../repositories/GameRepository';
+import { TIME_CONTROL_CONFIGS, STARTING_FEN } from '@chess-website/shared';
+import { GameRepository, Game } from '../repositories/GameRepository';
 
 export class GameService {
-  constructor(private readonly gameRepository: GameRepository) {
-    // Ensure repository is used (prevents TS6138)
-    void this.gameRepository;
+  constructor(private readonly gameRepository: GameRepository) {}
+
+  /**
+   * Converts a database Game entity to a GameResponse.
+   */
+  private toGameResponse(game: Game): GameResponse {
+    const chess = new Chess(game.currentFen);
+    return {
+      id: game.id,
+      userId: game.userId,
+      status: game.status.toLowerCase() as 'active' | 'finished' | 'abandoned',
+      difficultyLevel: game.difficultyLevel as 1 | 2 | 3 | 4 | 5,
+      timeControlType: game.timeControlType as GameResponse['timeControlType'],
+      currentFen: game.currentFen,
+      movesHistory: game.movesHistory,
+      timeLeftUser: game.timeLeftUser,
+      timeLeftEngine: game.timeLeftEngine,
+      result: game.result as GameResponse['result'],
+      currentTurn: chess.turn(),
+      isCheck: chess.isCheck(),
+      isGameOver: chess.isGameOver(),
+      createdAt: game.createdAt.toISOString(),
+      updatedAt: game.updatedAt.toISOString(),
+    };
+  }
+
+  /**
+   * Converts a database Game entity to a GameListItem.
+   */
+  private toGameListItem(game: Game): GameListItem {
+    const chess = new Chess(game.currentFen);
+    return {
+      id: game.id,
+      status: game.status.toLowerCase() as 'active' | 'finished' | 'abandoned',
+      difficultyLevel: game.difficultyLevel as 1 | 2 | 3 | 4 | 5,
+      timeControlType: game.timeControlType as GameListItem['timeControlType'],
+      result: game.result as GameListItem['result'],
+      currentTurn: chess.turn(),
+      createdAt: game.createdAt.toISOString(),
+      updatedAt: game.updatedAt.toISOString(),
+    };
   }
 
   async createGame(userId: string, input: CreateGameInput): Promise<GameResponse> {
@@ -22,12 +61,20 @@ export class GameService {
       data: { userId, ...input },
     });
 
-    // TODO: Implement actual game creation
-    // 1. Get time control config from TIME_CONTROL_CONFIGS
-    // 2. Create game record in database
-    // 3. Return formatted response
+    // Get time control config
+    const timeConfig = TIME_CONTROL_CONFIGS[input.timeControlType];
 
-    throw new Error('GameService.createGame not implemented');
+    // Create game in database
+    const game = await this.gameRepository.create({
+      userId,
+      difficultyLevel: input.difficultyLevel,
+      timeControlType: input.timeControlType,
+      currentFen: STARTING_FEN,
+      timeLeftUser: timeConfig.initialTime,
+      timeLeftEngine: timeConfig.initialTime,
+    });
+
+    return this.toGameResponse(game);
   }
 
   async getGame(gameId: string, userId: string): Promise<GameResponse | null> {
@@ -37,13 +84,13 @@ export class GameService {
       data: { gameId, userId },
     });
 
-    // TODO: Implement
-    // 1. Fetch game from repository
-    // 2. Verify ownership
-    // 3. Calculate current turn, check status
-    // 4. Return formatted response
+    // Fetch game with ownership verification
+    const game = await this.gameRepository.findByIdAndUserId(gameId, userId);
+    if (!game) {
+      return null;
+    }
 
-    throw new Error('GameService.getGame not implemented');
+    return this.toGameResponse(game);
   }
 
   async listGames(userId: string): Promise<GameListItem[]> {
@@ -53,11 +100,8 @@ export class GameService {
       data: { userId },
     });
 
-    // TODO: Implement
-    // 1. Fetch games from repository
-    // 2. Map to GameListItem format
-
-    throw new Error('GameService.listGames not implemented');
+    const games = await this.gameRepository.findByUserId(userId);
+    return games.map((game) => this.toGameListItem(game));
   }
 
   async makeMove(gameId: string, userId: string, move: MakeMoveInput): Promise<MoveResponse> {

@@ -11,7 +11,7 @@ An interactive chess website allowing users to:
 - Choose difficulty levels (1-5) and time controls
 - Save games and continue later
 
-**Status:** Infrastructure complete, Google OAuth authentication implemented - continuing feature development
+**Status:** Authentication complete, New Game creation complete - building game board next
 
 ## Development Commands
 
@@ -150,6 +150,57 @@ async findById(id: string): Promise<Entity | null> {
 import { prisma, connectWithRetry, verifyConnection } from '../database/prisma';
 ```
 
+## Testing
+
+**Framework:** Jest + ts-jest (backend), Supertest for API tests
+
+```bash
+# Run all tests
+pnpm test
+
+# Run backend tests only
+cd apps/backend && pnpm test
+
+# Run tests in watch mode
+cd apps/backend && pnpm test:watch
+
+# Run a single test file
+cd apps/backend && npx jest src/services/__tests__/gameService.test.ts
+
+# Run tests matching a pattern
+cd apps/backend && npx jest --testNamePattern="createGame"
+```
+
+**Test structure:**
+
+```
+apps/backend/src/
+├── services/__tests__/
+│   └── gameService.test.ts    # Unit tests (mock repository)
+└── controllers/__tests__/
+    └── gameController.test.ts # API integration tests (supertest)
+```
+
+**Test patterns:**
+
+```typescript
+// Unit test - mock dependencies
+const mockRepository = { create: jest.fn(), findById: jest.fn() };
+const service = new GameService(mockRepository as unknown as GameRepository);
+
+// API test - mock auth and services
+jest.mock('../../services/serviceContainer', () => ({
+  services: { authService: { verifyToken: mockVerifyToken }, gameService: mockGameService },
+}));
+
+const response = await request(app)
+  .post('/api/games')
+  .set('Authorization', 'Bearer token')
+  .send({ difficultyLevel: 3, timeControlType: 'blitz_5min' });
+```
+
+**Current coverage:** 36 tests (18 unit + 18 API integration)
+
 ## Key Resources
 
 - **PRD:** `PRD.md` - Full product requirements (local)
@@ -224,6 +275,13 @@ GitHub Actions workflows in `.github/workflows/`:
 
 **CI checks include:** format, lint, prisma validate/generate, build, test, dependency audit, license check, Gitleaks secret scanning.
 
+**CI secrets required:**
+
+- `GOOGLE_CLIENT_ID` - Google OAuth client ID (for passport initialization in tests)
+- `GOOGLE_CLIENT_SECRET` - Google OAuth client secret
+
+**Note:** CI runs tests with `pnpm -r test` (not turbo) to ensure env vars are passed correctly to Jest.
+
 **Local pre-push hook:** `.husky/pre-push` runs CI checks before every push (local only, not in git).
 
 ## Hosting
@@ -243,12 +301,17 @@ GitHub Actions workflows in `.github/workflows/`:
 - #92: Database setup (PostgreSQL + Prisma)
 - #93: CI/CD pipeline (GitHub Actions)
 - #94: Hosting (Vercel + Koyeb + Supabase)
+- #96: HTTPS and domain
 - Google OAuth authentication (PR #107)
+- Epic 2: New Game Creation (#10-#18, #72) - difficulty/time selection, game creation API
+
+**In Progress:**
+
+- Game board page (`/game/[id]`) - chess board visualization and move handling
 
 **Ready:**
 
 - #95: Environment variables
-- #96: HTTPS and domain
 
 ## Authentication Flow
 
@@ -266,3 +329,35 @@ User clicks "Sign in with Google"
 ```
 
 Token revocation via `tokenVersion` field - incrementing invalidates all existing JWTs.
+
+## Game API
+
+**Implemented endpoints:**
+
+| Method | Path                      | Description        |
+| ------ | ------------------------- | ------------------ |
+| POST   | /api/games                | Create new game    |
+| GET    | /api/games                | List user's games  |
+| GET    | /api/games/:gameId        | Get specific game  |
+| POST   | /api/games/:gameId/move   | Make a move (TODO) |
+| POST   | /api/games/:gameId/resign | Resign game (TODO) |
+
+**Game types (from shared package):**
+
+- `DifficultyLevel`: 1-5
+- `TimeControlType`: none, bullet_1min, bullet_2min, blitz_3min, blitz_5min, rapid_10min, rapid_15min, classical_30min
+- `TIME_CONTROL_CONFIGS`: Maps time control to initial time (ms) and increment (ms)
+- `STARTING_FEN`: Standard chess starting position
+
+## Dev Docs Pattern
+
+For complex features, create context files in `dev/active/`:
+
+```
+dev/active/
+└── [feature]-context.md  # Current state, key files, next steps
+```
+
+**Usage:** Start session with "Read dev/active/[feature]-context.md for context"
+
+This preserves knowledge across context resets.

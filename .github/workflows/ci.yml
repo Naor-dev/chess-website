@@ -67,7 +67,12 @@ jobs:
         run: pnpm build
 
       - name: Run tests
-        run: pnpm test
+        run: pnpm -r test
+        env:
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          JWT_SECRET: "test-jwt-secret-for-ci"
+          FRONTEND_URL: "http://localhost:3000"
 
       # Security
       - name: Dependency audit
