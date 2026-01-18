@@ -90,14 +90,18 @@ Key files:
 
 - **API client** at `src/lib/apiClient.ts` (Axios with interceptors, `withCredentials: true` for cookies)
 - **Auth API** at `src/lib/authApi.ts` (Google OAuth, logout, user fetching)
+- **Game API** at `src/lib/gameApi.ts` (create, get, list games)
 - **Auth state** via `src/contexts/AuthContext.tsx` (useAuth hook)
 - **Query client** at `src/lib/queryClient.ts` (TanStack Query)
 - **Styling** via TailwindCSS
 
-Key auth pages:
+Key pages:
 
+- `/` - Home page with sign in
 - `/auth/callback` - OAuth callback handler
 - `/auth/error` - Auth error display
+- `/game/new` - New game settings (difficulty, time control)
+- `/game/[id]` - Game board with clocks and status
 
 ### Shared Package (packages/shared)
 
@@ -304,10 +308,16 @@ GitHub Actions workflows in `.github/workflows/`:
 - #96: HTTPS and domain
 - Google OAuth authentication (PR #107)
 - Epic 2: New Game Creation (#10-#18, #72) - difficulty/time selection, game creation API
+- PR #110: Game Board Page (#75-#78, #20, #21, #27, #42) - chess board display, clocks, status messages
 
 **In Progress:**
 
-- Game board page (`/game/[id]`) - chess board visualization and move handling
+- Move handling (#23) - drag and drop for making moves
+- Engine integration (#36) - API endpoint for engine moves
+
+**Pending:**
+
+- UI/UX improvements - review each page and enhance visual design
 
 **Ready:**
 
