@@ -192,9 +192,11 @@ cd apps/backend && npx jest --testNamePattern="createGame"
 ```
 apps/backend/src/
 ├── services/__tests__/
-│   └── gameService.test.ts    # Unit tests (mock repository)
+│   ├── gameService.test.ts    # Unit tests (mock repository)
+│   └── engineService.test.ts  # Stockfish engine tests
 └── controllers/__tests__/
-    └── gameController.test.ts # API integration tests (supertest)
+    ├── gameController.test.ts # API integration tests (supertest)
+    └── authController.test.ts # Auth API tests
 ```
 
 **Test patterns:**
@@ -349,15 +351,15 @@ GitHub Actions workflows in `.github/workflows/`:
 - #36: Stockfish engine integration - AI moves via `@se-oss/stockfish` WASM
 - #79: Save button functional - confirms game state saved
 - Game history page - view active and completed games
+- #43: Clock management - clocks tick on active turn, timeout detection, time increments
 
 **In Progress:**
 
-- #43: Start/stop clock based on turn
+- Resign functionality (#43 resign endpoint)
 
 **Next Up:**
 
-- Game end detection (checkmate, stalemate, draw)
-- Resign functionality
+- Game end detection improvements (checkmate, stalemate, draw UI)
 
 ## Authentication Flow (BFF Pattern)
 
@@ -430,6 +432,7 @@ Token revocation via `tokenVersion` field - incrementing invalidates all existin
 - `TimeControlType`: none, bullet_1min, bullet_2min, blitz_3min, blitz_5min, rapid_10min, rapid_15min, classical_30min
 - `TIME_CONTROL_CONFIGS`: Maps time control to initial time (ms) and increment (ms)
 - `STARTING_FEN`: Standard chess starting position
+- `GameResponse.turnStartedAt`: ISO timestamp of when current turn started (for accurate clock sync)
 
 ## Dev Docs Pattern
 

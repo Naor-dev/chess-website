@@ -12,17 +12,22 @@ async function startServer(): Promise<void> {
   await connectWithRetry();
 
   const server = app.listen(PORT, () => {
+    // eslint-disable-next-line no-console
     console.log(`Server running on port ${PORT}`);
+    // eslint-disable-next-line no-console
     console.log(`Environment: ${config.server.nodeEnv}`);
+    // eslint-disable-next-line no-console
     console.log(`Health check: http://localhost:${PORT}/api/health`);
   });
 
   // Graceful shutdown with timeout
   const shutdown = async (signal: string) => {
+    // eslint-disable-next-line no-console
     console.log(`${signal} received, shutting down gracefully`);
 
     // Stop accepting new connections
     server.close(() => {
+      // eslint-disable-next-line no-console
       console.log('HTTP server closed');
     });
 

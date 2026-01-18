@@ -43,6 +43,7 @@ export async function connectWithRetry(maxRetries = 5, delayMs = 2000): Promise<
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
       await prisma.$connect();
+      // eslint-disable-next-line no-console
       console.log('Database connected successfully');
       return;
     } catch (error) {
@@ -63,6 +64,7 @@ export async function connectWithRetry(maxRetries = 5, delayMs = 2000): Promise<
         );
       }
 
+      // eslint-disable-next-line no-console
       console.log(
         `Database connection attempt ${attempt}/${maxRetries} failed. Retrying in ${delayMs}ms...`
       );
@@ -104,6 +106,7 @@ export async function disconnectWithTimeout(timeoutMs = 5000): Promise<void> {
 
   try {
     await Promise.race([disconnectPromise, timeoutPromise]);
+    // eslint-disable-next-line no-console
     console.log('Database disconnected successfully');
   } catch (error) {
     Sentry.captureException(error, {

@@ -61,6 +61,7 @@ export interface GameResponse {
   movesHistory: string[];
   timeLeftUser: number;
   timeLeftEngine: number;
+  turnStartedAt: string | null;
   result?: GameResult;
   currentTurn: 'w' | 'b';
   isCheck: boolean;

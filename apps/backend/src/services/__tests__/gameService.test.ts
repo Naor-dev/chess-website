@@ -31,6 +31,7 @@ describe('GameService', () => {
     movesHistory: [],
     timeLeftUser: 300000,
     timeLeftEngine: 300000,
+    turnStartedAt: null, // null by default to skip timeout checks in most tests
     result: null,
     createdAt: new Date('2026-01-18T10:00:00Z'),
     updatedAt: new Date('2026-01-18T10:00:00Z'),
@@ -91,6 +92,7 @@ describe('GameService', () => {
         currentFen: STARTING_FEN,
         timeLeftUser: TIME_CONTROL_CONFIGS['blitz_5min'].initialTime,
         timeLeftEngine: TIME_CONTROL_CONFIGS['blitz_5min'].initialTime,
+        turnStartedAt: expect.any(Date), // Clock starts immediately for timed games
       });
 
       expect(result).toMatchObject({
@@ -600,6 +602,7 @@ describe('GameService', () => {
         mockGameRepository.findByIdAndUserId.mockResolvedValue(mockGame);
         mockGameRepository.addMove.mockResolvedValue(updatedGame);
         mockGameRepository.findById.mockResolvedValue(updatedGame);
+        mockGameRepository.update.mockResolvedValue(updatedGame);
 
         mockEngineService.getEngineMove.mockResolvedValue({
           move: { from: 'e7', to: 'e5' },
@@ -667,6 +670,7 @@ describe('GameService', () => {
         mockGameRepository.findByIdAndUserId.mockResolvedValue(mockGame);
         mockGameRepository.addMove.mockResolvedValue(updatedGame);
         mockGameRepository.findById.mockResolvedValue(updatedGame);
+        mockGameRepository.update.mockResolvedValue(updatedGame);
 
         // Engine throws an error
         mockEngineService.getEngineMove.mockRejectedValue(new Error('Engine timeout'));
@@ -713,6 +717,7 @@ describe('GameService', () => {
         mockGameRepository.addMove.mockResolvedValue(finishedGame);
         mockGameRepository.finishGame.mockResolvedValue(finishedGame);
         mockGameRepository.findById.mockResolvedValue(finishedGame);
+        mockGameRepository.update.mockResolvedValue(finishedGame);
 
         mockEngineService.getEngineMove.mockResolvedValue({
           move: { from: 'd8', to: 'h4' },
@@ -775,6 +780,7 @@ describe('GameService', () => {
         mockGameRepository.findByIdAndUserId.mockResolvedValue(mockGame);
         mockGameRepository.addMove.mockResolvedValue(updatedGame);
         mockGameRepository.findById.mockResolvedValue(updatedGame);
+        mockGameRepository.update.mockResolvedValue(updatedGame);
 
         // Engine returns a move
         mockEngineService.getEngineMove.mockResolvedValue({
@@ -832,6 +838,7 @@ describe('GameService', () => {
         mockGameRepository.findByIdAndUserId.mockResolvedValue(mockGame);
         mockGameRepository.addMove.mockResolvedValue(updatedGame);
         mockGameRepository.findById.mockResolvedValue(updatedGame);
+        mockGameRepository.update.mockResolvedValue(updatedGame);
 
         mockEngineService.getEngineMove.mockResolvedValue({
           move: { from: 'e7', to: 'e8', promotion: 'q' },

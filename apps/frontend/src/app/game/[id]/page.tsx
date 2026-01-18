@@ -537,10 +537,29 @@ export default function GamePage() {
   }, [currentFen]);
 
   // Sync display times with server times when game updates
+  // Uses turnStartedAt to calculate accurate elapsed time for page loads/refreshes
   useEffect(() => {
     if (game) {
-      setDisplayTimeUser(game.timeLeftUser);
-      setDisplayTimeEngine(game.timeLeftEngine);
+      // If game has time control, is active, and has a turn timestamp, calculate accurate time
+      if (game.timeControlType !== 'none' && game.status === 'active' && game.turnStartedAt) {
+        const turnStarted = new Date(game.turnStartedAt).getTime();
+        const now = Date.now();
+        const elapsed = now - turnStarted;
+
+        if (game.currentTurn === 'w') {
+          // User's turn - deduct elapsed from user's time
+          setDisplayTimeUser(Math.max(0, game.timeLeftUser - elapsed));
+          setDisplayTimeEngine(game.timeLeftEngine);
+        } else {
+          // Engine's turn - deduct elapsed from engine's time
+          setDisplayTimeUser(game.timeLeftUser);
+          setDisplayTimeEngine(Math.max(0, game.timeLeftEngine - elapsed));
+        }
+      } else {
+        // No time control or game over - use server times directly
+        setDisplayTimeUser(game.timeLeftUser);
+        setDisplayTimeEngine(game.timeLeftEngine);
+      }
       lastTickRef.current = Date.now();
     }
   }, [game]);
@@ -599,6 +618,24 @@ export default function GamePage() {
       fetchGame();
     }
   }, [authLoading, isAuthenticated, fetchGame]);
+
+  // Timeout detection - refetch game when time reaches 0 to get server confirmation
+  const timeoutCheckRef = useRef<boolean>(false);
+  useEffect(() => {
+    if (!game || game.isGameOver || game.timeControlType === 'none' || isMoving) {
+      timeoutCheckRef.current = false;
+      return;
+    }
+
+    // Check if current player's time has run out
+    const currentPlayerTime = game.currentTurn === 'w' ? displayTimeUser : displayTimeEngine;
+    if (currentPlayerTime <= 0 && !timeoutCheckRef.current) {
+      // Prevent multiple fetches
+      timeoutCheckRef.current = true;
+      // Refetch game to get server confirmation of timeout
+      fetchGame();
+    }
+  }, [game, displayTimeUser, displayTimeEngine, isMoving, fetchGame]);
 
   // Handle piece drop (drag and drop move)
   const onDrop = useCallback(

@@ -9,13 +9,20 @@ export type CreateGameData = {
   currentFen: string;
   timeLeftUser: number;
   timeLeftEngine: number;
+  turnStartedAt?: Date | null;
 };
 
 /** Data that can be updated on an existing game */
 export type UpdateGameData = Partial<
   Pick<
     Game,
-    'currentFen' | 'movesHistory' | 'timeLeftUser' | 'timeLeftEngine' | 'status' | 'result'
+    | 'currentFen'
+    | 'movesHistory'
+    | 'timeLeftUser'
+    | 'timeLeftEngine'
+    | 'turnStartedAt'
+    | 'status'
+    | 'result'
   >
 >;
 
