@@ -150,6 +150,57 @@ async findById(id: string): Promise<Entity | null> {
 import { prisma, connectWithRetry, verifyConnection } from '../database/prisma';
 ```
 
+## Testing
+
+**Framework:** Jest + ts-jest (backend), Supertest for API tests
+
+```bash
+# Run all tests
+pnpm test
+
+# Run backend tests only
+cd apps/backend && pnpm test
+
+# Run tests in watch mode
+cd apps/backend && pnpm test:watch
+
+# Run a single test file
+cd apps/backend && npx jest src/services/__tests__/gameService.test.ts
+
+# Run tests matching a pattern
+cd apps/backend && npx jest --testNamePattern="createGame"
+```
+
+**Test structure:**
+
+```
+apps/backend/src/
+├── services/__tests__/
+│   └── gameService.test.ts    # Unit tests (mock repository)
+└── controllers/__tests__/
+    └── gameController.test.ts # API integration tests (supertest)
+```
+
+**Test patterns:**
+
+```typescript
+// Unit test - mock dependencies
+const mockRepository = { create: jest.fn(), findById: jest.fn() };
+const service = new GameService(mockRepository as unknown as GameRepository);
+
+// API test - mock auth and services
+jest.mock('../../services/serviceContainer', () => ({
+  services: { authService: { verifyToken: mockVerifyToken }, gameService: mockGameService },
+}));
+
+const response = await request(app)
+  .post('/api/games')
+  .set('Authorization', 'Bearer token')
+  .send({ difficultyLevel: 3, timeControlType: 'blitz_5min' });
+```
+
+**Current coverage:** 36 tests (18 unit + 18 API integration)
+
 ## Key Resources
 
 - **PRD:** `PRD.md` - Full product requirements (local)
