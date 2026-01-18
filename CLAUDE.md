@@ -371,3 +371,20 @@ dev/active/
 **Usage:** Start session with "Read dev/active/[feature]-context.md for context"
 
 This preserves knowledge across context resets.
+
+## Design Guidelines
+
+Comprehensive UI/UX design guidelines are available locally at `dev/design-guidelines.md` (gitignored). This includes:
+
+- Color system (emerald theme, semantic colors, time control colors)
+- Typography scale and hierarchy
+- Layout and spacing (8px grid system)
+- Component patterns (cards, badges, buttons, inputs)
+- Loading and error states
+- Dark mode implementation
+- Animation guidelines
+- Responsive design breakpoints
+- Accessibility requirements (WCAG 2.1 AA)
+- Chess-specific patterns (board, clocks, status messages)
+
+**Use this local file instead of the `/ux-advisor` skill for design questions.**

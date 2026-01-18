@@ -56,3 +56,6 @@ dev/
 
 # Husky hooks (local only)
 .husky/
+
+# Playwright MCP screenshots
+.playwright-mcp/
