@@ -11,7 +11,7 @@ An interactive chess website allowing users to:
 - Choose difficulty levels (1-5) and time controls
 - Save games and continue later
 
-**Status:** Authentication complete, New Game creation complete - building game board next
+**Status:** Authentication, New Game, Game Board UI complete - implementing move handling next
 
 ## Development Commands
 
@@ -115,6 +115,7 @@ Import in apps: `import { GameResponse, createGameSchema } from '@chess-website/
 1. **NEVER merge PRs** - Only create PRs, user will merge manually
 2. **NEVER push directly to main** - Always use feature branches
 3. **Create PRs with clear descriptions** - Include summary and test plan
+4. **Run Playwright UI tests before pushing** - For any frontend changes, test the affected pages using Playwright browser tools before pushing. Navigate to the page, interact with new features, verify they work visually.
 
 ## Backend Development Rules
 
@@ -123,6 +124,7 @@ Import in apps: `import { GameResponse, createGameSchema } from '@chess-website/
 3. **Controllers extend BaseController** - Use `handleSuccess()`, `handleError()`, `handleValidationError()`
 4. **Repositories extend BaseRepository** - Use `executeWithErrorHandling(operation, fn, context)` for all DB operations
 5. **Validate all input** - Use Zod schemas from shared package
+6. **Always verify game ownership** - When implementing game endpoints, use `gameService.getGame(gameId, userId)` to verify the user owns the game before any operation
 
 ## API Response Pattern
 
@@ -203,7 +205,29 @@ const response = await request(app)
   .send({ difficultyLevel: 3, timeControlType: 'blitz_5min' });
 ```
 
-**Current coverage:** 36 tests (18 unit + 18 API integration)
+**Current coverage:** 55 tests (25 unit + 30 API integration)
+
+### Playwright UI Testing
+
+**IMPORTANT:** Before pushing any frontend changes, run Playwright tests:
+
+1. Start dev servers: `pnpm dev` (runs both frontend and backend)
+2. Wait for servers to be ready (backend: localhost:3001, frontend: localhost:3000)
+3. Use Playwright MCP tools to:
+   - Navigate to affected pages
+   - Test new/changed functionality (click buttons, fill forms, drag pieces, etc.)
+   - Verify visual feedback (loading states, error messages, success states)
+   - Take screenshots to document the testing
+
+**Example test flow for game features:**
+
+```
+1. Navigate to localhost:3000
+2. Sign in (if needed)
+3. Create new game
+4. Test the specific feature (e.g., drag piece, verify move)
+5. Verify board state updates correctly
+```
 
 ## Key Resources
 
@@ -309,19 +333,18 @@ GitHub Actions workflows in `.github/workflows/`:
 - Google OAuth authentication (PR #107)
 - Epic 2: New Game Creation (#10-#18, #72) - difficulty/time selection, game creation API
 - PR #110: Game Board Page (#75-#78, #20, #21, #27, #42) - chess board display, clocks, status messages
+- Epic 8: Home Page UI (#67-#71) - design, logo, description, centered login
+- PR #111: UI/UX improvements - chess-themed design system, dark mode, animations
 
 **In Progress:**
 
-- Move handling (#23) - drag and drop for making moves
+- Move handling (#22, #23) - chess.js integration, drag and drop
 - Engine integration (#36) - API endpoint for engine moves
 
-**Pending:**
+**Next Up:**
 
-- UI/UX improvements - review each page and enhance visual design
-
-**Ready:**
-
-- #95: Environment variables
+- #43: Start/stop clock based on turn
+- #79: Make Save button functional
 
 ## Authentication Flow
 
@@ -349,8 +372,9 @@ Token revocation via `tokenVersion` field - incrementing invalidates all existin
 | POST   | /api/games                | Create new game    |
 | GET    | /api/games                | List user's games  |
 | GET    | /api/games/:gameId        | Get specific game  |
-| POST   | /api/games/:gameId/move   | Make a move (TODO) |
+| POST   | /api/games/:gameId/move   | Make a move        |
 | POST   | /api/games/:gameId/resign | Resign game (TODO) |
+| POST   | /api/games/:gameId/save   | Save game (TODO)   |
 
 **Game types (from shared package):**
 
