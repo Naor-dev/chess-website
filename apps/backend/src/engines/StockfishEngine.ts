@@ -5,6 +5,23 @@ import type stockfish from 'stockfish';
 
 type StockfishInstance = ReturnType<typeof stockfish>;
 
+// Security: FEN validation regex - defense in depth
+// FEN format: pieces activeColor castling enPassant halfmove fullmove
+const FEN_REGEX = /^[rnbqkpRNBQKP1-8/]+ [wb] [KQkq-]+ [a-h36-]+ \d+ \d+$/;
+
+/**
+ * Validates FEN string format for security (defense in depth).
+ * Even though FEN comes from chess.js, we validate before passing to UCI.
+ */
+function isValidFen(fen: string): boolean {
+  if (!fen || fen.length > 100) return false; // Reasonable length limit
+  return FEN_REGEX.test(fen);
+}
+
+// Security: Bounds for engine configuration
+const MAX_DEPTH = 30;
+const MIN_DEPTH = 1;
+
 /**
  * StockfishEngine - WASM-based Stockfish implementation
  *
@@ -77,10 +94,18 @@ export class StockfishEngine implements ChessEngine {
       throw new Error('Engine not ready');
     }
 
+    // Security: Validate FEN format (defense in depth)
+    if (!isValidFen(fen)) {
+      throw new Error('Invalid FEN format');
+    }
+
+    // Security: Bound depth value (defense in depth)
+    const safeDepth = Math.max(MIN_DEPTH, Math.min(MAX_DEPTH, engineConfig.depth));
+
     Sentry.addBreadcrumb({
       message: 'Getting best move from Stockfish',
       category: 'engine',
-      data: { fen, depth: engineConfig.depth },
+      data: { fen, depth: safeDepth },
     });
 
     return new Promise((resolve, reject) => {
@@ -96,10 +121,11 @@ export class StockfishEngine implements ChessEngine {
 
       const handler = (message: string) => {
         // Parse UCI info messages for analysis data
-        if (message.startsWith('info')) {
-          const depthMatch = message.match(/depth (\d+)/);
-          const scoreMatch = message.match(/score cp (-?\d+)/);
-          const pvMatch = message.match(/pv (.+)/);
+        // Security: Use bounded, non-greedy patterns (defense in depth)
+        if (message.startsWith('info') && message.length < 10000) {
+          const depthMatch = message.match(/depth (\d{1,3})/);
+          const scoreMatch = message.match(/score cp (-?\d{1,6})/);
+          const pvMatch = message.match(/pv ([a-h1-8qrbnk\s]{1,500})/);
 
           if (depthMatch) {
             analysisDepth = parseInt(depthMatch[1], 10);
@@ -108,7 +134,7 @@ export class StockfishEngine implements ChessEngine {
             score = parseInt(scoreMatch[1], 10);
           }
           if (pvMatch) {
-            pv = pvMatch[1].split(' ');
+            pv = pvMatch[1].trim().split(' ');
           }
         }
 
@@ -149,7 +175,7 @@ export class StockfishEngine implements ChessEngine {
       // Set up position and search
       this.sendCommand('ucinewgame');
       this.sendCommand(`position fen ${fen}`);
-      this.sendCommand(`go depth ${engineConfig.depth}`);
+      this.sendCommand(`go depth ${safeDepth}`);
     });
   }
 
