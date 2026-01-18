@@ -24,7 +24,7 @@ export class AuthController extends BaseController {
     return {
       httpOnly: true,
       secure: isProduction,
-      sameSite: 'strict',
+      sameSite: isProduction ? 'none' : 'strict',
       path: '/',
       maxAge: maxAge ?? parseExpiresInToMs(config.auth.jwtExpiresIn),
     };
