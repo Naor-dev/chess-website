@@ -257,17 +257,29 @@ export class GameService {
     };
   }
 
-  async saveGame(gameId: string, userId: string): Promise<void> {
+  async saveGame(gameId: string, userId: string): Promise<{ savedAt: string }> {
     Sentry.addBreadcrumb({
       message: 'Saving game',
       category: 'game',
       data: { gameId, userId },
     });
 
-    // TODO: Implement
-    // Game auto-saves on each move, this is just explicit save confirmation
+    // Verify game ownership
+    const game = await this.gameRepository.findByIdAndUserId(gameId, userId);
+    if (!game) {
+      throw new Error('Game not found');
+    }
 
-    throw new Error('GameService.saveGame not implemented');
+    // Verify game is active (can't save a finished game)
+    if (game.status !== 'ACTIVE') {
+      throw new Error('Cannot save a finished game');
+    }
+
+    // Touch the updatedAt timestamp by doing a no-op update
+    // Games auto-save on each move, this is explicit confirmation
+    await this.gameRepository.update(gameId, {});
+
+    return { savedAt: new Date().toISOString() };
   }
 
   async resignGame(gameId: string, userId: string): Promise<GameResponse> {

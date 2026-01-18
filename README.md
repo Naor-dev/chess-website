@@ -108,45 +108,6 @@ pnpm test
 cd apps/backend && pnpm test
 ```
 
-## Environment Variables
-
-### Backend
-
-| Variable             | Description                |
-| -------------------- | -------------------------- |
-| DATABASE_URL         | PostgreSQL connection URL  |
-| JWT_SECRET           | Secret for JWT signing     |
-| GOOGLE_CLIENT_ID     | Google OAuth client ID     |
-| GOOGLE_CLIENT_SECRET | Google OAuth client secret |
-| FRONTEND_URL         | Frontend URL for CORS      |
-
-### Frontend
-
-| Variable            | Description     |
-| ------------------- | --------------- |
-| NEXT_PUBLIC_API_URL | Backend API URL |
-
-## API Endpoints
-
-| Method | Path                      | Description        |
-| ------ | ------------------------- | ------------------ |
-| GET    | /api/health               | Health check       |
-| GET    | /api/auth/google          | Start Google OAuth |
-| GET    | /api/auth/google/callback | OAuth callback     |
-| POST   | /api/auth/logout          | Logout user        |
-| GET    | /api/auth/me              | Get current user   |
-| POST   | /api/games                | Create new game    |
-| GET    | /api/games                | List user's games  |
-| GET    | /api/games/:id            | Get game by ID     |
-
-## Deployment
-
-The application is deployed using:
-
-- **Frontend**: Vercel (auto-deploy from main branch)
-- **Backend**: Koyeb (Docker container)
-- **Database**: Supabase PostgreSQL
-
 ## Contributing
 
 1. Create a feature branch from `main`
