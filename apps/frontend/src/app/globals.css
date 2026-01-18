@@ -1,8 +1,23 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
+  --background: #fafafa;
   --foreground: #171717;
+
+  /* Chess-themed color palette */
+  --chess-dark: #769656;
+  --chess-light: #eeeed2;
+  --accent-emerald: #059669;
+  --accent-emerald-light: #10b981;
+
+  /* Surface colors */
+  --surface-primary: #ffffff;
+  --surface-secondary: #f4f4f5;
+  --surface-tertiary: #e4e4e7;
+
+  /* Gradient stops */
+  --gradient-start: #f0fdf4;
+  --gradient-end: #ecfdf5;
 }
 
 @theme inline {
@@ -14,13 +29,197 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: #09090b;
+    --foreground: #fafafa;
+
+    /* Dark mode surfaces */
+    --surface-primary: #18181b;
+    --surface-secondary: #27272a;
+    --surface-tertiary: #3f3f46;
+
+    /* Dark mode gradients */
+    --gradient-start: #09090b;
+    --gradient-end: #0c1a14;
   }
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans, system-ui, -apple-system, sans-serif);
+}
+
+/* Subtle chess pattern background */
+.chess-pattern {
+  background-image:
+    linear-gradient(45deg, rgba(118, 150, 86, 0.03) 25%, transparent 25%),
+    linear-gradient(-45deg, rgba(118, 150, 86, 0.03) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, rgba(118, 150, 86, 0.03) 75%),
+    linear-gradient(-45deg, transparent 75%, rgba(118, 150, 86, 0.03) 75%);
+  background-size: 40px 40px;
+  background-position: 0 0, 0 20px, 20px -20px, -20px 0px;
+}
+
+@media (prefers-color-scheme: dark) {
+  .chess-pattern {
+    background-image:
+      linear-gradient(45deg, rgba(118, 150, 86, 0.05) 25%, transparent 25%),
+      linear-gradient(-45deg, rgba(118, 150, 86, 0.05) 25%, transparent 25%),
+      linear-gradient(45deg, transparent 75%, rgba(118, 150, 86, 0.05) 75%),
+      linear-gradient(-45deg, transparent 75%, rgba(118, 150, 86, 0.05) 75%);
+  }
+}
+
+/* Gradient backgrounds */
+.gradient-bg {
+  background: linear-gradient(135deg, var(--gradient-start) 0%, var(--gradient-end) 100%);
+}
+
+/* Glass effect card */
+.glass-card {
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+@media (prefers-color-scheme: dark) {
+  .glass-card {
+    background: rgba(24, 24, 27, 0.8);
+    border: 1px solid rgba(63, 63, 70, 0.5);
+  }
+}
+
+/* Animated gradient border */
+.gradient-border {
+  position: relative;
+  background: var(--surface-primary);
+  border-radius: 1rem;
+}
+
+.gradient-border::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  background: linear-gradient(135deg, #769656, #10b981, #059669);
+  z-index: -1;
+  opacity: 0.5;
+}
+
+/* Glow effect */
+.glow {
+  box-shadow: 0 0 40px rgba(16, 185, 129, 0.15);
+}
+
+@media (prefers-color-scheme: dark) {
+  .glow {
+    box-shadow: 0 0 60px rgba(16, 185, 129, 0.2);
+  }
+}
+
+/* Pulse animation for active states */
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(16, 185, 129, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 40px rgba(16, 185, 129, 0.5);
+  }
+}
+
+.pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+/* Floating animation */
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+.float {
+  animation: float 6s ease-in-out infinite;
+}
+
+/* Fade in animation */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fade-in {
+  animation: fadeIn 0.5s ease-out forwards;
+}
+
+/* Stagger children animations */
+.stagger-children > * {
+  opacity: 0;
+  animation: fadeIn 0.4s ease-out forwards;
+}
+
+.stagger-children > *:nth-child(1) { animation-delay: 0.1s; }
+.stagger-children > *:nth-child(2) { animation-delay: 0.2s; }
+.stagger-children > *:nth-child(3) { animation-delay: 0.3s; }
+.stagger-children > *:nth-child(4) { animation-delay: 0.4s; }
+.stagger-children > *:nth-child(5) { animation-delay: 0.5s; }
+.stagger-children > *:nth-child(6) { animation-delay: 0.6s; }
+.stagger-children > *:nth-child(7) { animation-delay: 0.7s; }
+.stagger-children > *:nth-child(8) { animation-delay: 0.8s; }
+
+/* Decorative chess piece shapes */
+.chess-knight-bg {
+  position: relative;
+}
+
+.chess-knight-bg::before {
+  content: '';
+  position: absolute;
+  width: 200px;
+  height: 200px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 45 45'%3E%3Cg fill='none' fill-rule='evenodd' stroke='%23769656' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round' opacity='0.1'%3E%3Cpath d='M 22,10 C 32.5,11 38.5,18 38,39 L 15,39 C 15,30 25,32.5 23,18'/%3E%3Cpath d='M 24,18 C 24.38,20.91 18.45,25.37 16,27 C 13,29 13.18,31.34 11,31 C 9.958,30.06 12.41,27.96 11,28 C 10,28 11.19,29.23 10,30 C 9,30 5.997,31 6,26 C 6,24 12,14 12,14 C 12,14 13.89,12.1 14,10.5 C 13.27,9.506 13.5,8.5 13.5,7.5 C 14.5,6.5 16.5,10 16.5,10 L 18.5,10 C 18.5,10 19.28,8.008 21,7 C 22,7 22,10 22,10'/%3E%3Ccircle cx='9' cy='25.5' r='0.5'/%3E%3Cpath d='M 17.5,15.5 A 0.5,1.5 0 1 1 16.5,15.5 A 0.5,1.5 0 1 1 17.5,15.5 z' transform='matrix(0.866,0.5,-0.5,0.866,9.693,-5.173)'/%3E%3C/g%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-size: contain;
+  opacity: 0.3;
+  pointer-events: none;
+}
+
+/* Smooth scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(118, 150, 86, 0.3);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(118, 150, 86, 0.5);
+}
+
+/* Selection colors */
+::selection {
+  background: rgba(118, 150, 86, 0.3);
+  color: inherit;
+}
+
+/* Focus ring */
+*:focus-visible {
+  outline: 2px solid #10b981;
+  outline-offset: 2px;
 }
