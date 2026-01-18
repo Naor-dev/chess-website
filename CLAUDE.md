@@ -275,6 +275,13 @@ GitHub Actions workflows in `.github/workflows/`:
 
 **CI checks include:** format, lint, prisma validate/generate, build, test, dependency audit, license check, Gitleaks secret scanning.
 
+**CI secrets required:**
+
+- `GOOGLE_CLIENT_ID` - Google OAuth client ID (for passport initialization in tests)
+- `GOOGLE_CLIENT_SECRET` - Google OAuth client secret
+
+**Note:** CI runs tests with `pnpm -r test` (not turbo) to ensure env vars are passed correctly to Jest.
+
 **Local pre-push hook:** `.husky/pre-push` runs CI checks before every push (local only, not in git).
 
 ## Hosting
