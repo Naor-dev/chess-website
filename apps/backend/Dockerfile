@@ -55,6 +55,10 @@ COPY --from=builder /app/apps/backend/dist apps/backend/dist/
 COPY --from=builder /app/node_modules/.pnpm/@prisma+client@*/node_modules/@prisma/client node_modules/@prisma/client/
 COPY --from=builder /app/node_modules/.pnpm/@prisma+client@*/node_modules/.prisma node_modules/.prisma/
 
+# Copy Prisma CLI from builder for migrations (avoid npx downloading latest)
+COPY --from=builder /app/node_modules/.pnpm/prisma@*/node_modules/prisma node_modules/prisma/
+COPY --from=builder /app/node_modules/.pnpm/prisma@*/node_modules/.bin/prisma node_modules/.bin/prisma
+
 # Set ownership
 RUN chown -R nodejs:nodejs /app
 
@@ -71,5 +75,5 @@ EXPOSE 3001
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
   CMD wget --no-verbose --tries=1 --spider http://localhost:3001/health || exit 1
 
-# Run migrations then start server
-CMD ["sh", "-c", "npx prisma migrate deploy && node dist/server.js"]
+# Run migrations then start server (use local prisma to avoid version mismatch)
+CMD ["sh", "-c", "./node_modules/.bin/prisma migrate deploy && node dist/server.js"]
