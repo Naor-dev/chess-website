@@ -218,7 +218,7 @@ const response = await request(app)
   .send({ difficultyLevel: 3, timeControlType: 'blitz_5min' });
 ```
 
-**Current coverage:** 105 tests (29 gameService + 52 gameController + 24 authController)
+**Current coverage:** 116 tests (35 gameService + 57 gameController + 24 authController)
 
 ### Playwright UI Testing
 
@@ -362,8 +362,11 @@ GitHub Actions workflows in `.github/workflows/`:
 
 **In Progress:**
 
-- Resign functionality (#43 resign endpoint)
 - Game end detection improvements (checkmate, stalemate, draw UI)
+
+**Recently Completed:**
+
+- Resign functionality - users can resign active games with confirmation dialog
 
 ## Authentication Flow (BFF Pattern)
 
@@ -410,14 +413,14 @@ Token revocation via `tokenVersion` field - incrementing invalidates all existin
 
 **Game endpoints (backend):**
 
-| Method | Path                      | Description        |
-| ------ | ------------------------- | ------------------ |
-| POST   | /api/games                | Create new game    |
-| GET    | /api/games                | List user's games  |
-| GET    | /api/games/:gameId        | Get specific game  |
-| POST   | /api/games/:gameId/move   | Make a move        |
-| POST   | /api/games/:gameId/resign | Resign game (TODO) |
-| POST   | /api/games/:gameId/save   | Save game          |
+| Method | Path                      | Description       |
+| ------ | ------------------------- | ----------------- |
+| POST   | /api/games                | Create new game   |
+| GET    | /api/games                | List user's games |
+| GET    | /api/games/:gameId        | Get specific game |
+| POST   | /api/games/:gameId/move   | Make a move       |
+| POST   | /api/games/:gameId/resign | Resign game       |
+| POST   | /api/games/:gameId/save   | Save game         |
 
 **Frontend BFF routes (Next.js API):**
 
