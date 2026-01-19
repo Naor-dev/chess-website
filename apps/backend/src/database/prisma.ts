@@ -1,4 +1,6 @@
 import { PrismaClient } from '@prisma/client';
+import { PrismaPg } from '@prisma/adapter-pg';
+import pg from 'pg';
 import * as Sentry from '@sentry/node';
 import { config } from '../config/unifiedConfig';
 
@@ -8,9 +10,18 @@ declare global {
 }
 
 /**
- * Creates a configured Prisma client instance with logging and connection pool settings.
+ * Creates a configured Prisma client instance with logging and PostgreSQL adapter.
+ * Prisma 7 requires using an adapter for direct database connections.
  */
 function createPrismaClient(): PrismaClient {
+  // Create PostgreSQL connection pool
+  const pool = new pg.Pool({
+    connectionString: config.database.url,
+  });
+
+  // Create Prisma adapter
+  const adapter = new PrismaPg(pool);
+
   return new PrismaClient({
     log:
       config.server.nodeEnv === 'development'
@@ -20,11 +31,7 @@ function createPrismaClient(): PrismaClient {
             { emit: 'stdout', level: 'warn' },
           ]
         : [{ emit: 'stdout', level: 'error' }],
-    datasources: {
-      db: {
-        url: config.database.url,
-      },
-    },
+    adapter,
   });
 }
 
