@@ -41,7 +41,7 @@ export class GameService {
       result: game.result as GameResponse['result'],
       currentTurn: chess.turn(),
       isCheck: chess.isCheck(),
-      isGameOver: chess.isGameOver(),
+      isGameOver: chess.isGameOver() || game.status !== 'ACTIVE',
       createdAt: game.createdAt.toISOString(),
       updatedAt: game.updatedAt.toISOString(),
     };
@@ -429,12 +429,24 @@ export class GameService {
       data: { gameId, userId },
     });
 
-    // TODO: Implement
-    // 1. Fetch game, verify ownership
-    // 2. Update status to FINISHED
-    // 3. Set result to user_resigned
+    // 1. Fetch game with ownership verification
+    const game = await this.gameRepository.findByIdAndUserId(gameId, userId);
+    if (!game) {
+      throw new Error('Game not found');
+    }
 
-    throw new Error('GameService.resignGame not implemented');
+    // 2. Verify game is active (can't resign a finished game)
+    if (game.status !== 'ACTIVE') {
+      throw new Error('Cannot resign a finished game');
+    }
+
+    // 3. Finish game with resign result
+    const finishedGame = await this.gameRepository.finishGame(gameId, 'user_resigned');
+
+    // 4. Clear turn timer (game is over, no one's turn)
+    await this.gameRepository.update(gameId, { turnStartedAt: null });
+
+    return this.toGameResponse(finishedGame);
   }
 
   validateMove(fen: string, move: MakeMoveInput): boolean {

@@ -72,4 +72,16 @@ export const gameApi = {
     );
     return response.data.data;
   },
+
+  /**
+   * Resign a game (voluntary forfeit).
+   * @param gameId - The game's unique identifier
+   * @returns Updated game data with resigned status
+   */
+  async resignGame(gameId: string): Promise<GameResponse> {
+    const response = await apiClient.post<{ success: boolean; data: GameResponse }>(
+      `/games/${gameId}/resign`
+    );
+    return response.data.data;
+  },
 };

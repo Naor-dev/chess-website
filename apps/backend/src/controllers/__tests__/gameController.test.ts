@@ -30,6 +30,7 @@ const mockCreateGame = jest.fn();
 const mockGetGame = jest.fn();
 const mockListGames = jest.fn();
 const mockMakeMove = jest.fn();
+const mockResignGame = jest.fn();
 
 jest.mock('../../services/serviceContainer', () => ({
   services: {
@@ -41,6 +42,7 @@ jest.mock('../../services/serviceContainer', () => ({
       getGame: mockGetGame,
       listGames: mockListGames,
       makeMove: mockMakeMove,
+      resignGame: mockResignGame,
     },
     userService: {},
   },
@@ -557,6 +559,84 @@ describe('GameController API', () => {
       expect(response.status).toBe(400);
       expect(response.body.success).toBe(false);
       expect(response.body.code).toBe('VALIDATION_ERROR');
+    });
+  });
+
+  describe('POST /api/games/:gameId/resign', () => {
+    const mockResignedGameResponse = {
+      id: 'game-456',
+      userId: mockUserId,
+      status: 'finished' as const,
+      difficultyLevel: 3 as const,
+      timeControlType: 'blitz_5min' as const,
+      currentFen: STARTING_FEN,
+      movesHistory: ['e4', 'e5'],
+      timeLeftUser: 280000,
+      timeLeftEngine: 290000,
+      turnStartedAt: null,
+      result: 'user_resigned' as const,
+      currentTurn: 'w' as const,
+      isCheck: false,
+      isGameOver: true,
+      createdAt: '2026-01-18T10:00:00.000Z',
+      updatedAt: '2026-01-18T10:05:00.000Z',
+    };
+
+    it('should resign a game successfully', async () => {
+      mockResignGame.mockResolvedValue(mockResignedGameResponse);
+
+      const response = await request(app)
+        .post('/api/games/game-456/resign')
+        .set('Authorization', `Bearer ${validToken}`);
+
+      expect(response.status).toBe(200);
+      expect(response.body.success).toBe(true);
+      expect(response.body.data.status).toBe('finished');
+      expect(response.body.data.result).toBe('user_resigned');
+      expect(response.body.data.isGameOver).toBe(true);
+      expect(mockResignGame).toHaveBeenCalledWith('game-456', mockUserId);
+    });
+
+    it('should return 401 when not authenticated', async () => {
+      const response = await request(app).post('/api/games/game-456/resign');
+
+      expect(response.status).toBe(401);
+      expect(response.body.success).toBe(false);
+    });
+
+    it('should return 404 when game not found', async () => {
+      mockResignGame.mockRejectedValue(new Error('Game not found'));
+
+      const response = await request(app)
+        .post('/api/games/non-existent/resign')
+        .set('Authorization', `Bearer ${validToken}`);
+
+      expect(response.status).toBe(404);
+      expect(response.body.success).toBe(false);
+      expect(response.body.code).toBe('NOT_FOUND');
+    });
+
+    it('should return 400 when game is already finished', async () => {
+      mockResignGame.mockRejectedValue(new Error('Cannot resign a finished game'));
+
+      const response = await request(app)
+        .post('/api/games/game-456/resign')
+        .set('Authorization', `Bearer ${validToken}`);
+
+      expect(response.status).toBe(400);
+      expect(response.body.success).toBe(false);
+      expect(response.body.error).toBe('Cannot resign a finished game');
+    });
+
+    it('should accept authentication via cookie', async () => {
+      mockResignGame.mockResolvedValue(mockResignedGameResponse);
+
+      const response = await request(app)
+        .post('/api/games/game-456/resign')
+        .set('Cookie', `token=${validToken}`);
+
+      expect(response.status).toBe(200);
+      expect(response.body.success).toBe(true);
     });
   });
 });

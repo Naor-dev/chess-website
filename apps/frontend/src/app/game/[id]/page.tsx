@@ -523,6 +523,7 @@ export default function GamePage() {
   const [showGameOverModal, setShowGameOverModal] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
+  const [isResigning, setIsResigning] = useState(false);
 
   // Local display times for clock ticking (separate from server times)
   const [displayTimeUser, setDisplayTimeUser] = useState<number>(0);
@@ -721,6 +722,28 @@ export default function GamePage() {
     }
   };
 
+  // Handle resign game
+  const handleResign = async () => {
+    if (!game || isResigning || game.isGameOver) return;
+
+    // Confirmation dialog
+    const confirmed = window.confirm('Are you sure you want to resign? This will count as a loss.');
+    if (!confirmed) return;
+
+    setIsResigning(true);
+    setMoveError(null);
+
+    try {
+      const result = await gameApi.resignGame(gameId);
+      setGame(result);
+    } catch (err) {
+      console.error('Failed to resign game:', err);
+      setMoveError('Failed to resign game. Please try again.');
+    } finally {
+      setIsResigning(false);
+    }
+  };
+
   // Redirect if not authenticated
   if (!authLoading && !isAuthenticated) {
     router.push('/');
@@ -915,16 +938,23 @@ export default function GamePage() {
           {/* Resign button (when game is active) */}
           {!game.isGameOver && (
             <button
-              onClick={() => {
-                alert('Resign coming soon!');
-              }}
-              className="w-full rounded-xl border-2 border-zinc-200 bg-white/60 px-6 py-3 font-medium text-zinc-600 backdrop-blur-sm transition-all hover:border-red-300 hover:bg-red-50 hover:text-red-600 dark:border-zinc-700 dark:bg-zinc-900/40 dark:text-zinc-400 dark:hover:border-red-800 dark:hover:bg-red-950/40 dark:hover:text-red-400"
+              onClick={handleResign}
+              disabled={isResigning}
+              className={`w-full rounded-xl border-2 px-6 py-3 font-medium backdrop-blur-sm transition-all ${
+                isResigning
+                  ? 'border-zinc-300 bg-zinc-100 text-zinc-400 cursor-not-allowed dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-600'
+                  : 'border-zinc-200 bg-white/60 text-zinc-600 hover:border-red-300 hover:bg-red-50 hover:text-red-600 dark:border-zinc-700 dark:bg-zinc-900/40 dark:text-zinc-400 dark:hover:border-red-800 dark:hover:bg-red-950/40 dark:hover:text-red-400'
+              }`}
             >
               <span className="flex items-center justify-center gap-2">
-                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M14.4 6L14 4H5v17h2v-7h5.6l.4 2h7V6z" />
-                </svg>
-                Resign
+                {isResigning ? (
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-zinc-300 border-t-zinc-600 dark:border-zinc-600 dark:border-t-zinc-300" />
+                ) : (
+                  <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M14.4 6L14 4H5v17h2v-7h5.6l.4 2h7V6z" />
+                  </svg>
+                )}
+                {isResigning ? 'Resigning...' : 'Resign'}
               </span>
             </button>
           )}

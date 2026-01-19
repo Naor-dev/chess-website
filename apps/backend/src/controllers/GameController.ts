@@ -144,11 +144,28 @@ export class GameController extends BaseController {
 
   async resignGame(req: Request, res: Response): Promise<void> {
     try {
-      const { gameId } = req.params;
+      const userId = req.userId;
+      if (!userId) {
+        this.handleUnauthorized(res, 'Not authenticated');
+        return;
+      }
 
-      // TODO: Implement with GameService
-      this.handleSuccess(res, { gameId, message: 'Resign game endpoint' });
+      const gameId = req.params.gameId as string;
+      const result = await this.gameService.resignGame(gameId, userId);
+
+      this.handleSuccess(res, result, 'Game resigned successfully');
     } catch (error) {
+      // Handle specific game errors
+      if (error instanceof Error) {
+        if (error.message === 'Game not found') {
+          this.handleNotFound(res, 'Game not found');
+          return;
+        }
+        if (error.message === 'Cannot resign a finished game') {
+          res.status(400).json({ success: false, error: error.message });
+          return;
+        }
+      }
       this.handleError(error, res, 'GameController.resignGame');
     }
   }

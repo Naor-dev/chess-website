@@ -396,6 +396,91 @@ describe('GameService', () => {
     });
   });
 
+  describe('resignGame', () => {
+    it('should resign an active game successfully', async () => {
+      const mockGame = createMockGame();
+      const resignedGame = createMockGame({
+        status: GameStatus.FINISHED,
+        result: 'user_resigned',
+      });
+
+      mockGameRepository.findByIdAndUserId.mockResolvedValue(mockGame);
+      mockGameRepository.finishGame.mockResolvedValue(resignedGame);
+      mockGameRepository.update.mockResolvedValue(resignedGame);
+
+      const result = await gameService.resignGame(mockGameId, mockUserId);
+
+      expect(mockGameRepository.findByIdAndUserId).toHaveBeenCalledWith(mockGameId, mockUserId);
+      expect(mockGameRepository.finishGame).toHaveBeenCalledWith(mockGameId, 'user_resigned');
+      expect(mockGameRepository.update).toHaveBeenCalledWith(mockGameId, { turnStartedAt: null });
+      expect(result.status).toBe('finished');
+      expect(result.result).toBe('user_resigned');
+    });
+
+    it('should throw error when game not found', async () => {
+      mockGameRepository.findByIdAndUserId.mockResolvedValue(null);
+
+      await expect(gameService.resignGame(mockGameId, mockUserId)).rejects.toThrow(
+        'Game not found'
+      );
+    });
+
+    it('should throw error when game owned by different user', async () => {
+      mockGameRepository.findByIdAndUserId.mockResolvedValue(null);
+
+      await expect(gameService.resignGame(mockGameId, 'different-user')).rejects.toThrow(
+        'Game not found'
+      );
+
+      expect(mockGameRepository.findByIdAndUserId).toHaveBeenCalledWith(
+        mockGameId,
+        'different-user'
+      );
+    });
+
+    it('should throw error when game is already finished', async () => {
+      const finishedGame = createMockGame({
+        status: GameStatus.FINISHED,
+        result: 'user_win_checkmate',
+      });
+      mockGameRepository.findByIdAndUserId.mockResolvedValue(finishedGame);
+
+      await expect(gameService.resignGame(mockGameId, mockUserId)).rejects.toThrow(
+        'Cannot resign a finished game'
+      );
+    });
+
+    it('should throw error when game is abandoned', async () => {
+      const abandonedGame = createMockGame({
+        status: GameStatus.ABANDONED,
+      });
+      mockGameRepository.findByIdAndUserId.mockResolvedValue(abandonedGame);
+
+      await expect(gameService.resignGame(mockGameId, mockUserId)).rejects.toThrow(
+        'Cannot resign a finished game'
+      );
+    });
+
+    it('should clear turnStartedAt when resigning', async () => {
+      const mockGame = createMockGame({
+        turnStartedAt: new Date('2026-01-18T10:00:00Z'),
+      });
+      const resignedGame = createMockGame({
+        status: GameStatus.FINISHED,
+        result: 'user_resigned',
+        turnStartedAt: null,
+      });
+
+      mockGameRepository.findByIdAndUserId.mockResolvedValue(mockGame);
+      mockGameRepository.finishGame.mockResolvedValue(resignedGame);
+      mockGameRepository.update.mockResolvedValue(resignedGame);
+
+      await gameService.resignGame(mockGameId, mockUserId);
+
+      expect(mockGameRepository.update).toHaveBeenCalledWith(mockGameId, { turnStartedAt: null });
+    });
+  });
+
   describe('makeMove', () => {
     const newFen = 'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1';
 
