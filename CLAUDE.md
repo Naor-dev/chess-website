@@ -72,6 +72,7 @@ Key patterns:
 - **Validation** via Zod schemas from `@chess-website/shared`
 - **Error tracking** via Sentry (`src/instrument.ts` must be first import)
 - **Database** via Prisma singleton at `src/database/prisma.ts`
+- **Prisma 7 Config** at `prisma.config.ts` (in backend root, NOT in prisma/ folder)
 
 Key files:
 
@@ -326,11 +327,17 @@ GitHub Actions workflows in `.github/workflows/`:
 
 ## Hosting
 
-| Service  | Platform | URL                                               |
-| -------- | -------- | ------------------------------------------------- |
-| Frontend | Vercel   | https://chess-website-frontend-beta.vercel.app    |
-| Backend  | Koyeb    | https://improved-harmonia-yada-2bbdf472.koyeb.app |
-| Database | Supabase | PostgreSQL (managed)                              |
+| Service  | Platform | URL                                            |
+| -------- | -------- | ---------------------------------------------- |
+| Frontend | Vercel   | https://chess-website-frontend-beta.vercel.app |
+| Backend  | Render   | https://chess-website-cm4y.onrender.com        |
+| Database | Supabase | PostgreSQL (pooler connection)                 |
+
+**Render Configuration:**
+
+- Build Command: `NODE_ENV=development pnpm install --frozen-lockfile && pnpm run build`
+- Pre-Deploy Command: `cd apps/backend && npx prisma migrate deploy`
+- Start Command: `cd apps/backend && node dist/server.js`
 
 ## Current Progress
 
@@ -356,9 +363,6 @@ GitHub Actions workflows in `.github/workflows/`:
 **In Progress:**
 
 - Resign functionality (#43 resign endpoint)
-
-**Next Up:**
-
 - Game end detection improvements (checkmate, stalemate, draw UI)
 
 ## Authentication Flow (BFF Pattern)
