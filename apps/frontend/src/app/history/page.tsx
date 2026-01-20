@@ -1,10 +1,14 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { gameApi } from '@/lib/gameApi';
 import type { GameListItem } from '@chess-website/shared';
+
+type SortOrder = 'newest' | 'oldest';
+type StatusFilter = 'all' | 'active' | 'completed';
+type ResultFilter = 'all' | 'wins' | 'losses' | 'draws';
 
 const DIFFICULTY_LABELS = ['', 'Beginner', 'Easy', 'Medium', 'Hard', 'Master'];
 
@@ -214,6 +218,11 @@ export default function HistoryPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Filter and sort state
+  const [sortOrder, setSortOrder] = useState<SortOrder>('newest');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const [resultFilter, setResultFilter] = useState<ResultFilter>('all');
+
   useEffect(() => {
     if (!authLoading && isAuthenticated) {
       loadGames();
@@ -233,6 +242,48 @@ export default function HistoryPage() {
     }
   };
 
+  // Filter and sort games
+  const filteredAndSortedGames = useMemo(() => {
+    let result = [...games];
+
+    // Apply status filter
+    if (statusFilter === 'active') {
+      result = result.filter((g) => g.status === 'active');
+    } else if (statusFilter === 'completed') {
+      result = result.filter((g) => g.status !== 'active');
+    }
+
+    // Apply result filter (only for completed games)
+    if (resultFilter !== 'all') {
+      result = result.filter((g) => {
+        if (g.status === 'active') return true; // Don't filter out active games
+        const isWin = g.result?.startsWith('user_win');
+        const isLoss = g.result?.startsWith('engine_win') || g.result === 'user_resigned';
+        const isDraw = g.result?.startsWith('draw_');
+
+        switch (resultFilter) {
+          case 'wins':
+            return isWin;
+          case 'losses':
+            return isLoss;
+          case 'draws':
+            return isDraw;
+          default:
+            return true;
+        }
+      });
+    }
+
+    // Apply sort
+    result.sort((a, b) => {
+      const dateA = new Date(a.updatedAt).getTime();
+      const dateB = new Date(b.updatedAt).getTime();
+      return sortOrder === 'newest' ? dateB - dateA : dateA - dateB;
+    });
+
+    return result;
+  }, [games, statusFilter, resultFilter, sortOrder]);
+
   // Redirect if not authenticated
   if (!authLoading && !isAuthenticated) {
     router.push('/');
@@ -250,8 +301,10 @@ export default function HistoryPage() {
     );
   }
 
-  const activeGames = games.filter((g) => g.status === 'active');
-  const completedGames = games.filter((g) => g.status !== 'active');
+  // Separate active and completed games from filtered results
+  const activeGames = filteredAndSortedGames.filter((g) => g.status === 'active');
+  const completedGames = filteredAndSortedGames.filter((g) => g.status !== 'active');
+  const hasNoFilterResults = games.length > 0 && filteredAndSortedGames.length === 0;
 
   return (
     <div className="min-h-screen gradient-bg chess-pattern">
@@ -290,6 +343,78 @@ export default function HistoryPage() {
           </p>
         </div>
 
+        {/* Filter Controls */}
+        {games.length > 0 && (
+          <div className="mb-6 flex flex-wrap items-center gap-3 rounded-xl border border-zinc-200/50 bg-white/60 p-4 backdrop-blur-sm dark:border-zinc-800/50 dark:bg-zinc-900/40 fade-in">
+            {/* Sort Order */}
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-medium text-zinc-500 dark:text-zinc-500">Sort:</span>
+              <div className="flex rounded-lg bg-zinc-100 p-0.5 dark:bg-zinc-800">
+                <button
+                  onClick={() => setSortOrder('newest')}
+                  className={`rounded-md px-3 py-1.5 text-xs font-medium transition-all ${
+                    sortOrder === 'newest'
+                      ? 'bg-white text-zinc-900 shadow-sm dark:bg-zinc-700 dark:text-zinc-100'
+                      : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200'
+                  }`}
+                >
+                  Newest
+                </button>
+                <button
+                  onClick={() => setSortOrder('oldest')}
+                  className={`rounded-md px-3 py-1.5 text-xs font-medium transition-all ${
+                    sortOrder === 'oldest'
+                      ? 'bg-white text-zinc-900 shadow-sm dark:bg-zinc-700 dark:text-zinc-100'
+                      : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200'
+                  }`}
+                >
+                  Oldest
+                </button>
+              </div>
+            </div>
+
+            {/* Status Filter */}
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-medium text-zinc-500 dark:text-zinc-500">Status:</span>
+              <div className="flex rounded-lg bg-zinc-100 p-0.5 dark:bg-zinc-800">
+                {(['all', 'active', 'completed'] as const).map((status) => (
+                  <button
+                    key={status}
+                    onClick={() => setStatusFilter(status)}
+                    className={`rounded-md px-3 py-1.5 text-xs font-medium capitalize transition-all ${
+                      statusFilter === status
+                        ? 'bg-white text-zinc-900 shadow-sm dark:bg-zinc-700 dark:text-zinc-100'
+                        : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200'
+                    }`}
+                  >
+                    {status}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Result Filter */}
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-medium text-zinc-500 dark:text-zinc-500">Result:</span>
+              <div className="flex rounded-lg bg-zinc-100 p-0.5 dark:bg-zinc-800">
+                {(['all', 'wins', 'losses', 'draws'] as const).map((result) => (
+                  <button
+                    key={result}
+                    onClick={() => setResultFilter(result)}
+                    className={`rounded-md px-3 py-1.5 text-xs font-medium capitalize transition-all ${
+                      resultFilter === result
+                        ? 'bg-white text-zinc-900 shadow-sm dark:bg-zinc-700 dark:text-zinc-100'
+                        : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200'
+                    }`}
+                  >
+                    {result}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Error message */}
         {error && (
           <div className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4 text-center text-red-700 dark:border-red-900 dark:bg-red-950/30 dark:text-red-400">
@@ -299,6 +424,36 @@ export default function HistoryPage() {
 
         {games.length === 0 ? (
           <EmptyState onNewGame={() => router.push('/game/new')} />
+        ) : hasNoFilterResults ? (
+          <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-zinc-200 bg-white/40 p-12 text-center dark:border-zinc-800 dark:bg-zinc-900/20">
+            <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-zinc-100 dark:bg-zinc-800">
+              <svg
+                className="h-8 w-8 text-zinc-400 dark:text-zinc-500"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
+                <circle cx="11" cy="11" r="8" />
+                <path d="M21 21l-4.35-4.35" />
+              </svg>
+            </div>
+            <h3 className="mb-2 text-lg font-semibold text-zinc-900 dark:text-zinc-100">
+              No matching games
+            </h3>
+            <p className="mb-4 text-sm text-zinc-600 dark:text-zinc-400">
+              Try adjusting your filters to see more games
+            </p>
+            <button
+              onClick={() => {
+                setStatusFilter('all');
+                setResultFilter('all');
+              }}
+              className="rounded-lg border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 transition-all hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+            >
+              Clear Filters
+            </button>
+          </div>
         ) : (
           <>
             {/* Active Games Section */}
