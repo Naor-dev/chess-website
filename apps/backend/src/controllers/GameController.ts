@@ -22,10 +22,10 @@ export class GameController extends BaseController {
     } catch (error) {
       if (error instanceof ZodError) {
         const details: Record<string, string[]> = {};
-        error.errors.forEach((err) => {
-          const path = err.path.join('.');
+        error.issues.forEach((issue) => {
+          const path = issue.path.join('.');
           if (!details[path]) details[path] = [];
-          details[path].push(err.message);
+          details[path].push(issue.message);
         });
         this.handleValidationError(res, details);
         return;
@@ -87,10 +87,10 @@ export class GameController extends BaseController {
     } catch (error) {
       if (error instanceof ZodError) {
         const details: Record<string, string[]> = {};
-        error.errors.forEach((err) => {
-          const path = err.path.join('.');
+        error.issues.forEach((issue) => {
+          const path = issue.path.join('.');
           if (!details[path]) details[path] = [];
-          details[path].push(err.message);
+          details[path].push(issue.message);
         });
         this.handleValidationError(res, details);
         return;

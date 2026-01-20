@@ -16,10 +16,10 @@
     "prepare": "husky"
   },
   "devDependencies": {
-    "turbo": "^2.3.3",
-    "prettier": "^3.4.2",
     "husky": "^9.1.7",
-    "lint-staged": "^15.2.11"
+    "lint-staged": "^16.2.7",
+    "prettier": "^3.8.0",
+    "turbo": "^2.7.5"
   },
   "lint-staged": {
     "*.{ts,tsx}": [
