@@ -98,6 +98,7 @@ esac
 ### Build Command Detection
 
 The hooks auto-detect build commands based on:
+
 1. Presence of `package.json` with "build" script
 2. Package manager (pnpm > npm > yarn)
 3. Special cases (Prisma schemas)
@@ -117,6 +118,7 @@ fi
 ### TypeScript Configuration
 
 Hooks automatically detect:
+
 - `tsconfig.json` for standard TypeScript projects
 - `tsconfig.app.json` for Vite/React projects
 
@@ -134,6 +136,7 @@ fi
 ### Prettier Configuration
 
 The prettier hook searches for configs in this order:
+
 1. Current file directory (walking upward)
 2. Project root
 3. Falls back to Prettier defaults
@@ -156,9 +159,9 @@ Configure file category detection in `.claude/hooks/error-handling-reminder.ts`:
 
 ```typescript
 function getFileCategory(filePath: string): 'backend' | 'frontend' | 'database' | 'other' {
-    // Add custom patterns
-    if (filePath.includes('/my-custom-dir/')) return 'backend';
-    // ... existing patterns
+  // Add custom patterns
+  if (filePath.includes('/my-custom-dir/')) return 'backend';
+  // ... existing patterns
 }
 ```
 
@@ -214,6 +217,7 @@ Stop hooks run in the order specified in `settings.json`:
 ```
 
 **Why this order matters:**
+
 1. Format files first (clean code)
 2. Then check for errors
 3. Finally show reminders
@@ -350,6 +354,7 @@ fi
 **Issue:** Hooks are slow
 
 **Solutions:**
+
 1. Limit TypeScript checks to changed files only
 2. Use faster package managers (pnpm > npm)
 3. Add more skip conditions
