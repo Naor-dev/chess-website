@@ -107,6 +107,7 @@ Key files:
 - **Game API** at `src/lib/gameApi.ts` (create, get, list games via proxy)
 - **Auth state** via `src/contexts/AuthContext.tsx` (useAuth hook)
 - **Query client** at `src/lib/queryClient.ts` (TanStack Query)
+- **Custom hooks** at `src/hooks/` - Reusable React hooks (e.g., `useBoardSize` for responsive board sizing)
 - **Styling** via TailwindCSS v4
 - **Chess board** via react-chessboard v5 (uses `options` prop pattern)
 
@@ -371,6 +372,7 @@ GitHub Actions workflows in `.github/workflows/`:
 
 **Recently Completed:**
 
+- Mobile responsive design (#73, #81) - home page and game page responsive across mobile, tablet, desktop
 - Resign functionality - users can resign active games with confirmation dialog
 - Full dependency upgrade - all packages updated to latest (ESLint 9, Zod 4, Express 5, Sentry 10, Jest 30, react-chessboard 5)
 
@@ -474,5 +476,14 @@ Comprehensive UI/UX design guidelines are available locally at `dev/design-guide
 - Responsive design breakpoints
 - Accessibility requirements (WCAG 2.1 AA)
 - Chess-specific patterns (board, clocks, status messages)
+
+**Responsive board sizing** (via `useBoardSize` hook):
+
+- Mobile (< 640px): full width - 32px padding
+- sm (640px+): 400px
+- md (768px+): 480px
+- lg (1024px+): 560px
+- xl (1280px+): 640px
+- Landscape: limited to 65% viewport height
 
 **Use this local file instead of the `/ux-advisor` skill for design questions.**

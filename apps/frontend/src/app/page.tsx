@@ -35,7 +35,7 @@ function GoogleIcon() {
 function ChessKnightIcon() {
   return (
     <svg
-      className="h-20 w-20 text-emerald-600 dark:text-emerald-500 drop-shadow-lg"
+      className="h-14 w-14 sm:h-16 sm:w-16 md:h-20 md:w-20 text-emerald-600 dark:text-emerald-500 drop-shadow-lg"
       viewBox="0 0 45 45"
       fill="currentColor"
     >
@@ -88,7 +88,7 @@ function FeatureCard({
   description: string;
 }) {
   return (
-    <div className="flex flex-col items-center gap-3 rounded-2xl bg-white/60 p-6 backdrop-blur-sm dark:bg-zinc-900/60 border border-zinc-200/50 dark:border-zinc-800/50">
+    <div className="flex flex-col items-center gap-2 sm:gap-3 rounded-2xl bg-white/60 p-4 sm:p-6 backdrop-blur-sm dark:bg-zinc-900/60 border border-zinc-200/50 dark:border-zinc-800/50">
       <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-100 dark:bg-emerald-900/40">
         {icon}
       </div>
@@ -106,12 +106,12 @@ export default function Home() {
     <div className="relative min-h-screen overflow-hidden gradient-bg chess-pattern">
       {/* Decorative background elements */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <DecorativePawn className="absolute -left-10 top-20 h-64 w-64 text-emerald-600 dark:text-emerald-400 rotate-12" />
-        <DecorativePawn className="absolute -right-10 bottom-20 h-48 w-48 text-emerald-600 dark:text-emerald-400 -rotate-12" />
-        <div className="absolute left-1/2 top-0 h-[500px] w-[500px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-emerald-500/10 blur-3xl dark:bg-emerald-500/5" />
+        <DecorativePawn className="absolute -left-10 top-20 h-64 w-64 text-emerald-600 dark:text-emerald-400 rotate-12 hidden md:block" />
+        <DecorativePawn className="absolute -right-10 bottom-20 h-48 w-48 text-emerald-600 dark:text-emerald-400 -rotate-12 hidden md:block" />
+        <div className="absolute left-1/2 top-0 h-[300px] w-[300px] md:h-[400px] md:w-[400px] lg:h-[500px] lg:w-[500px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-emerald-500/10 blur-3xl dark:bg-emerald-500/5" />
       </div>
 
-      <main className="relative flex min-h-screen flex-col items-center justify-center px-6 py-16">
+      <main className="relative flex min-h-screen flex-col items-center justify-center px-4 py-10 sm:px-6 sm:py-12 md:py-16">
         {/* Logo Section */}
         <div className="mb-8 float">
           <div className="relative">
@@ -124,7 +124,7 @@ export default function Home() {
 
         {/* Title Section */}
         <div className="mb-12 text-center fade-in">
-          <h1 className="mb-4 text-5xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
+          <h1 className="mb-4 text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
             Chess<span className="text-emerald-600 dark:text-emerald-500">Master</span>
           </h1>
           <p className="mx-auto max-w-md text-lg text-zinc-600 dark:text-zinc-400">
@@ -208,7 +208,7 @@ export default function Home() {
         </div>
 
         {/* Feature Cards */}
-        <div className="mt-16 grid w-full max-w-3xl grid-cols-1 gap-4 sm:grid-cols-3 stagger-children">
+        <div className="mt-10 sm:mt-12 md:mt-16 grid w-full max-w-3xl grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 stagger-children">
           <FeatureCard
             icon={
               <svg
@@ -260,7 +260,7 @@ export default function Home() {
         </div>
 
         {/* Footer */}
-        <footer className="mt-16 text-center">
+        <footer className="mt-10 sm:mt-12 md:mt-16 text-center">
           <p className="text-sm text-zinc-500 dark:text-zinc-600">
             Powered by{' '}
             <span className="font-medium text-emerald-600 dark:text-emerald-500">Stockfish</span>{' '}

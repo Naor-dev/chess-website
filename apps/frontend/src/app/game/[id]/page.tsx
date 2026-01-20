@@ -6,6 +6,7 @@ import { Chessboard } from 'react-chessboard';
 import { Chess, Square } from 'chess.js';
 import { useAuth } from '@/contexts/AuthContext';
 import { gameApi } from '@/lib/gameApi';
+import { useBoardSize } from '@/hooks/useBoardSize';
 import type { GameResponse, MakeMoveRequest, GameResult } from '@chess-website/shared';
 
 function formatTime(ms: number): string {
@@ -29,7 +30,7 @@ function ChessClock({
 }) {
   return (
     <div
-      className={`flex items-center justify-between rounded-xl border-2 px-5 py-4 transition-all ${
+      className={`flex items-center justify-between rounded-lg sm:rounded-xl border-2 px-3 sm:px-5 py-3 sm:py-4 transition-all ${
         isActive
           ? isLow
             ? 'border-red-500 bg-red-50 dark:border-red-600 dark:bg-red-950/40'
@@ -50,7 +51,7 @@ function ChessClock({
         <span className="text-sm font-medium text-zinc-600 dark:text-zinc-400">{label}</span>
       </div>
       <span
-        className={`font-mono text-2xl font-bold tabular-nums ${
+        className={`font-mono text-xl sm:text-2xl font-bold tabular-nums ${
           isLow && isActive
             ? 'text-red-600 dark:text-red-400'
             : isActive
@@ -223,7 +224,7 @@ function GameInfo({ game }: { game: GameResponse }) {
 
   return (
     <div
-      className={`flex items-center justify-center gap-3 rounded-xl border px-4 py-3 ${status.bg} ${status.border} backdrop-blur-sm`}
+      className={`flex items-center justify-center gap-2 sm:gap-3 rounded-lg sm:rounded-xl border px-3 sm:px-4 py-2.5 sm:py-3 ${status.bg} ${status.border} backdrop-blur-sm`}
     >
       <span className={status.color}>{getIcon()}</span>
       <p className={`font-semibold ${status.color}`}>{status.text}</p>
@@ -419,7 +420,7 @@ function GameOverModal({
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onGoHome} />
 
       {/* Modal */}
-      <div className="relative z-10 w-full max-w-sm animate-in zoom-in-95 slide-in-from-bottom-4 duration-300">
+      <div className="relative z-10 w-full max-w-[calc(100vw-2rem)] sm:max-w-sm animate-in zoom-in-95 slide-in-from-bottom-4 duration-300">
         <div className="overflow-hidden rounded-3xl bg-white shadow-2xl dark:bg-zinc-900">
           {/* Icon section */}
           <div className={`flex flex-col items-center pb-6 pt-8 ${colors.bg}`}>
@@ -514,6 +515,7 @@ export default function GamePage() {
   const router = useRouter();
   const { isAuthenticated, isLoading: authLoading } = useAuth();
   const gameId = params.id as string;
+  const { boardSize } = useBoardSize();
 
   const [game, setGame] = useState<GameResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -874,8 +876,8 @@ export default function GamePage() {
       </header>
 
       {/* Main Game Area */}
-      <main className="flex flex-1 flex-col items-center justify-center gap-4 p-4 md:p-8">
-        <div className="w-full max-w-md space-y-4">
+      <main className="flex flex-1 flex-col items-center justify-center gap-3 sm:gap-4 p-3 sm:p-4 md:p-6 lg:p-8">
+        <div className="w-full space-y-3 sm:space-y-4" style={{ maxWidth: boardSize + 48 }}>
           {/* Engine Clock (top) */}
           {showClocks && (
             <ChessClock
@@ -888,10 +890,8 @@ export default function GamePage() {
 
           {/* Chess Board */}
           <div
-            className="relative overflow-hidden rounded-2xl shadow-2xl glow"
-            style={{
-              width: Math.min(400, typeof window !== 'undefined' ? window.innerWidth - 32 : 400),
-            }}
+            className="relative mx-auto overflow-hidden rounded-xl sm:rounded-2xl shadow-xl sm:shadow-2xl glow"
+            style={{ width: boardSize }}
           >
             <Chessboard
               options={{
@@ -952,7 +952,7 @@ export default function GamePage() {
             <button
               onClick={handleResign}
               disabled={isResigning}
-              className={`w-full rounded-xl border-2 px-6 py-3 font-medium backdrop-blur-sm transition-all ${
+              className={`w-full rounded-lg sm:rounded-xl border-2 px-4 sm:px-6 py-2.5 sm:py-3 font-medium backdrop-blur-sm transition-all ${
                 isResigning
                   ? 'border-zinc-300 bg-zinc-100 text-zinc-400 cursor-not-allowed dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-600'
                   : 'border-zinc-200 bg-white/60 text-zinc-600 hover:border-red-300 hover:bg-red-50 hover:text-red-600 dark:border-zinc-700 dark:bg-zinc-900/40 dark:text-zinc-400 dark:hover:border-red-800 dark:hover:bg-red-950/40 dark:hover:text-red-400'
