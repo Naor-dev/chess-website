@@ -526,6 +526,7 @@ export default function GamePage() {
   const [isSaving, setIsSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [isResigning, setIsResigning] = useState(false);
+  const [invalidMove, setInvalidMove] = useState(false);
 
   // Local display times for clock ticking (separate from server times)
   const [displayTimeUser, setDisplayTimeUser] = useState<number>(0);
@@ -661,6 +662,12 @@ export default function GamePage() {
         ((piece.pieceType[0] === 'w' && targetSquare[1] === '8') ||
           (piece.pieceType[0] === 'b' && targetSquare[1] === '1'));
 
+      // Helper to trigger invalid move animation
+      const triggerInvalidMove = () => {
+        setInvalidMove(true);
+        setTimeout(() => setInvalidMove(false), 500);
+      };
+
       // Validate move client-side first with a test chess instance
       let newFen: string;
       try {
@@ -672,10 +679,12 @@ export default function GamePage() {
         });
 
         if (!moveResult) {
+          triggerInvalidMove();
           return false; // Invalid move
         }
         newFen = testChess.fen();
       } catch {
+        triggerInvalidMove();
         return false; // Invalid move
       }
 
@@ -814,21 +823,40 @@ export default function GamePage() {
       {/* Header */}
       <header className="sticky top-0 z-10 border-b border-zinc-200/50 bg-white/80 backdrop-blur-md dark:border-zinc-800/50 dark:bg-zinc-900/80">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3">
-          <button
-            onClick={() => router.push('/')}
-            className="flex items-center gap-2 rounded-lg px-3 py-2 text-zinc-600 transition-all hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
-          >
-            <svg
-              className="h-5 w-5"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
+          <div className="flex items-center gap-1 sm:gap-2">
+            <button
+              onClick={() => router.push('/')}
+              className="flex items-center gap-2 rounded-lg px-3 py-2 text-zinc-600 transition-all hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
             >
-              <path d="M19 12H5M12 19l-7-7 7-7" />
-            </svg>
-            <span className="hidden sm:inline">Exit Game</span>
-          </button>
+              <svg
+                className="h-5 w-5"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
+                <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
+                <polyline points="9,22 9,12 15,12 15,22" />
+              </svg>
+              <span className="hidden sm:inline">Home</span>
+            </button>
+            <button
+              onClick={() => router.push('/history')}
+              className="flex items-center gap-2 rounded-lg px-3 py-2 text-zinc-600 transition-all hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
+            >
+              <svg
+                className="h-5 w-5"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
+                <circle cx="12" cy="12" r="10" />
+                <polyline points="12,6 12,12 16,14" />
+              </svg>
+              <span className="hidden sm:inline">My Games</span>
+            </button>
+          </div>
 
           <DifficultyBadge level={game.difficultyLevel} />
 
@@ -890,7 +918,9 @@ export default function GamePage() {
 
           {/* Chess Board */}
           <div
-            className="relative mx-auto overflow-hidden rounded-xl sm:rounded-2xl shadow-xl sm:shadow-2xl glow"
+            className={`relative mx-auto overflow-hidden rounded-xl sm:rounded-2xl shadow-xl sm:shadow-2xl glow transition-all ${
+              invalidMove ? 'animate-shake ring-4 ring-red-500/50' : ''
+            }`}
             style={{ width: boardSize }}
           >
             <Chessboard
