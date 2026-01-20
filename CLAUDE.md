@@ -366,12 +366,10 @@ GitHub Actions workflows in `.github/workflows/`:
 - Game history page - view active and completed games
 - #43: Clock management - clocks tick on active turn, timeout detection, time increments
 
-**In Progress:**
-
-- Game end detection improvements (checkmate, stalemate, draw UI)
-
 **Recently Completed:**
 
+- Quick wins bundle (#26, #28, #80) - illegal move shake animation, check alert, navigation buttons in game header
+- Game end detection (#126) - proper checkmate, stalemate, draw detection using chess.js methods
 - Mobile responsive design (#73, #81) - home page and game page responsive across mobile, tablet, desktop
 - Resign functionality - users can resign active games with confirmation dialog
 - Full dependency upgrade - all packages updated to latest (ESLint 9, Zod 4, Express 5, Sentry 10, Jest 30, react-chessboard 5)

@@ -527,6 +527,8 @@ export default function GamePage() {
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [isResigning, setIsResigning] = useState(false);
   const [invalidMove, setInvalidMove] = useState(false);
+  const [selectedSquare, setSelectedSquare] = useState<Square | null>(null);
+  const [possibleMoves, setPossibleMoves] = useState<Square[]>([]);
 
   // Local display times for clock ticking (separate from server times)
   const [displayTimeUser, setDisplayTimeUser] = useState<number>(0);
@@ -539,6 +541,38 @@ export default function GamePage() {
     if (!currentFen) return null;
     return new Chess(currentFen);
   }, [currentFen]);
+
+  // Custom square styles for highlighting selected piece and possible moves
+  const customSquareStyles = useMemo(() => {
+    const styles: Record<string, React.CSSProperties> = {};
+
+    // Highlight selected square
+    if (selectedSquare) {
+      styles[selectedSquare] = {
+        backgroundColor: 'rgba(255, 255, 0, 0.4)',
+      };
+    }
+
+    // Highlight possible moves with dots (empty squares) or rings (capture squares)
+    possibleMoves.forEach((square) => {
+      const pieceOnSquare = chess?.get(square);
+      const isCapture = pieceOnSquare !== null && pieceOnSquare !== undefined;
+      if (isCapture) {
+        // Capture move - show a ring around the piece
+        styles[square] = {
+          background:
+            'radial-gradient(transparent 0%, transparent 70%, rgba(0, 0, 0, 0.25) 70%, rgba(0, 0, 0, 0.25) 85%, transparent 85%)',
+        };
+      } else {
+        // Empty square - show a dot in the center
+        styles[square] = {
+          background: 'radial-gradient(circle at center, rgba(0, 0, 0, 0.2) 22%, transparent 22%)',
+        };
+      }
+    });
+
+    return styles;
+  }, [selectedSquare, possibleMoves, chess]);
 
   // Sync display times with server times when game updates
   // Uses turnStartedAt to calculate accurate elapsed time for page loads/refreshes
@@ -720,6 +754,65 @@ export default function GamePage() {
     },
     [game, chess, gameId, isMoving]
   );
+
+  // Handle square click to show possible moves
+  const onSquareClick = useCallback(
+    ({ square }: { piece: { pieceType: string } | null; square: string }) => {
+      const clickedSquare = square as Square;
+
+      if (!game || !chess || game.isGameOver || game.currentTurn !== 'w') {
+        // Clear selection if game is over or not user's turn
+        setSelectedSquare(null);
+        setPossibleMoves([]);
+        return;
+      }
+
+      // If clicking the same square, deselect
+      if (selectedSquare === clickedSquare) {
+        setSelectedSquare(null);
+        setPossibleMoves([]);
+        return;
+      }
+
+      // Check if clicking on a possible move (make the move via click)
+      if (selectedSquare && possibleMoves.includes(clickedSquare)) {
+        const piece = chess.get(selectedSquare);
+
+        // Make move via drop handler (it handles promotion detection)
+        onDrop({
+          piece: { pieceType: `${piece?.color}${piece?.type.toUpperCase()}` },
+          sourceSquare: selectedSquare,
+          targetSquare: clickedSquare,
+        });
+
+        setSelectedSquare(null);
+        setPossibleMoves([]);
+        return;
+      }
+
+      // Check if the square has a piece of the current player
+      const pieceOnSquare = chess.get(clickedSquare);
+      if (pieceOnSquare && pieceOnSquare.color === 'w') {
+        // Get legal moves for this piece
+        const moves = chess.moves({ square: clickedSquare, verbose: true });
+        const targetSquares = moves.map((move) => move.to as Square);
+
+        setSelectedSquare(clickedSquare);
+        setPossibleMoves(targetSquares);
+      } else {
+        // Clicked on empty square or opponent piece - clear selection
+        setSelectedSquare(null);
+        setPossibleMoves([]);
+      }
+    },
+    [game, chess, selectedSquare, possibleMoves, onDrop]
+  );
+
+  // Clear selection when move is made (after drag or when turn changes)
+  useEffect(() => {
+    setSelectedSquare(null);
+    setPossibleMoves([]);
+  }, [game?.currentFen]);
 
   // Handle save game
   const handleSaveGame = async () => {
@@ -928,6 +1021,8 @@ export default function GamePage() {
                 position: game.currentFen,
                 allowDragging: !game.isGameOver && isUserTurn && !isMoving,
                 onPieceDrop: onDrop,
+                onSquareClick: onSquareClick,
+                squareStyles: customSquareStyles,
                 boardStyle: {
                   borderRadius: '0',
                 },
