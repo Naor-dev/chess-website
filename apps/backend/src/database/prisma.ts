@@ -5,7 +5,6 @@ import * as Sentry from '@sentry/node';
 import { config } from '../config/unifiedConfig';
 
 declare global {
-  // eslint-disable-next-line no-var
   var prisma: PrismaClient | undefined;
 }
 

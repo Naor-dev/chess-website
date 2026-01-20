@@ -640,23 +640,32 @@ export default function GamePage() {
 
   // Handle piece drop (drag and drop move)
   const onDrop = useCallback(
-    (sourceSquare: Square, targetSquare: Square, piece: string): boolean => {
+    ({
+      piece,
+      sourceSquare,
+      targetSquare,
+    }: {
+      piece: { pieceType: string };
+      sourceSquare: string;
+      targetSquare: string | null;
+    }): boolean => {
       if (!game || !chess || isMoving || game.isGameOver) return false;
       if (game.currentTurn !== 'w') return false; // Not user's turn
+      if (!targetSquare) return false; // Dropped off board
 
-      // Check if it's a promotion move
+      // Check if it's a promotion move (pieceType is like 'wP' for white pawn)
       const isPromotion =
-        piece[1] === 'P' &&
-        ((piece[0] === 'w' && targetSquare[1] === '8') ||
-          (piece[0] === 'b' && targetSquare[1] === '1'));
+        piece.pieceType[1] === 'P' &&
+        ((piece.pieceType[0] === 'w' && targetSquare[1] === '8') ||
+          (piece.pieceType[0] === 'b' && targetSquare[1] === '1'));
 
       // Validate move client-side first with a test chess instance
       let newFen: string;
       try {
         const testChess = new Chess(game.currentFen);
         const moveResult = testChess.move({
-          from: sourceSquare,
-          to: targetSquare,
+          from: sourceSquare as Square,
+          to: targetSquare as Square,
           promotion: isPromotion ? 'q' : undefined, // Default to queen promotion
         });
 
@@ -676,8 +685,8 @@ export default function GamePage() {
 
       // Make the move via API
       const move: MakeMoveRequest = {
-        from: sourceSquare,
-        to: targetSquare,
+        from: sourceSquare as Square,
+        to: targetSquare as Square,
         promotion: isPromotion ? 'q' : undefined,
       };
 
@@ -878,20 +887,23 @@ export default function GamePage() {
           )}
 
           {/* Chess Board */}
-          <div className="relative overflow-hidden rounded-2xl shadow-2xl glow">
+          <div
+            className="relative overflow-hidden rounded-2xl shadow-2xl glow"
+            style={{
+              width: Math.min(400, typeof window !== 'undefined' ? window.innerWidth - 32 : 400),
+            }}
+          >
             <Chessboard
-              position={game.currentFen}
-              boardWidth={Math.min(
-                400,
-                typeof window !== 'undefined' ? window.innerWidth - 32 : 400
-              )}
-              arePiecesDraggable={!game.isGameOver && isUserTurn && !isMoving}
-              onPieceDrop={onDrop}
-              customBoardStyle={{
-                borderRadius: '0',
+              options={{
+                position: game.currentFen,
+                allowDragging: !game.isGameOver && isUserTurn && !isMoving,
+                onPieceDrop: onDrop,
+                boardStyle: {
+                  borderRadius: '0',
+                },
+                darkSquareStyle: { backgroundColor: '#769656' },
+                lightSquareStyle: { backgroundColor: '#eeeed2' },
               }}
-              customDarkSquareStyle={{ backgroundColor: '#769656' }}
-              customLightSquareStyle={{ backgroundColor: '#eeeed2' }}
             />
             {/* Engine thinking overlay - shown when waiting for engine response */}
             {isMoving && <EngineThinkingOverlay />}

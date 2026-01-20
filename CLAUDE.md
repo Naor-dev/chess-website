@@ -70,9 +70,10 @@ Key patterns:
 - **Repositories** extend `BaseRepository` with `executeWithErrorHandling()` for automatic Sentry capture
 - **Config** via `src/config/unifiedConfig.ts` (NEVER use process.env directly)
 - **Validation** via Zod schemas from `@chess-website/shared`
-- **Error tracking** via Sentry (`src/instrument.ts` must be first import)
+- **Error tracking** via Sentry v10 (`src/instrument.ts` must be first import)
 - **Database** via Prisma singleton at `src/database/prisma.ts`
 - **Prisma 7 Config** at `prisma.config.ts` (in backend root, NOT in prisma/ folder)
+- **ESLint 9** with flat config (`eslint.config.mjs` files, NOT `.eslintrc.js`)
 
 Key files:
 
@@ -103,7 +104,8 @@ Key files:
 - **Game API** at `src/lib/gameApi.ts` (create, get, list games via proxy)
 - **Auth state** via `src/contexts/AuthContext.tsx` (useAuth hook)
 - **Query client** at `src/lib/queryClient.ts` (TanStack Query)
-- **Styling** via TailwindCSS
+- **Styling** via TailwindCSS v4
+- **Chess board** via react-chessboard v5 (uses `options` prop pattern)
 
 Key pages:
 
@@ -134,7 +136,7 @@ Import in apps: `import { GameResponse, createGameSchema } from '@chess-website/
 2. **Never use process.env** - Always use `import { config } from './config/unifiedConfig'`
 3. **Controllers extend BaseController** - Use `handleSuccess()`, `handleError()`, `handleValidationError()`
 4. **Repositories extend BaseRepository** - Use `executeWithErrorHandling(operation, fn, context)` for all DB operations
-5. **Validate all input** - Use Zod schemas from shared package
+5. **Validate all input** - Use Zod v4 schemas from shared package (note: use `error.issues` not `error.errors`)
 6. **Always verify game ownership** - When implementing game endpoints, use `gameService.getGame(gameId, userId)` to verify the user owns the game before any operation
 
 ## API Response Pattern
@@ -367,6 +369,7 @@ GitHub Actions workflows in `.github/workflows/`:
 **Recently Completed:**
 
 - Resign functionality - users can resign active games with confirmation dialog
+- Full dependency upgrade - all packages updated to latest (ESLint 9, Zod 4, Express 5, Sentry 10, Jest 30, react-chessboard 5)
 
 ## Authentication Flow (BFF Pattern)
 
