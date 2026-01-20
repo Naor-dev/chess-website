@@ -31,6 +31,9 @@ pnpm lint
 # Format code
 pnpm format
 
+# Check for outdated/deprecated packages (blocks CI)
+pnpm deps:check
+
 # Backend only
 cd apps/backend
 pnpm dev              # Start with nodemon
@@ -316,7 +319,7 @@ GitHub Actions workflows in `.github/workflows/`:
 | `codeql.yml`             | SAST Analysis                       | Every push/PR + Weekly  |
 | `container-security.yml` | Container Scan (Trivy)              | When Dockerfiles change |
 
-**CI checks include:** format, lint, prisma validate/generate, build, test, dependency audit, license check, Gitleaks secret scanning.
+**CI checks include:** format, lint, prisma validate/generate, build, test, **outdated/deprecated packages (strict)**, dependency audit, license check, Gitleaks secret scanning.
 
 **CI secrets required:**
 

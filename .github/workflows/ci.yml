@@ -74,6 +74,10 @@ jobs:
           JWT_SECRET: "test-jwt-secret-for-ci"
           FRONTEND_URL: "http://localhost:3000"
 
+      # Dependency Health
+      - name: Check for outdated/deprecated packages
+        run: node scripts/check-dependencies.js
+
       # Security
       - name: Dependency audit
         run: pnpm audit --audit-level=high
