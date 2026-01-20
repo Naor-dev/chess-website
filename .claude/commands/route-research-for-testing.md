@@ -1,6 +1,6 @@
 ---
 description: Map edited routes & launch tests
-argument-hint: "[/extra/path …]"
+argument-hint: '[/extra/path …]'
 allowed-tools: Bash(cat:*), Bash(awk:*), Bash(grep:*), Bash(sort:*), Bash(xargs:*), Bash(sed:*)
 model: sonnet
 ---
@@ -28,10 +28,10 @@ Follow the numbered steps **exactly**:
 
 ```json
 {
-    "tool": "Task",
-    "parameters": {
-        "description": "route smoke tests",
-        "prompt": "Run the auth-route-tester sub-agent on the JSON above."
-    }
+  "tool": "Task",
+  "parameters": {
+    "description": "route smoke tests",
+    "prompt": "Run the auth-route-tester sub-agent on the JSON above."
+  }
 }
 ```

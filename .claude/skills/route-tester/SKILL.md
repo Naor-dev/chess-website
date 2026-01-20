@@ -6,9 +6,11 @@ description: Test authenticated routes in the your project using cookie-based au
 # your project Route Tester Skill
 
 ## Purpose
+
 This skill provides patterns for testing authenticated routes in the your project using cookie-based JWT authentication.
 
 ## When to Use This Skill
+
 - Testing new API endpoints
 - Validating route functionality after changes
 - Debugging authentication issues
@@ -18,6 +20,7 @@ This skill provides patterns for testing authenticated routes in the your projec
 ## your project Authentication Overview
 
 The your project uses:
+
 - **Keycloak** for SSO (realm: yourRealm)
 - **Cookie-based JWT** tokens (not Bearer headers)
 - **Cookie name**: `refresh_token`
@@ -59,6 +62,7 @@ node scripts/test-auth-route.js \
 #### Script Output
 
 The script outputs:
+
 - The request details
 - The response status and body
 - A curl command for manual reproduction
@@ -106,6 +110,7 @@ curl -H "X-Mock-Auth: true" \
 #### Mock Auth Requirements
 
 Mock auth ONLY works when:
+
 - `NODE_ENV` is `development` or `test`
 - The `mockAuth` middleware is added to the route
 - Will NEVER work in production (security feature)
@@ -169,13 +174,13 @@ The `test-auth-route.js` script uses these credentials:
 
 ## Service Ports
 
-| Service | Port | Base URL |
-|---------|------|----------|
-| Users   | 3000 | http://localhost:3000 |
-| Projects| 3001 | http://localhost:3001 |
-| Form    | 3002 | http://localhost:3002 |
-| Email   | 3003 | http://localhost:3003 |
-| Uploads | 5000 | http://localhost:5000 |
+| Service  | Port | Base URL              |
+| -------- | ---- | --------------------- |
+| Users    | 3000 | http://localhost:3000 |
+| Projects | 3001 | http://localhost:3001 |
+| Form     | 3002 | http://localhost:3002 |
+| Email    | 3003 | http://localhost:3003 |
+| Uploads  | 5000 | http://localhost:5000 |
 
 ## Route Prefixes
 
@@ -183,13 +188,14 @@ Check `/src/app.ts` in each service for route prefixes:
 
 ```typescript
 // Example from blog-api/src/app.ts
-app.use('/blog-api/api', formRoutes);          // Prefix: /blog-api/api
-app.use('/api/workflow', workflowRoutes);  // Prefix: /api/workflow
+app.use('/blog-api/api', formRoutes); // Prefix: /blog-api/api
+app.use('/api/workflow', workflowRoutes); // Prefix: /api/workflow
 ```
 
 **Full Route** = Base URL + Prefix + Route Path
 
 Example:
+
 - Base: `http://localhost:3002`
 - Prefix: `/form`
 - Route: `/777/submit`
@@ -228,12 +234,14 @@ mysql> SELECT * FROM WorkflowNotification WHERE recipientUserId = 'user-123';
 ### 401 Unauthorized
 
 **Possible causes**:
+
 1. Token expired (regenerate with test-auth-route.js)
 2. Incorrect cookie format
 3. JWT secret mismatch
 4. Keycloak not running
 
 **Solutions**:
+
 ```bash
 # Check Keycloak is running
 docker ps | grep keycloak
@@ -247,11 +255,13 @@ node scripts/test-auth-route.js http://localhost:3002/api/health
 ### 403 Forbidden
 
 **Possible causes**:
+
 1. User lacks required role
 2. Resource permissions incorrect
 3. Route requires specific permissions
 
 **Solutions**:
+
 ```bash
 # Use mock auth with admin role
 curl -H "X-Mock-Auth: true" \
@@ -263,11 +273,13 @@ curl -H "X-Mock-Auth: true" \
 ### 404 Not Found
 
 **Possible causes**:
+
 1. Incorrect URL
 2. Missing route prefix
 3. Route not registered
 
 **Solutions**:
+
 1. Check `app.ts` for route prefixes
 2. Verify route registration
 3. Check service is running (`pm2 list`)
@@ -275,12 +287,14 @@ curl -H "X-Mock-Auth: true" \
 ### 500 Internal Server Error
 
 **Possible causes**:
+
 1. Database connection issue
 2. Missing required fields
 3. Validation error
 4. Application error
 
 **Solutions**:
+
 1. Check service logs (`pm2 logs <service>`)
 2. Check Sentry for error details
 3. Verify request body matches expected schema
@@ -298,6 +312,7 @@ For comprehensive route testing after making changes:
 3. **Invoke auth-route-tester agent**
 
 The agent will:
+
 - Test the route with proper authentication
 - Verify database changes
 - Check response format

@@ -18,18 +18,21 @@ Code that relies on library defaults for security behavior is a time bomb. Futur
 All security-critical behavior must be explicitly configured in code, never rely on defaults.
 
 **Bad:**
+
 ```typescript
-jwt.verify(token, secret);  // Uses default algorithm from token header
+jwt.verify(token, secret); // Uses default algorithm from token header
 ```
 
 **Good:**
+
 ```typescript
-jwt.verify(token, secret, { algorithms: ['HS256'] });  // Explicit algorithm
+jwt.verify(token, secret, { algorithms: ['HS256'] }); // Explicit algorithm
 ```
 
 ### 2. JWT Tokens
 
 Always specify:
+
 - `algorithms` array in verify() - prevents algorithm confusion attacks
 - `issuer` and `audience` claims - prevents token misuse across services
 - Explicit expiration
@@ -43,7 +46,7 @@ jwt.sign(payload, secret, {
 
 // Verification
 jwt.verify(token, secret, {
-  algorithms: ['HS256'],  // REQUIRED - explicit algorithm
+  algorithms: ['HS256'], // REQUIRED - explicit algorithm
   issuer: 'my-service',
   audience: 'my-frontend',
 });
@@ -55,11 +58,11 @@ Always specify all security attributes:
 
 ```typescript
 res.cookie('token', value, {
-  httpOnly: true,        // Prevents XSS access
-  secure: true,          // HTTPS only (in production)
-  sameSite: 'strict',    // CSRF protection
-  path: '/',             // Explicit scope
-  maxAge: 604800000,     // Explicit expiration
+  httpOnly: true, // Prevents XSS access
+  secure: true, // HTTPS only (in production)
+  sameSite: 'strict', // CSRF protection
+  path: '/', // Explicit scope
+  maxAge: 604800000, // Explicit expiration
 });
 ```
 
@@ -69,13 +72,13 @@ Never use default algorithms. Always specify:
 
 ```typescript
 // Hashing
-crypto.createHash('sha256');  // Explicit algorithm
+crypto.createHash('sha256'); // Explicit algorithm
 
 // HMAC
-crypto.createHmac('sha256', key);  // Explicit algorithm
+crypto.createHmac('sha256', key); // Explicit algorithm
 
 // Encryption
-crypto.createCipheriv('aes-256-gcm', key, iv);  // Explicit cipher
+crypto.createCipheriv('aes-256-gcm', key, iv); // Explicit cipher
 ```
 
 ### 5. Password Hashing
@@ -84,7 +87,7 @@ Use bcrypt or argon2 with explicit cost factors:
 
 ```typescript
 // bcrypt - explicit rounds
-bcrypt.hash(password, 12);  // 12 rounds minimum
+bcrypt.hash(password, 12); // 12 rounds minimum
 
 // argon2 - explicit parameters
 argon2.hash(password, {
@@ -98,6 +101,7 @@ argon2.hash(password, {
 ### 6. OAuth/OIDC
 
 Always validate:
+
 - State parameter (CSRF)
 - Nonce (replay attacks)
 - Token issuer
@@ -120,13 +124,11 @@ const payload = jwt.verify(idToken, publicKey, {
 
 ```typescript
 // Bad - timing attack vulnerable
-if (apiKey === storedKey) { }
+if (apiKey === storedKey) {
+}
 
 // Good - constant time
-crypto.timingSafeEqual(
-  Buffer.from(apiKey),
-  Buffer.from(storedKey)
-);
+crypto.timingSafeEqual(Buffer.from(apiKey), Buffer.from(storedKey));
 ```
 
 ### 8. Input Validation
@@ -160,12 +162,12 @@ const schema = z.object({
 
 ## Examples of "Safe by Coincidence"
 
-| Code | Why It's Dangerous |
-|------|-------------------|
-| `jwt.verify(token, secret)` | Algorithm from token header - attacker controlled |
-| `res.cookie('token', value)` | Missing httpOnly, secure, sameSite |
-| `crypto.createHash()` | No algorithm - varies by Node version |
-| `bcrypt.hash(pw, 10)` | 10 rounds may be too low for modern hardware |
+| Code                         | Why It's Dangerous                                |
+| ---------------------------- | ------------------------------------------------- |
+| `jwt.verify(token, secret)`  | Algorithm from token header - attacker controlled |
+| `res.cookie('token', value)` | Missing httpOnly, secure, sameSite                |
+| `crypto.createHash()`        | No algorithm - varies by Node version             |
+| `bcrypt.hash(pw, 10)`        | 10 rounds may be too low for modern hardware      |
 
 ## Remember
 

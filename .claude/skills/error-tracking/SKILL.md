@@ -6,9 +6,11 @@ description: Add Sentry v8 error tracking and performance monitoring to your pro
 # your project Sentry Integration Skill
 
 ## Purpose
+
 This skill enforces comprehensive Sentry error tracking and performance monitoring across all your project services following Sentry v8 patterns.
 
 ## When to Use This Skill
+
 - Adding error handling to any code
 - Creating new controllers or routes
 - Instrumenting cron jobs
@@ -23,12 +25,14 @@ This skill enforces comprehensive Sentry error tracking and performance monitori
 ## Current Status
 
 ### Form Service ✅ Complete
+
 - Sentry v8 fully integrated
 - All workflow errors tracked
 - SystemActionQueueProcessor instrumented
 - Test endpoints available
 
 ### Email Service 🟡 In Progress
+
 - Phase 1-2 complete (6/22 tasks)
 - 189 ErrorLogger.log() calls remaining
 
@@ -41,13 +45,13 @@ This skill enforces comprehensive Sentry error tracking and performance monitori
 import { BaseController } from '../controllers/BaseController';
 
 export class MyController extends BaseController {
-    async myMethod() {
-        try {
-            // ... your code
-        } catch (error) {
-            this.handleError(error, 'myMethod'); // Automatically sends to Sentry
-        }
+  async myMethod() {
+    try {
+      // ... your code
+    } catch (error) {
+      this.handleError(error, 'myMethod'); // Automatically sends to Sentry
     }
+  }
 }
 ```
 
@@ -57,15 +61,15 @@ export class MyController extends BaseController {
 import * as Sentry from '@sentry/node';
 
 router.get('/route', async (req, res) => {
-    try {
-        // ... your code
-    } catch (error) {
-        Sentry.captureException(error, {
-            tags: { route: '/route', method: 'GET' },
-            extra: { userId: req.user?.id }
-        });
-        res.status(500).json({ error: 'Internal server error' });
-    }
+  try {
+    // ... your code
+  } catch (error) {
+    Sentry.captureException(error, {
+      tags: { route: '/route', method: 'GET' },
+      extra: { userId: req.user?.id },
+    });
+    res.status(500).json({ error: 'Internal server error' });
+  }
 });
 ```
 
@@ -76,12 +80,12 @@ import { WorkflowSentryHelper } from '../workflow/utils/sentryHelper';
 
 // ✅ CORRECT - Use WorkflowSentryHelper
 WorkflowSentryHelper.captureWorkflowError(error, {
-    workflowCode: 'DHS_CLOSEOUT',
-    instanceId: 123,
-    stepId: 456,
-    userId: 'user-123',
-    operation: 'stepCompletion',
-    metadata: { additionalInfo: 'value' }
+  workflowCode: 'DHS_CLOSEOUT',
+  instanceId: 123,
+  stepId: 456,
+  userId: 'user-123',
+  operation: 'stepCompletion',
+  metadata: { additionalInfo: 'value' },
 });
 ```
 
@@ -94,38 +98,41 @@ import '../instrument';
 import * as Sentry from '@sentry/node';
 
 async function main() {
-    return await Sentry.startSpan({
-        name: 'cron.job-name',
-        op: 'cron',
-        attributes: {
+  return await Sentry.startSpan(
+    {
+      name: 'cron.job-name',
+      op: 'cron',
+      attributes: {
+        'cron.job': 'job-name',
+        'cron.startTime': new Date().toISOString(),
+      },
+    },
+    async () => {
+      try {
+        // Your cron job logic
+      } catch (error) {
+        Sentry.captureException(error, {
+          tags: {
             'cron.job': 'job-name',
-            'cron.startTime': new Date().toISOString(),
-        }
-    }, async () => {
-        try {
-            // Your cron job logic
-        } catch (error) {
-            Sentry.captureException(error, {
-                tags: {
-                    'cron.job': 'job-name',
-                    'error.type': 'execution_error'
-                }
-            });
-            console.error('[Job] Error:', error);
-            process.exit(1);
-        }
-    });
+            'error.type': 'execution_error',
+          },
+        });
+        console.error('[Job] Error:', error);
+        process.exit(1);
+      }
+    }
+  );
 }
 
 main()
-    .then(() => {
-        console.log('[Job] Completed successfully');
-        process.exit(0);
-    })
-    .catch((error) => {
-        console.error('[Job] Fatal error:', error);
-        process.exit(1);
-    });
+  .then(() => {
+    console.log('[Job] Completed successfully');
+    process.exit(0);
+  })
+  .catch((error) => {
+    console.error('[Job] Fatal error:', error);
+    process.exit(1);
+  });
 ```
 
 ### 5. Database Performance Monitoring
@@ -135,13 +142,13 @@ import { DatabasePerformanceMonitor } from '../utils/databasePerformance';
 
 // ✅ CORRECT - Wrap database operations
 const result = await DatabasePerformanceMonitor.withPerformanceTracking(
-    'findMany',
-    'UserProfile',
-    async () => {
-        return await PrismaService.main.userProfile.findMany({
-            take: 5,
-        });
-    }
+  'findMany',
+  'UserProfile',
+  async () => {
+    return await PrismaService.main.userProfile.findMany({
+      take: 5,
+    });
+  }
 );
 ```
 
@@ -150,16 +157,19 @@ const result = await DatabasePerformanceMonitor.withPerformanceTracking(
 ```typescript
 import * as Sentry from '@sentry/node';
 
-const result = await Sentry.startSpan({
+const result = await Sentry.startSpan(
+  {
     name: 'operation.name',
     op: 'operation.type',
     attributes: {
-        'custom.attribute': 'value'
-    }
-}, async () => {
+      'custom.attribute': 'value',
+    },
+  },
+  async () => {
     // Your async operation
     return await someAsyncOperation();
-});
+  }
+);
 ```
 
 ## Error Levels
@@ -178,19 +188,19 @@ Use appropriate severity levels:
 import * as Sentry from '@sentry/node';
 
 Sentry.withScope((scope) => {
-    // ALWAYS include these if available
-    scope.setUser({ id: userId });
-    scope.setTag('service', 'form'); // or 'email', 'users', etc.
-    scope.setTag('environment', process.env.NODE_ENV);
+  // ALWAYS include these if available
+  scope.setUser({ id: userId });
+  scope.setTag('service', 'form'); // or 'email', 'users', etc.
+  scope.setTag('environment', process.env.NODE_ENV);
 
-    // Add operation-specific context
-    scope.setContext('operation', {
-        type: 'workflow.start',
-        workflowCode: 'DHS_CLOSEOUT',
-        entityId: 123
-    });
+  // Add operation-specific context
+  scope.setContext('operation', {
+    type: 'workflow.start',
+    workflowCode: 'DHS_CLOSEOUT',
+    entityId: 123,
+  });
 
-    Sentry.captureException(error);
+  Sentry.captureException(error);
 });
 ```
 
@@ -205,17 +215,16 @@ import * as Sentry from '@sentry/node';
 import { nodeProfilingIntegration } from '@sentry/profiling-node';
 
 Sentry.init({
-    dsn: process.env.SENTRY_DSN,
-    environment: process.env.NODE_ENV || 'development',
-    integrations: [
-        nodeProfilingIntegration(),
-    ],
-    tracesSampleRate: 0.1,
-    profilesSampleRate: 0.1,
+  dsn: process.env.SENTRY_DSN,
+  environment: process.env.NODE_ENV || 'development',
+  integrations: [nodeProfilingIntegration()],
+  tracesSampleRate: 0.1,
+  profilesSampleRate: 0.1,
 });
 ```
 
 **Key Helpers**:
+
 - `WorkflowSentryHelper` - Workflow-specific errors
 - `DatabasePerformanceMonitor` - DB query tracking
 - `BaseController` - Controller error handling
@@ -229,17 +238,16 @@ import * as Sentry from '@sentry/node';
 import { nodeProfilingIntegration } from '@sentry/profiling-node';
 
 Sentry.init({
-    dsn: process.env.SENTRY_DSN,
-    environment: process.env.NODE_ENV || 'development',
-    integrations: [
-        nodeProfilingIntegration(),
-    ],
-    tracesSampleRate: 0.1,
-    profilesSampleRate: 0.1,
+  dsn: process.env.SENTRY_DSN,
+  environment: process.env.NODE_ENV || 'development',
+  integrations: [nodeProfilingIntegration()],
+  tracesSampleRate: 0.1,
+  profilesSampleRate: 0.1,
 });
 ```
 
 **Key Helpers**:
+
 - `EmailSentryHelper` - Email-specific errors
 - `BaseController` - Controller error handling
 
@@ -311,14 +319,14 @@ app.use(Sentry.Handlers.tracingHandler());
 
 // Manual transaction for custom operations
 const transaction = Sentry.startTransaction({
-    op: 'operation.type',
-    name: 'Operation Name',
+  op: 'operation.type',
+  name: 'Operation Name',
 });
 
 try {
-    // Your operation
+  // Your operation
 } finally {
-    transaction.finish();
+  transaction.finish();
 }
 ```
 
@@ -347,17 +355,20 @@ When adding Sentry to new code:
 ## Key Files
 
 ### Form Service
+
 - `/blog-api/src/instrument.ts` - Sentry initialization
 - `/blog-api/src/workflow/utils/sentryHelper.ts` - Workflow errors
 - `/blog-api/src/utils/databasePerformance.ts` - DB monitoring
 - `/blog-api/src/controllers/BaseController.ts` - Controller base
 
 ### Email Service
+
 - `/notifications/src/instrument.ts` - Sentry initialization
 - `/notifications/src/utils/EmailSentryHelper.ts` - Email errors
 - `/notifications/src/controllers/BaseController.ts` - Controller base
 
 ### Configuration
+
 - `/blog-api/config.ini` - Form service config
 - `/notifications/config.ini` - Email service config
 - `/sentry.ini` - Shared Sentry config

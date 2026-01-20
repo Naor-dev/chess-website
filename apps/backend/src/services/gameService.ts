@@ -479,11 +479,11 @@ export class GameService {
     if (chess.isThreefoldRepetition()) {
       return { isOver: true, result: 'draw_repetition' };
     }
-    if (chess.isDraw()) {
-      return { isOver: true, result: 'draw_fifty_moves' };
-    }
     if (chess.isInsufficientMaterial()) {
       return { isOver: true, result: 'draw_insufficient_material' };
+    }
+    if (chess.isDrawByFiftyMoves()) {
+      return { isOver: true, result: 'draw_fifty_moves' };
     }
     return { isOver: false };
   }

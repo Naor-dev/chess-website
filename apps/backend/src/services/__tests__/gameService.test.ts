@@ -64,7 +64,7 @@ describe('GameService', () => {
           isCheckmate: jest.fn().mockReturnValue(false),
           isStalemate: jest.fn().mockReturnValue(false),
           isThreefoldRepetition: jest.fn().mockReturnValue(false),
-          isDraw: jest.fn().mockReturnValue(false),
+          isDrawByFiftyMoves: jest.fn().mockReturnValue(false),
           isInsufficientMaterial: jest.fn().mockReturnValue(false),
           move: jest.fn(),
         }) as unknown as Chess
@@ -307,7 +307,8 @@ describe('GameService', () => {
         isCheckmate: jest.fn().mockReturnValue(false),
         isStalemate: jest.fn().mockReturnValue(false),
         isThreefoldRepetition: jest.fn().mockReturnValue(false),
-        isDraw: jest.fn().mockReturnValue(true),
+        isInsufficientMaterial: jest.fn().mockReturnValue(false),
+        isDrawByFiftyMoves: jest.fn().mockReturnValue(true),
       } as unknown as Chess;
 
       const result = gameService.checkGameEnd(mockChess);
@@ -320,7 +321,6 @@ describe('GameService', () => {
         isCheckmate: jest.fn().mockReturnValue(false),
         isStalemate: jest.fn().mockReturnValue(false),
         isThreefoldRepetition: jest.fn().mockReturnValue(false),
-        isDraw: jest.fn().mockReturnValue(false),
         isInsufficientMaterial: jest.fn().mockReturnValue(true),
       } as unknown as Chess;
 
@@ -334,8 +334,8 @@ describe('GameService', () => {
         isCheckmate: jest.fn().mockReturnValue(false),
         isStalemate: jest.fn().mockReturnValue(false),
         isThreefoldRepetition: jest.fn().mockReturnValue(false),
-        isDraw: jest.fn().mockReturnValue(false),
         isInsufficientMaterial: jest.fn().mockReturnValue(false),
+        isDrawByFiftyMoves: jest.fn().mockReturnValue(false),
       } as unknown as Chess;
 
       const result = gameService.checkGameEnd(mockChess);
@@ -502,7 +502,7 @@ describe('GameService', () => {
         isCheckmate: jest.fn().mockReturnValue(false),
         isStalemate: jest.fn().mockReturnValue(false),
         isThreefoldRepetition: jest.fn().mockReturnValue(false),
-        isDraw: jest.fn().mockReturnValue(false),
+        isDrawByFiftyMoves: jest.fn().mockReturnValue(false),
         isInsufficientMaterial: jest.fn().mockReturnValue(false),
       };
       (Chess as jest.MockedClass<typeof Chess>).mockImplementation(
@@ -600,7 +600,7 @@ describe('GameService', () => {
         isCheckmate: jest.fn().mockReturnValue(true),
         isStalemate: jest.fn().mockReturnValue(false),
         isThreefoldRepetition: jest.fn().mockReturnValue(false),
-        isDraw: jest.fn().mockReturnValue(false),
+        isDrawByFiftyMoves: jest.fn().mockReturnValue(false),
         isInsufficientMaterial: jest.fn().mockReturnValue(false),
       };
       (Chess as jest.MockedClass<typeof Chess>).mockImplementation(
@@ -637,7 +637,7 @@ describe('GameService', () => {
         isCheckmate: jest.fn().mockReturnValue(false),
         isStalemate: jest.fn().mockReturnValue(false),
         isThreefoldRepetition: jest.fn().mockReturnValue(false),
-        isDraw: jest.fn().mockReturnValue(false),
+        isDrawByFiftyMoves: jest.fn().mockReturnValue(false),
         isInsufficientMaterial: jest.fn().mockReturnValue(false),
       };
       (Chess as jest.MockedClass<typeof Chess>).mockImplementation(
@@ -720,7 +720,7 @@ describe('GameService', () => {
           isCheckmate: jest.fn().mockReturnValue(false),
           isStalemate: jest.fn().mockReturnValue(false),
           isThreefoldRepetition: jest.fn().mockReturnValue(false),
-          isDraw: jest.fn().mockReturnValue(false),
+          isDrawByFiftyMoves: jest.fn().mockReturnValue(false),
           isInsufficientMaterial: jest.fn().mockReturnValue(false),
         };
         (Chess as jest.MockedClass<typeof Chess>).mockImplementation(
@@ -769,7 +769,7 @@ describe('GameService', () => {
           isCheckmate: jest.fn().mockReturnValue(false),
           isStalemate: jest.fn().mockReturnValue(false),
           isThreefoldRepetition: jest.fn().mockReturnValue(false),
-          isDraw: jest.fn().mockReturnValue(false),
+          isDrawByFiftyMoves: jest.fn().mockReturnValue(false),
           isInsufficientMaterial: jest.fn().mockReturnValue(false),
         };
         (Chess as jest.MockedClass<typeof Chess>).mockImplementation(
@@ -832,7 +832,7 @@ describe('GameService', () => {
           }),
           isStalemate: jest.fn().mockReturnValue(false),
           isThreefoldRepetition: jest.fn().mockReturnValue(false),
-          isDraw: jest.fn().mockReturnValue(false),
+          isDrawByFiftyMoves: jest.fn().mockReturnValue(false),
           isInsufficientMaterial: jest.fn().mockReturnValue(false),
         };
 
@@ -891,7 +891,7 @@ describe('GameService', () => {
           isCheckmate: jest.fn().mockReturnValue(false),
           isStalemate: jest.fn().mockReturnValue(false),
           isThreefoldRepetition: jest.fn().mockReturnValue(false),
-          isDraw: jest.fn().mockReturnValue(false),
+          isDrawByFiftyMoves: jest.fn().mockReturnValue(false),
           isInsufficientMaterial: jest.fn().mockReturnValue(false),
         };
         (Chess as jest.MockedClass<typeof Chess>).mockImplementation(
@@ -946,7 +946,7 @@ describe('GameService', () => {
           isCheckmate: jest.fn().mockReturnValue(false),
           isStalemate: jest.fn().mockReturnValue(false),
           isThreefoldRepetition: jest.fn().mockReturnValue(false),
-          isDraw: jest.fn().mockReturnValue(false),
+          isDrawByFiftyMoves: jest.fn().mockReturnValue(false),
           isInsufficientMaterial: jest.fn().mockReturnValue(false),
         };
         (Chess as jest.MockedClass<typeof Chess>).mockImplementation(

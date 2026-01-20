@@ -1,23 +1,10 @@
-# Dependencies
-node_modules/
-.pnpm-store/
+# Auto-generated files
+apps/frontend/next-env.d.ts
 
 # Build outputs
-dist/
-.next/
-out/
-build/
+**/dist
+**/.next
+**/node_modules
 
-# Claude Code local files
-.claude/
-
-# Turbo cache
-.turbo/
-
-# Generated files
+# Lockfiles
 pnpm-lock.yaml
-*.generated.*
-
-# Other
-coverage/
-*.log
