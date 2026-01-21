@@ -394,6 +394,149 @@ describe('GameService', () => {
         'different-user'
       );
     });
+
+    it('should sync time on save when it is user turn', async () => {
+      // Setup: User's turn with 5 minutes left, 30 seconds elapsed
+      const turnStarted = new Date(Date.now() - 30000); // 30 seconds ago
+      const mockGame = createMockGame({
+        timeControlType: 'blitz_5min',
+        timeLeftUser: 300000, // 5 minutes
+        timeLeftEngine: 300000,
+        turnStartedAt: turnStarted,
+      });
+
+      // Mock Chess to return white's turn (user)
+      const mockChessInstance = {
+        turn: jest.fn().mockReturnValue('w'),
+      };
+      (Chess as jest.MockedClass<typeof Chess>).mockImplementation(
+        () => mockChessInstance as unknown as Chess
+      );
+
+      mockGameRepository.findByIdAndUserId.mockResolvedValue(mockGame);
+      mockGameRepository.update.mockResolvedValue(mockGame);
+
+      await gameService.saveGame(mockGameId, mockUserId);
+
+      // Should deduct elapsed time from user and reset turnStartedAt
+      expect(mockGameRepository.update).toHaveBeenCalledWith(
+        mockGameId,
+        expect.objectContaining({
+          timeLeftUser: expect.any(Number),
+          turnStartedAt: expect.any(Date),
+        })
+      );
+
+      // Verify the time was deducted (approximately 30 seconds)
+      const updateCall = mockGameRepository.update.mock.calls[0];
+      const timeLeftUser = updateCall[1].timeLeftUser;
+      // Should be around 270000 (300000 - 30000), allow some tolerance for test execution time
+      expect(timeLeftUser).toBeLessThan(300000);
+      expect(timeLeftUser).toBeGreaterThan(260000);
+    });
+
+    it('should sync time on save when it is engine turn', async () => {
+      // Setup: Engine's turn with 5 minutes left, 10 seconds elapsed
+      const turnStarted = new Date(Date.now() - 10000); // 10 seconds ago
+      const mockGame = createMockGame({
+        timeControlType: 'blitz_5min',
+        timeLeftUser: 300000,
+        timeLeftEngine: 300000, // 5 minutes
+        turnStartedAt: turnStarted,
+      });
+
+      // Mock Chess to return black's turn (engine)
+      const mockChessInstance = {
+        turn: jest.fn().mockReturnValue('b'),
+      };
+      (Chess as jest.MockedClass<typeof Chess>).mockImplementation(
+        () => mockChessInstance as unknown as Chess
+      );
+
+      mockGameRepository.findByIdAndUserId.mockResolvedValue(mockGame);
+      mockGameRepository.update.mockResolvedValue(mockGame);
+
+      await gameService.saveGame(mockGameId, mockUserId);
+
+      // Should deduct elapsed time from engine and reset turnStartedAt
+      expect(mockGameRepository.update).toHaveBeenCalledWith(
+        mockGameId,
+        expect.objectContaining({
+          timeLeftEngine: expect.any(Number),
+          turnStartedAt: expect.any(Date),
+        })
+      );
+
+      // Verify the time was deducted (approximately 10 seconds)
+      const updateCall = mockGameRepository.update.mock.calls[0];
+      const timeLeftEngine = updateCall[1].timeLeftEngine;
+      // Should be around 290000 (300000 - 10000), allow some tolerance
+      expect(timeLeftEngine).toBeLessThan(300000);
+      expect(timeLeftEngine).toBeGreaterThan(280000);
+    });
+
+    it('should not sync time for games without time control', async () => {
+      const mockGame = createMockGame({
+        timeControlType: 'none',
+        timeLeftUser: 0,
+        timeLeftEngine: 0,
+        turnStartedAt: null,
+      });
+
+      mockGameRepository.findByIdAndUserId.mockResolvedValue(mockGame);
+      mockGameRepository.update.mockResolvedValue(mockGame);
+
+      await gameService.saveGame(mockGameId, mockUserId);
+
+      // Should just touch updatedAt without syncing time
+      expect(mockGameRepository.update).toHaveBeenCalledWith(mockGameId, {});
+    });
+
+    it('should not sync time when turnStartedAt is null', async () => {
+      const mockGame = createMockGame({
+        timeControlType: 'blitz_5min',
+        timeLeftUser: 300000,
+        timeLeftEngine: 300000,
+        turnStartedAt: null, // No active turn
+      });
+
+      mockGameRepository.findByIdAndUserId.mockResolvedValue(mockGame);
+      mockGameRepository.update.mockResolvedValue(mockGame);
+
+      await gameService.saveGame(mockGameId, mockUserId);
+
+      // Should just touch updatedAt without syncing time
+      expect(mockGameRepository.update).toHaveBeenCalledWith(mockGameId, {});
+    });
+
+    it('should not reduce time below zero', async () => {
+      // Setup: User's turn with only 5 seconds left, but 10 seconds elapsed
+      const turnStarted = new Date(Date.now() - 10000); // 10 seconds ago
+      const mockGame = createMockGame({
+        timeControlType: 'blitz_5min',
+        timeLeftUser: 5000, // Only 5 seconds left
+        timeLeftEngine: 300000,
+        turnStartedAt: turnStarted,
+      });
+
+      // Mock Chess to return white's turn (user)
+      const mockChessInstance = {
+        turn: jest.fn().mockReturnValue('w'),
+      };
+      (Chess as jest.MockedClass<typeof Chess>).mockImplementation(
+        () => mockChessInstance as unknown as Chess
+      );
+
+      mockGameRepository.findByIdAndUserId.mockResolvedValue(mockGame);
+      mockGameRepository.update.mockResolvedValue(mockGame);
+
+      await gameService.saveGame(mockGameId, mockUserId);
+
+      // Time should be clamped to 0, not negative
+      const updateCall = mockGameRepository.update.mock.calls[0];
+      const timeLeftUser = updateCall[1].timeLeftUser;
+      expect(timeLeftUser).toBe(0);
+    });
   });
 
   describe('resignGame', () => {
