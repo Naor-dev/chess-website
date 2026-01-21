@@ -62,15 +62,7 @@
         ]
       },
       "fileTriggers": {
-        "pathPatterns": [
-          "blog-api/src/**/*.ts",
-          "auth-service/src/**/*.ts",
-          "notifications-service/src/**/*.ts",
-          "backend/**/*.ts",
-          "api/**/*.ts",
-          "server/**/*.ts",
-          "services/**/*.ts"
-        ],
+        "pathPatterns": ["apps/backend/**/*.ts"],
         "pathExclusions": ["**/*.test.ts", "**/*.spec.ts"],
         "contentPatterns": [
           "router\\.",
@@ -115,7 +107,9 @@
           "frontend/src/**/*.ts",
           "client/src/**/*.tsx",
           "client/src/**/*.ts",
-          "src/**/*.tsx"
+          "src/**/*.tsx",
+          "apps/frontend/**/*.tsx",
+          "apps/frontend/**/*.ts"
         ],
         "pathExclusions": [
           "**/*.test.tsx",

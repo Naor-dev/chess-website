@@ -415,9 +415,30 @@ export class GameService {
       throw new Error('Cannot save a finished game');
     }
 
-    // Touch the updatedAt timestamp by doing a no-op update
-    // Games auto-save on each move, this is explicit confirmation
-    await this.gameRepository.update(gameId, {});
+    // Sync time on save for games with time control
+    // This ensures accurate time when user explicitly saves or tab becomes visible
+    if (game.timeControlType !== 'none' && game.turnStartedAt) {
+      const chess = new Chess(game.currentFen);
+      const currentTurn = chess.turn();
+      const now = new Date();
+      const elapsed = now.getTime() - game.turnStartedAt.getTime();
+
+      // Deduct elapsed time from current player and reset turn timer
+      if (currentTurn === 'w') {
+        await this.gameRepository.update(gameId, {
+          timeLeftUser: Math.max(0, game.timeLeftUser - elapsed),
+          turnStartedAt: now,
+        });
+      } else {
+        await this.gameRepository.update(gameId, {
+          timeLeftEngine: Math.max(0, game.timeLeftEngine - elapsed),
+          turnStartedAt: now,
+        });
+      }
+    } else {
+      // No time control - just touch the updatedAt timestamp
+      await this.gameRepository.update(gameId, {});
+    }
 
     return { savedAt: new Date().toISOString() };
   }

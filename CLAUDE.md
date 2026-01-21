@@ -224,7 +224,7 @@ const response = await request(app)
   .send({ difficultyLevel: 3, timeControlType: 'blitz_5min' });
 ```
 
-**Current coverage:** 116 tests (35 gameService + 57 gameController + 24 authController)
+**Current coverage:** 121 tests (40 gameService + 57 gameController + 24 authController)
 
 ### Playwright UI Testing
 
@@ -368,11 +368,15 @@ GitHub Actions workflows in `.github/workflows/`:
 
 **Recently Completed:**
 
+- Show possible moves (#25) - click piece to see valid destination squares with dots/rings for captures
+- Game history sorting/filtering (#88) - sort by date, filter by status and result
 - Quick wins bundle (#26, #28, #80) - illegal move shake animation, check alert, navigation buttons in game header
 - Game end detection (#126) - proper checkmate, stalemate, draw detection using chess.js methods
 - Mobile responsive design (#73, #81) - home page and game page responsive across mobile, tablet, desktop
 - Resign functionality - users can resign active games with confirmation dialog
 - Full dependency upgrade - all packages updated to latest (ESLint 9, Zod 4, Express 5, Sentry 10, Jest 30, react-chessboard 5)
+- Move-by-move replay (#57) - view finished games with navigation controls, keyboard shortcuts
+- Server time sync (#47) - accurate clock sync on save and tab visibility change
 
 ## Authentication Flow (BFF Pattern)
 

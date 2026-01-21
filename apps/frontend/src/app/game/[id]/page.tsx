@@ -7,6 +7,8 @@ import { Chess, Square } from 'chess.js';
 import { useAuth } from '@/contexts/AuthContext';
 import { gameApi } from '@/lib/gameApi';
 import { useBoardSize } from '@/hooks/useBoardSize';
+import { useMoveReplay } from '@/hooks/useMoveReplay';
+import { MoveReplayControls } from '@/components/MoveReplayControls';
 import type { GameResponse, MakeMoveRequest, GameResult } from '@chess-website/shared';
 
 function formatTime(ms: number): string {
@@ -542,6 +544,23 @@ export default function GamePage() {
     return new Chess(currentFen);
   }, [currentFen]);
 
+  // Replay mode for finished games
+  const isReplayMode = game?.isGameOver ?? false;
+  const {
+    currentMoveIndex,
+    currentFen: replayFen,
+    totalMoves,
+    canGoBack,
+    canGoForward,
+    goToStart,
+    goBack,
+    goForward,
+    goToEnd,
+  } = useMoveReplay(game?.movesHistory ?? []);
+
+  // Use replay FEN when in replay mode, otherwise use current game FEN
+  const displayFen = isReplayMode ? replayFen : (game?.currentFen ?? '');
+
   // Custom square styles for highlighting selected piece and possible moves
   const customSquareStyles = useMemo(() => {
     const styles: Record<string, React.CSSProperties> = {};
@@ -674,6 +693,54 @@ export default function GamePage() {
       fetchGame();
     }
   }, [game, displayTimeUser, displayTimeEngine, isMoving, fetchGame]);
+
+  // Visibility change handler - re-sync time when tab becomes visible
+  // This handles reconnection scenarios where the user switches tabs or minimizes the browser
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && game && !game.isGameOver) {
+        // Re-fetch game to get accurate server time
+        fetchGame();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [game, fetchGame]);
+
+  // Keyboard navigation for replay mode
+  useEffect(() => {
+    if (!isReplayMode) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      // Ignore if user is typing in an input
+      if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) {
+        return;
+      }
+
+      switch (event.key) {
+        case 'ArrowLeft':
+          event.preventDefault();
+          goBack();
+          break;
+        case 'ArrowRight':
+          event.preventDefault();
+          goForward();
+          break;
+        case 'Home':
+          event.preventDefault();
+          goToStart();
+          break;
+        case 'End':
+          event.preventDefault();
+          goToEnd();
+          break;
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isReplayMode, goBack, goForward, goToStart, goToEnd]);
 
   // Handle piece drop (drag and drop move)
   const onDrop = useCallback(
@@ -1018,11 +1085,11 @@ export default function GamePage() {
           >
             <Chessboard
               options={{
-                position: game.currentFen,
+                position: displayFen,
                 allowDragging: !game.isGameOver && isUserTurn && !isMoving,
                 onPieceDrop: onDrop,
                 onSquareClick: onSquareClick,
-                squareStyles: customSquareStyles,
+                squareStyles: isReplayMode ? {} : customSquareStyles,
                 boardStyle: {
                   borderRadius: '0',
                 },
@@ -1053,6 +1120,20 @@ export default function GamePage() {
 
           {/* Game Info / Status Message */}
           <GameInfo game={game} />
+
+          {/* Replay Controls (for finished games) */}
+          {isReplayMode && totalMoves > 0 && (
+            <MoveReplayControls
+              currentMoveIndex={currentMoveIndex}
+              totalMoves={totalMoves}
+              canGoBack={canGoBack}
+              canGoForward={canGoForward}
+              onFirst={goToStart}
+              onPrev={goBack}
+              onNext={goForward}
+              onLast={goToEnd}
+            />
+          )}
 
           {/* Action Buttons (when game is over but modal dismissed) */}
           {game.isGameOver && !showGameOverModal && (
