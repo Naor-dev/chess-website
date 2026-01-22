@@ -375,9 +375,7 @@ describe('GameService', () => {
     it('should throw error when game not found', async () => {
       mockGameRepository.findByIdAndUserId.mockResolvedValue(null);
 
-      await expect(gameService.saveGame(mockGameId, mockUserId)).rejects.toThrow(
-        GameNotFoundError
-      );
+      await expect(gameService.saveGame(mockGameId, mockUserId)).rejects.toThrow(GameNotFoundError);
     });
 
     it('should throw error when game is not active (finished)', async () => {
