@@ -1,5 +1,12 @@
 import request from 'supertest';
 import { STARTING_FEN, TIME_CONTROL_CONFIGS } from '@chess-website/shared';
+import {
+  GameNotFoundError,
+  GameNotActiveError,
+  NotYourTurnError,
+  InvalidMoveError,
+  CannotResignFinishedGameError,
+} from '../../errors';
 
 // Mock instrument module before anything else
 jest.mock('../../instrument', () => ({
@@ -468,7 +475,7 @@ describe('GameController API', () => {
     });
 
     it('should return 404 when game not found', async () => {
-      mockMakeMove.mockRejectedValue(new Error('Game not found'));
+      mockMakeMove.mockRejectedValue(new GameNotFoundError(validGameId));
 
       const response = await request(app)
         .post(`/api/games/${validGameId}/move`)
@@ -483,7 +490,7 @@ describe('GameController API', () => {
     });
 
     it('should return 400 when game is not active', async () => {
-      mockMakeMove.mockRejectedValue(new Error('Game is not active'));
+      mockMakeMove.mockRejectedValue(new GameNotActiveError(validGameId, 'FINISHED'));
 
       const response = await request(app)
         .post(`/api/games/${validGameId}/move`)
@@ -499,7 +506,7 @@ describe('GameController API', () => {
     });
 
     it('should return 400 when not user turn', async () => {
-      mockMakeMove.mockRejectedValue(new Error('Not your turn'));
+      mockMakeMove.mockRejectedValue(new NotYourTurnError(validGameId));
 
       const response = await request(app)
         .post(`/api/games/${validGameId}/move`)
@@ -515,7 +522,7 @@ describe('GameController API', () => {
     });
 
     it('should return 400 for invalid move', async () => {
-      mockMakeMove.mockRejectedValue(new Error('Invalid move'));
+      mockMakeMove.mockRejectedValue(new InvalidMoveError('e2-e5'));
 
       const response = await request(app)
         .post(`/api/games/${validGameId}/move`)
@@ -655,7 +662,7 @@ describe('GameController API', () => {
     });
 
     it('should return 404 when game not found', async () => {
-      mockResignGame.mockRejectedValue(new Error('Game not found'));
+      mockResignGame.mockRejectedValue(new GameNotFoundError(validGameId));
 
       const response = await request(app)
         .post(`/api/games/${validGameId}/resign`)
@@ -667,7 +674,7 @@ describe('GameController API', () => {
     });
 
     it('should return 400 when game is already finished', async () => {
-      mockResignGame.mockRejectedValue(new Error('Cannot resign a finished game'));
+      mockResignGame.mockRejectedValue(new CannotResignFinishedGameError(validGameId));
 
       const response = await request(app)
         .post(`/api/games/${validGameId}/resign`)

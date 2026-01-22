@@ -11,6 +11,15 @@ import type {
 import { TIME_CONTROL_CONFIGS, STARTING_FEN } from '@chess-website/shared';
 import { GameRepository, Game } from '../repositories/GameRepository';
 import type { EngineService } from './engineService';
+import {
+  GameNotFoundError,
+  GameNotActiveError,
+  NotYourTurnError,
+  InvalidMoveError,
+  CannotSaveFinishedGameError,
+  CannotResignFinishedGameError,
+  InvalidEngineMoveError,
+} from '../errors';
 
 /** Maximum allowed time value in milliseconds (24 hours) */
 const MAX_TIME_MS = 86_400_000;
@@ -171,11 +180,11 @@ export class GameService {
     // 1. Fetch game, verify ownership and active status
     const game = await this.gameRepository.findByIdAndUserId(gameId, userId);
     if (!game) {
-      throw new Error('Game not found');
+      throw new GameNotFoundError(gameId);
     }
 
     if (game.status !== 'ACTIVE') {
-      throw new Error('Game is not active');
+      throw new GameNotActiveError(gameId, game.status);
     }
 
     // 2. Validate move with chess.js
@@ -183,7 +192,7 @@ export class GameService {
 
     // Verify it's the user's turn (white)
     if (chess.turn() !== 'w') {
-      throw new Error('Not your turn');
+      throw new NotYourTurnError(gameId);
     }
 
     // 3. Check for timeout BEFORE processing move
@@ -219,7 +228,7 @@ export class GameService {
     });
 
     if (!moveResult) {
-      throw new Error('Invalid move');
+      throw new InvalidMoveError(`${move.from}-${move.to}${move.promotion || ''}`);
     }
 
     // 5. Calculate new time for user (deduct elapsed + add increment)
@@ -323,11 +332,12 @@ export class GameService {
         });
 
         if (!engineMove) {
+          const invalidMove = `${engineResult.move.from}-${engineResult.move.to}`;
           Sentry.captureMessage('Engine returned invalid move', {
             level: 'error',
             extra: { engineResult, fen: chess.fen() },
           });
-          throw new Error('Engine returned invalid move');
+          throw new InvalidEngineMoveError(invalidMove, chess.fen());
         }
 
         // 11. Check for game end after engine move
@@ -418,12 +428,12 @@ export class GameService {
     // Verify game ownership
     const game = await this.gameRepository.findByIdAndUserId(gameId, userId);
     if (!game) {
-      throw new Error('Game not found');
+      throw new GameNotFoundError(gameId);
     }
 
     // Verify game is active (can't save a finished game)
     if (game.status !== 'ACTIVE') {
-      throw new Error('Cannot save a finished game');
+      throw new CannotSaveFinishedGameError(gameId);
     }
 
     // Sync time on save for games with time control
@@ -464,12 +474,12 @@ export class GameService {
     // 1. Fetch game with ownership verification
     const game = await this.gameRepository.findByIdAndUserId(gameId, userId);
     if (!game) {
-      throw new Error('Game not found');
+      throw new GameNotFoundError(gameId);
     }
 
     // 2. Verify game is active (can't resign a finished game)
     if (game.status !== 'ACTIVE') {
-      throw new Error('Cannot resign a finished game');
+      throw new CannotResignFinishedGameError(gameId);
     }
 
     // 3. Finish game with resign result
