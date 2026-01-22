@@ -3,6 +3,14 @@ import { GameService } from '../gameService';
 import { GameRepository, Game, GameStatus } from '../../repositories/GameRepository';
 import { STARTING_FEN, TIME_CONTROL_CONFIGS } from '@chess-website/shared';
 import type { EngineService } from '../engineService';
+import {
+  GameNotFoundError,
+  GameNotActiveError,
+  NotYourTurnError,
+  InvalidMoveError,
+  CannotSaveFinishedGameError,
+  CannotResignFinishedGameError,
+} from '../../errors';
 
 // Mock Sentry
 jest.mock('@sentry/node', () => ({
@@ -367,7 +375,9 @@ describe('GameService', () => {
     it('should throw error when game not found', async () => {
       mockGameRepository.findByIdAndUserId.mockResolvedValue(null);
 
-      await expect(gameService.saveGame(mockGameId, mockUserId)).rejects.toThrow('Game not found');
+      await expect(gameService.saveGame(mockGameId, mockUserId)).rejects.toThrow(
+        GameNotFoundError
+      );
     });
 
     it('should throw error when game is not active (finished)', async () => {
@@ -378,7 +388,7 @@ describe('GameService', () => {
       mockGameRepository.findByIdAndUserId.mockResolvedValue(finishedGame);
 
       await expect(gameService.saveGame(mockGameId, mockUserId)).rejects.toThrow(
-        'Cannot save a finished game'
+        CannotSaveFinishedGameError
       );
     });
 
@@ -386,7 +396,7 @@ describe('GameService', () => {
       mockGameRepository.findByIdAndUserId.mockResolvedValue(null);
 
       await expect(gameService.saveGame(mockGameId, 'different-user')).rejects.toThrow(
-        'Game not found'
+        GameNotFoundError
       );
 
       expect(mockGameRepository.findByIdAndUserId).toHaveBeenCalledWith(
@@ -564,7 +574,7 @@ describe('GameService', () => {
       mockGameRepository.findByIdAndUserId.mockResolvedValue(null);
 
       await expect(gameService.resignGame(mockGameId, mockUserId)).rejects.toThrow(
-        'Game not found'
+        GameNotFoundError
       );
     });
 
@@ -572,7 +582,7 @@ describe('GameService', () => {
       mockGameRepository.findByIdAndUserId.mockResolvedValue(null);
 
       await expect(gameService.resignGame(mockGameId, 'different-user')).rejects.toThrow(
-        'Game not found'
+        GameNotFoundError
       );
 
       expect(mockGameRepository.findByIdAndUserId).toHaveBeenCalledWith(
@@ -589,7 +599,7 @@ describe('GameService', () => {
       mockGameRepository.findByIdAndUserId.mockResolvedValue(finishedGame);
 
       await expect(gameService.resignGame(mockGameId, mockUserId)).rejects.toThrow(
-        'Cannot resign a finished game'
+        CannotResignFinishedGameError
       );
     });
 
@@ -600,7 +610,7 @@ describe('GameService', () => {
       mockGameRepository.findByIdAndUserId.mockResolvedValue(abandonedGame);
 
       await expect(gameService.resignGame(mockGameId, mockUserId)).rejects.toThrow(
-        'Cannot resign a finished game'
+        CannotResignFinishedGameError
       );
     });
 
@@ -664,7 +674,7 @@ describe('GameService', () => {
 
       await expect(
         gameService.makeMove(mockGameId, mockUserId, { from: 'e2', to: 'e4' })
-      ).rejects.toThrow('Game not found');
+      ).rejects.toThrow(GameNotFoundError);
     });
 
     it('should throw error when game is not active', async () => {
@@ -673,7 +683,7 @@ describe('GameService', () => {
 
       await expect(
         gameService.makeMove(mockGameId, mockUserId, { from: 'e2', to: 'e4' })
-      ).rejects.toThrow('Game is not active');
+      ).rejects.toThrow(GameNotActiveError);
     });
 
     it('should throw error when not user turn', async () => {
@@ -690,7 +700,7 @@ describe('GameService', () => {
 
       await expect(
         gameService.makeMove(mockGameId, mockUserId, { from: 'e7', to: 'e5' })
-      ).rejects.toThrow('Not your turn');
+      ).rejects.toThrow(NotYourTurnError);
     });
 
     it('should throw error for invalid move', async () => {
@@ -708,7 +718,7 @@ describe('GameService', () => {
 
       await expect(
         gameService.makeMove(mockGameId, mockUserId, { from: 'e2', to: 'e5' })
-      ).rejects.toThrow('Invalid move');
+      ).rejects.toThrow(InvalidMoveError);
     });
 
     it('should finish game on checkmate', async () => {

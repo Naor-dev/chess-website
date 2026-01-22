@@ -2,6 +2,15 @@ import { Request, Response } from 'express';
 import { BaseController } from './BaseController';
 import { createGameSchema, makeMoveSchema, gameIdSchema } from '@chess-website/shared';
 import { services } from '../services/serviceContainer';
+import {
+  GameNotFoundError,
+  GameNotActiveError,
+  NotYourTurnError,
+  InvalidMoveError,
+  CannotSaveFinishedGameError,
+  CannotResignFinishedGameError,
+  ConcurrentModificationError,
+} from '../errors';
 
 export class GameController extends BaseController {
   private gameService = services.gameService;
@@ -106,20 +115,26 @@ export class GameController extends BaseController {
       const result = await this.gameService.makeMove(gameId, userId, moveResult.data);
       this.handleSuccess(res, result);
     } catch (error) {
-      // Handle specific game errors
-      if (error instanceof Error) {
-        if (error.message === 'Game not found') {
-          this.handleNotFound(res, 'Game not found');
-          return;
-        }
-        if (
-          error.message === 'Game is not active' ||
-          error.message === 'Not your turn' ||
-          error.message === 'Invalid move'
-        ) {
-          res.status(400).json({ success: false, error: error.message });
-          return;
-        }
+      // Handle specific game errors using typed error classes
+      if (error instanceof GameNotFoundError) {
+        this.handleNotFound(res, 'Game');
+        return;
+      }
+      if (error instanceof GameNotActiveError) {
+        this.handleBadRequest(res, 'Game is not active');
+        return;
+      }
+      if (error instanceof NotYourTurnError) {
+        this.handleBadRequest(res, 'Not your turn');
+        return;
+      }
+      if (error instanceof InvalidMoveError) {
+        this.handleBadRequest(res, 'Invalid move');
+        return;
+      }
+      if (error instanceof ConcurrentModificationError) {
+        this.handleConflict(res, 'Game was modified. Please refresh and try again.');
+        return;
       }
       this.handleError(error, res, 'GameController.makeMove');
     }
@@ -143,16 +158,14 @@ export class GameController extends BaseController {
 
       this.handleSuccess(res, result, 'Game saved successfully');
     } catch (error) {
-      // Handle specific game errors
-      if (error instanceof Error) {
-        if (error.message === 'Game not found') {
-          this.handleNotFound(res, 'Game not found');
-          return;
-        }
-        if (error.message === 'Cannot save a finished game') {
-          res.status(400).json({ success: false, error: error.message });
-          return;
-        }
+      // Handle specific game errors using typed error classes
+      if (error instanceof GameNotFoundError) {
+        this.handleNotFound(res, 'Game');
+        return;
+      }
+      if (error instanceof CannotSaveFinishedGameError) {
+        this.handleBadRequest(res, 'Cannot save a finished game');
+        return;
       }
       this.handleError(error, res, 'GameController.saveGame');
     }
@@ -176,16 +189,14 @@ export class GameController extends BaseController {
 
       this.handleSuccess(res, result, 'Game resigned successfully');
     } catch (error) {
-      // Handle specific game errors
-      if (error instanceof Error) {
-        if (error.message === 'Game not found') {
-          this.handleNotFound(res, 'Game not found');
-          return;
-        }
-        if (error.message === 'Cannot resign a finished game') {
-          res.status(400).json({ success: false, error: error.message });
-          return;
-        }
+      // Handle specific game errors using typed error classes
+      if (error instanceof GameNotFoundError) {
+        this.handleNotFound(res, 'Game');
+        return;
+      }
+      if (error instanceof CannotResignFinishedGameError) {
+        this.handleBadRequest(res, 'Cannot resign a finished game');
+        return;
       }
       this.handleError(error, res, 'GameController.resignGame');
     }

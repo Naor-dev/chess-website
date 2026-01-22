@@ -60,6 +60,24 @@ export abstract class BaseController {
     res.status(404).json(response);
   }
 
+  protected handleBadRequest(res: Response, message: string): void {
+    const response: ApiError = {
+      success: false,
+      error: message,
+      code: 'BAD_REQUEST',
+    };
+    res.status(400).json(response);
+  }
+
+  protected handleConflict(res: Response, message: string): void {
+    const response: ApiError = {
+      success: false,
+      error: message,
+      code: 'CONFLICT',
+    };
+    res.status(409).json(response);
+  }
+
   protected handleUnauthorized(res: Response, message: string = 'Unauthorized'): void {
     const response: ApiError = {
       success: false,
