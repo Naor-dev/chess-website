@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { BaseController } from './BaseController';
-import { createGameSchema, makeMoveSchema } from '@chess-website/shared';
+import { createGameSchema, makeMoveSchema, gameIdSchema } from '@chess-website/shared';
 import { ZodError } from 'zod';
 import { services } from '../services/serviceContainer';
 
@@ -57,7 +57,12 @@ export class GameController extends BaseController {
         return;
       }
 
-      const gameId = req.params.gameId as string;
+      const gameIdResult = gameIdSchema.safeParse(req.params.gameId);
+      if (!gameIdResult.success) {
+        this.handleValidationError(res, { gameId: ['Invalid game ID format'] });
+        return;
+      }
+      const gameId = gameIdResult.data;
       const game = await this.gameService.getGame(gameId, userId);
 
       if (!game) {
@@ -79,7 +84,12 @@ export class GameController extends BaseController {
         return;
       }
 
-      const gameId = req.params.gameId as string;
+      const gameIdResult = gameIdSchema.safeParse(req.params.gameId);
+      if (!gameIdResult.success) {
+        this.handleValidationError(res, { gameId: ['Invalid game ID format'] });
+        return;
+      }
+      const gameId = gameIdResult.data;
       const moveInput = makeMoveSchema.parse(req.body);
 
       const result = await this.gameService.makeMove(gameId, userId, moveInput);
@@ -122,7 +132,12 @@ export class GameController extends BaseController {
         return;
       }
 
-      const gameId = req.params.gameId as string;
+      const gameIdResult = gameIdSchema.safeParse(req.params.gameId);
+      if (!gameIdResult.success) {
+        this.handleValidationError(res, { gameId: ['Invalid game ID format'] });
+        return;
+      }
+      const gameId = gameIdResult.data;
       const result = await this.gameService.saveGame(gameId, userId);
 
       this.handleSuccess(res, result, 'Game saved successfully');
@@ -150,7 +165,12 @@ export class GameController extends BaseController {
         return;
       }
 
-      const gameId = req.params.gameId as string;
+      const gameIdResult = gameIdSchema.safeParse(req.params.gameId);
+      if (!gameIdResult.success) {
+        this.handleValidationError(res, { gameId: ['Invalid game ID format'] });
+        return;
+      }
+      const gameId = gameIdResult.data;
       const result = await this.gameService.resignGame(gameId, userId);
 
       this.handleSuccess(res, result, 'Game resigned successfully');

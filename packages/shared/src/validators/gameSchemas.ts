@@ -36,6 +36,23 @@ export const makeMoveSchema = z.object({
 
 export const gameIdSchema = z.string().uuid();
 
+// Email validation (for BFF exchange)
+export const emailSchema = z.string().email().toLowerCase().trim().max(255);
+
+// Google ID validation (numeric string from Google OAuth)
+export const googleIdSchema = z.string().regex(/^\d{1,30}$/, 'Invalid Google ID format');
+
+// Display name validation
+export const displayNameSchema = z.string().trim().min(1).max(255);
+
+// BFF exchange request body schema
+export const bffExchangeSchema = z.object({
+  googleId: googleIdSchema,
+  email: emailSchema,
+  displayName: displayNameSchema,
+});
+
 // Type exports inferred from schemas
 export type CreateGameInput = z.infer<typeof createGameSchema>;
 export type MakeMoveInput = z.infer<typeof makeMoveSchema>;
+export type BffExchangeInput = z.infer<typeof bffExchangeSchema>;

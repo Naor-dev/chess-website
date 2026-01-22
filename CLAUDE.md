@@ -224,7 +224,7 @@ const response = await request(app)
   .send({ difficultyLevel: 3, timeControlType: 'blitz_5min' });
 ```
 
-**Current coverage:** 121 tests (40 gameService + 57 gameController + 24 authController)
+**Current coverage:** 128 tests (40 gameService + 64 gameController + 24 authController)
 
 ### Playwright UI Testing
 
@@ -377,6 +377,7 @@ GitHub Actions workflows in `.github/workflows/`:
 - Full dependency upgrade - all packages updated to latest (ESLint 9, Zod 4, Express 5, Sentry 10, Jest 30, react-chessboard 5)
 - Move-by-move replay (#57) - view finished games with navigation controls, keyboard shortcuts
 - Server time sync (#47) - accurate clock sync on save and tab visibility change
+- Input validation (#132) - Zod validation for gameId, email, googleId, query params, time bounds
 
 ## Authentication Flow (BFF Pattern)
 
@@ -402,9 +403,12 @@ User clicks "Sign in with Google"
 **Security hardening:**
 
 - BFF exchange endpoint protected by `BFF_EXCHANGE_SECRET` with constant-time comparison
+- BFF exchange validates googleId (numeric), email (format), displayName via Zod
 - Proxy route uses path allowlist (`games`, `users`, `auth` only)
+- Proxy route validates query params against per-path allowlist
 - Path traversal protection (blocks `..`, encoded variants, control characters)
 - OAuth redirects use hardcoded paths only (no user input in destinations)
+- All gameId params validated as UUID format before processing
 
 Token revocation via `tokenVersion` field - incrementing invalidates all existing JWTs.
 

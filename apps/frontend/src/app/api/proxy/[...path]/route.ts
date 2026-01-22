@@ -15,6 +15,38 @@ const COOKIE_NAME = 'token';
 const ALLOWED_PATH_PREFIXES = ['games', 'users', 'auth'] as const;
 
 /**
+ * Allowed query parameters per path prefix.
+ * Only these query params are forwarded to prevent injection attacks.
+ */
+const ALLOWED_QUERY_PARAMS: Record<string, string[]> = {
+  games: ['status', 'result', 'sortBy', 'sortOrder', 'limit', 'offset'],
+};
+
+/**
+ * Validates and sanitizes query parameters.
+ * Only allows known parameters for the given path, with basic sanitization.
+ * @param basePath - The first segment of the path (e.g., 'games')
+ * @param searchParams - The original search params
+ * @returns Sanitized URLSearchParams with only allowed params
+ */
+function validateQueryParams(basePath: string, searchParams: URLSearchParams): URLSearchParams {
+  const allowed = ALLOWED_QUERY_PARAMS[basePath] || [];
+  const validated = new URLSearchParams();
+
+  for (const [key, value] of searchParams.entries()) {
+    // Only allow known params for this path
+    if (allowed.includes(key)) {
+      // Basic sanitization - reject dangerous characters
+      const sanitized = value.replace(/[<>'"&\\]/g, '');
+      if (sanitized === value && value.length <= 100) {
+        validated.append(key, value);
+      }
+    }
+  }
+  return validated;
+}
+
+/**
  * Validates and sanitizes the proxy path.
  * Following secure-coding guidelines: validate at system boundaries.
  *
@@ -143,9 +175,11 @@ export async function GET(
   const { path } = await params;
   const pathStr = path.join('/');
 
-  // Append query string if present
-  const searchParams = request.nextUrl.searchParams.toString();
-  const fullPath = searchParams ? `${pathStr}?${searchParams}` : pathStr;
+  // Validate and sanitize query parameters
+  const basePath = path[0] || '';
+  const validatedParams = validateQueryParams(basePath, request.nextUrl.searchParams);
+  const queryString = validatedParams.toString();
+  const fullPath = queryString ? `${pathStr}?${queryString}` : pathStr;
 
   return proxyRequest(request, fullPath, 'GET');
 }

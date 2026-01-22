@@ -79,6 +79,9 @@ describe('AuthController API', () => {
   });
 
   describe('POST /api/auth/exchange (BFF endpoint)', () => {
+    // Use a valid Google ID format (numeric string up to 30 digits)
+    const validGoogleId = '123456789012345678901';
+
     it('should exchange valid Google user info for JWT with valid BFF secret', async () => {
       mockFindOrCreateUser.mockResolvedValue({
         user: mockUser,
@@ -90,7 +93,7 @@ describe('AuthController API', () => {
         .post('/api/auth/exchange')
         .set('X-BFF-Secret', validBffSecret)
         .send({
-          googleId: mockGoogleId,
+          googleId: validGoogleId,
           email: mockUserEmail,
           displayName: mockDisplayName,
         });
@@ -107,8 +110,8 @@ describe('AuthController API', () => {
         },
       });
       expect(mockFindOrCreateUser).toHaveBeenCalledWith(
-        mockGoogleId,
-        mockUserEmail,
+        validGoogleId,
+        mockUserEmail.toLowerCase(),
         mockDisplayName
       );
       expect(mockGenerateToken).toHaveBeenCalledWith(mockUser);
@@ -125,7 +128,7 @@ describe('AuthController API', () => {
         .post('/api/auth/exchange')
         .set('X-BFF-Secret', validBffSecret)
         .send({
-          googleId: 'new-google-id',
+          googleId: '987654321',
           email: 'newuser@example.com',
           displayName: 'New User',
         });
@@ -137,7 +140,7 @@ describe('AuthController API', () => {
 
     it('should return 401 when BFF secret is missing', async () => {
       const response = await request(app).post('/api/auth/exchange').send({
-        googleId: mockGoogleId,
+        googleId: validGoogleId,
         email: mockUserEmail,
         displayName: mockDisplayName,
       });
@@ -153,7 +156,7 @@ describe('AuthController API', () => {
         .post('/api/auth/exchange')
         .set('X-BFF-Secret', 'wrong-secret')
         .send({
-          googleId: mockGoogleId,
+          googleId: validGoogleId,
           email: mockUserEmail,
           displayName: mockDisplayName,
         });
@@ -165,7 +168,7 @@ describe('AuthController API', () => {
 
     it('should return 401 when BFF secret is empty string', async () => {
       const response = await request(app).post('/api/auth/exchange').set('X-BFF-Secret', '').send({
-        googleId: mockGoogleId,
+        googleId: validGoogleId,
         email: mockUserEmail,
         displayName: mockDisplayName,
       });
@@ -194,7 +197,7 @@ describe('AuthController API', () => {
         .post('/api/auth/exchange')
         .set('X-BFF-Secret', validBffSecret)
         .send({
-          googleId: mockGoogleId,
+          googleId: validGoogleId,
           displayName: mockDisplayName,
         });
 
@@ -209,7 +212,7 @@ describe('AuthController API', () => {
         .post('/api/auth/exchange')
         .set('X-BFF-Secret', validBffSecret)
         .send({
-          googleId: mockGoogleId,
+          googleId: validGoogleId,
           email: mockUserEmail,
         });
 
@@ -234,12 +237,44 @@ describe('AuthController API', () => {
       expect(response.body.code).toBe('VALIDATION_ERROR');
     });
 
+    it('should return 400 when googleId has invalid format (contains letters)', async () => {
+      const response = await request(app)
+        .post('/api/auth/exchange')
+        .set('X-BFF-Secret', validBffSecret)
+        .send({
+          googleId: 'abc123def',
+          email: mockUserEmail,
+          displayName: mockDisplayName,
+        });
+
+      expect(response.status).toBe(400);
+      expect(response.body.success).toBe(false);
+      expect(response.body.code).toBe('VALIDATION_ERROR');
+      expect(response.body.details).toHaveProperty('googleId');
+    });
+
+    it('should return 400 when email has invalid format', async () => {
+      const response = await request(app)
+        .post('/api/auth/exchange')
+        .set('X-BFF-Secret', validBffSecret)
+        .send({
+          googleId: validGoogleId,
+          email: 'not-an-email',
+          displayName: mockDisplayName,
+        });
+
+      expect(response.status).toBe(400);
+      expect(response.body.success).toBe(false);
+      expect(response.body.code).toBe('VALIDATION_ERROR');
+      expect(response.body.details).toHaveProperty('email');
+    });
+
     it('should return 400 when email is not a string', async () => {
       const response = await request(app)
         .post('/api/auth/exchange')
         .set('X-BFF-Secret', validBffSecret)
         .send({
-          googleId: mockGoogleId,
+          googleId: validGoogleId,
           email: { value: mockUserEmail },
           displayName: mockDisplayName,
         });
@@ -264,6 +299,30 @@ describe('AuthController API', () => {
       expect(response.body.code).toBe('VALIDATION_ERROR');
     });
 
+    it('should normalize email to lowercase', async () => {
+      mockFindOrCreateUser.mockResolvedValue({
+        user: mockUser,
+        isNew: false,
+      });
+      mockGenerateToken.mockReturnValue('new-jwt-token');
+
+      const response = await request(app)
+        .post('/api/auth/exchange')
+        .set('X-BFF-Secret', validBffSecret)
+        .send({
+          googleId: validGoogleId,
+          email: 'Test@EXAMPLE.com',
+          displayName: mockDisplayName,
+        });
+
+      expect(response.status).toBe(200);
+      expect(mockFindOrCreateUser).toHaveBeenCalledWith(
+        validGoogleId,
+        'test@example.com',
+        mockDisplayName
+      );
+    });
+
     it('should handle service errors gracefully', async () => {
       mockFindOrCreateUser.mockRejectedValue(new Error('Database error'));
 
@@ -271,7 +330,7 @@ describe('AuthController API', () => {
         .post('/api/auth/exchange')
         .set('X-BFF-Secret', validBffSecret)
         .send({
-          googleId: mockGoogleId,
+          googleId: validGoogleId,
           email: mockUserEmail,
           displayName: mockDisplayName,
         });
@@ -429,7 +488,7 @@ describe('AuthController API', () => {
         .post('/api/auth/exchange')
         .set('X-BFF-Secret', validBffSecret)
         .send({
-          googleId: mockGoogleId,
+          googleId: '123456789012345678901',
           email: mockUserEmail,
           displayName: mockDisplayName,
         });

@@ -5,6 +5,7 @@ import { BaseController } from './BaseController';
 import { AuthService, parseExpiresInToMs } from '../services/authService';
 import { config } from '../config/unifiedConfig';
 import type { User, AuthResponse } from '@chess-website/shared';
+import { bffExchangeSchema } from '@chess-website/shared';
 
 /**
  * Controller for authentication endpoints.
@@ -200,23 +201,19 @@ export class AuthController extends BaseController {
         return;
       }
 
-      const { googleId, email, displayName } = req.body;
-
-      // Validate required fields
-      if (!googleId || typeof googleId !== 'string') {
-        this.handleValidationError(res, { googleId: ['Google ID is required'] });
+      // Validate input with Zod schema
+      const inputResult = bffExchangeSchema.safeParse(req.body);
+      if (!inputResult.success) {
+        const details: Record<string, string[]> = {};
+        inputResult.error.issues.forEach((issue) => {
+          const path = issue.path.join('.') || 'body';
+          if (!details[path]) details[path] = [];
+          details[path].push(issue.message);
+        });
+        this.handleValidationError(res, details);
         return;
       }
-
-      if (!email || typeof email !== 'string') {
-        this.handleValidationError(res, { email: ['Email is required'] });
-        return;
-      }
-
-      if (!displayName || typeof displayName !== 'string') {
-        this.handleValidationError(res, { displayName: ['Display name is required'] });
-        return;
-      }
+      const { googleId, email, displayName } = inputResult.data;
 
       this.addBreadcrumb('BFF token exchange', 'auth', { googleId, email });
 
