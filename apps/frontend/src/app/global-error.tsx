@@ -1,13 +1,12 @@
 'use client';
 
 import { useEffect } from 'react';
+import * as Sentry from '@sentry/nextjs';
 
 /**
  * Global error boundary for the application.
  * This catches errors in the root layout itself, which error.tsx cannot catch.
  * It must include its own <html> and <body> tags since the root layout has failed.
- *
- * Note: Sentry integration will be added in Task 1.2
  */
 export default function GlobalError({
   error,
@@ -20,8 +19,14 @@ export default function GlobalError({
     // Log error to console in development
     console.error('Global error:', error);
 
-    // TODO: When Sentry is integrated (Task 1.2), add:
-    // Sentry.captureException(error, { tags: { boundary: 'global' } });
+    // Capture critical error in Sentry with explicit context
+    Sentry.captureException(error, {
+      tags: {
+        boundary: 'global',
+        severity: 'critical',
+        errorDigest: error.digest ?? 'none',
+      },
+    });
   }, [error]);
 
   return (

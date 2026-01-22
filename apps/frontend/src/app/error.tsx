@@ -2,12 +2,11 @@
 
 import { useEffect } from 'react';
 import Link from 'next/link';
+import * as Sentry from '@sentry/nextjs';
 
 /**
  * Root error boundary for the application.
  * Catches runtime errors in the app route tree and displays a fallback UI.
- *
- * Note: Sentry integration will be added in Task 1.2
  */
 export default function Error({
   error,
@@ -20,8 +19,13 @@ export default function Error({
     // Log error to console in development
     console.error('Application error:', error);
 
-    // TODO: When Sentry is integrated (Task 1.2), add:
-    // Sentry.captureException(error);
+    // Capture error in Sentry with explicit context
+    Sentry.captureException(error, {
+      tags: {
+        boundary: 'root',
+        errorDigest: error.digest ?? 'none',
+      },
+    });
   }, [error]);
 
   return (

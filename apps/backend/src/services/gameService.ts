@@ -19,6 +19,7 @@ import {
   CannotSaveFinishedGameError,
   CannotResignFinishedGameError,
   InvalidEngineMoveError,
+  ConcurrentModificationError,
 } from '../errors';
 
 /** Maximum allowed time value in milliseconds (24 hours) */
@@ -183,6 +184,9 @@ export class GameService {
       throw new GameNotFoundError(gameId);
     }
 
+    // Store version for optimistic locking
+    const gameVersion = game.version;
+
     if (game.status !== 'ACTIVE') {
       throw new GameNotActiveError(gameId, game.status);
     }
@@ -205,7 +209,15 @@ export class GameService {
         data: { gameId, result: timeoutCheck.result },
       });
 
-      const finishedGame = await this.gameRepository.finishGame(gameId, timeoutCheck.result!);
+      // Use version-aware finish to prevent race conditions
+      const finishResult = await this.gameRepository.finishGameWithVersion(
+        gameId,
+        gameVersion,
+        timeoutCheck.result!
+      );
+      if (!finishResult.success) {
+        throw new ConcurrentModificationError(gameId);
+      }
       await this.gameRepository.update(gameId, {
         timeLeftUser: 0,
         turnStartedAt: null,
@@ -213,7 +225,7 @@ export class GameService {
 
       return {
         success: true,
-        game: this.toGameResponse(finishedGame, {
+        game: this.toGameResponse(finishResult.game!, {
           timeLeftUser: 0,
           timeLeftEngine: timeoutCheck.timeLeftEngine,
         }),
@@ -239,8 +251,16 @@ export class GameService {
     const gameEndCheck = this.checkGameEnd(chess);
 
     if (gameEndCheck.isOver) {
-      // Game ended after user's move - update and return
-      const finishedGame = await this.gameRepository.finishGame(gameId, gameEndCheck.result!);
+      // Game ended after user's move - use version-aware updates
+      const finishResult = await this.gameRepository.finishGameWithVersion(
+        gameId,
+        gameVersion,
+        gameEndCheck.result!
+      );
+      if (!finishResult.success) {
+        throw new ConcurrentModificationError(gameId);
+      }
+      // Use new version for subsequent updates
       await this.gameRepository.addMove(gameId, moveResult.san, chess.fen());
       await this.gameRepository.update(gameId, {
         timeLeftUser: newTimeLeftUser,
@@ -251,7 +271,7 @@ export class GameService {
         success: true,
         game: this.toGameResponse(
           {
-            ...finishedGame,
+            ...finishResult.game!,
             currentFen: chess.fen(),
             movesHistory: [...game.movesHistory, moveResult.san],
           },
@@ -261,8 +281,18 @@ export class GameService {
     }
 
     // 7. Update database with user's move and switch turn to engine
+    // This is the critical path - use version-aware move addition
     const engineTurnStartedAt = game.timeControlType !== 'none' ? new Date() : null;
-    await this.gameRepository.addMove(gameId, moveResult.san, chess.fen());
+    const moveAddResult = await this.gameRepository.addMoveWithVersion(
+      gameId,
+      gameVersion,
+      moveResult.san,
+      chess.fen()
+    );
+    if (!moveAddResult.success) {
+      throw new ConcurrentModificationError(gameId);
+    }
+    // User's move is now locked in - engine operations happen sequentially after this
     await this.gameRepository.update(gameId, {
       timeLeftUser: newTimeLeftUser,
       turnStartedAt: engineTurnStartedAt,
@@ -431,6 +461,9 @@ export class GameService {
       throw new GameNotFoundError(gameId);
     }
 
+    // Store version for optimistic locking
+    const gameVersion = game.version;
+
     // Verify game is active (can't save a finished game)
     if (game.status !== 'ACTIVE') {
       throw new CannotSaveFinishedGameError(gameId);
@@ -444,21 +477,26 @@ export class GameService {
       const now = new Date();
       const elapsed = now.getTime() - game.turnStartedAt.getTime();
 
-      // Deduct elapsed time from current player and reset turn timer
-      if (currentTurn === 'w') {
-        await this.gameRepository.update(gameId, {
-          timeLeftUser: clampTimeValue(game.timeLeftUser - elapsed),
-          turnStartedAt: now,
-        });
-      } else {
-        await this.gameRepository.update(gameId, {
-          timeLeftEngine: clampTimeValue(game.timeLeftEngine - elapsed),
-          turnStartedAt: now,
-        });
+      // Use version-aware update to prevent race conditions with moves
+      const updateData =
+        currentTurn === 'w'
+          ? { timeLeftUser: clampTimeValue(game.timeLeftUser - elapsed), turnStartedAt: now }
+          : { timeLeftEngine: clampTimeValue(game.timeLeftEngine - elapsed), turnStartedAt: now };
+
+      const updateResult = await this.gameRepository.updateWithVersion(
+        gameId,
+        gameVersion,
+        updateData
+      );
+      if (!updateResult.success) {
+        throw new ConcurrentModificationError(gameId);
       }
     } else {
-      // No time control - just touch the updatedAt timestamp
-      await this.gameRepository.update(gameId, {});
+      // No time control - use version-aware update to touch updatedAt
+      const updateResult = await this.gameRepository.updateWithVersion(gameId, gameVersion, {});
+      if (!updateResult.success) {
+        throw new ConcurrentModificationError(gameId);
+      }
     }
 
     return { savedAt: new Date().toISOString() };

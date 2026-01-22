@@ -457,14 +457,21 @@ Token revocation via `tokenVersion` field - incrementing invalidates all existin
 
 ## Dev Docs Pattern
 
-For complex features, create context files in `dev/active/`:
+For complex features, create structured documentation in `dev/active/`:
 
 ```
-dev/active/
-└── [feature]-context.md  # Current state, key files, next steps
+dev/active/[feature-name]/
+├── [feature]-plan.md     # Implementation strategy, phases, timeline
+├── [feature]-context.md  # Key files, decisions, dependencies
+└── [feature]-tasks.md    # Checklist for tracking progress
 ```
 
-**Usage:** Start session with "Read dev/active/[feature]-context.md for context"
+**Active work items:**
+
+- `dev/active/code-review-remediation/` - Tracking #135 remediation tasks
+- `dev/active/optimistic-locking-sentry/` - Tasks 1.1 and 1.2 implementation
+
+**Usage:** Start session with "Read dev/active/[feature]/[feature]-context.md for context"
 
 This preserves knowledge across context resets.
 

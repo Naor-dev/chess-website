@@ -32,6 +32,7 @@ model Game {
   timeLeftEngine  Int        @map("time_left_engine")
   turnStartedAt   DateTime?  @map("turn_started_at")
   result          String?
+  version         Int        @default(1) // Optimistic locking for concurrent modification detection
   createdAt       DateTime   @default(now()) @map("created_at")
   updatedAt       DateTime   @updatedAt @map("updated_at")
 
