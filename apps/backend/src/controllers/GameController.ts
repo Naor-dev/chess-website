@@ -1,7 +1,6 @@
 import { Request, Response } from 'express';
 import { BaseController } from './BaseController';
 import { createGameSchema, makeMoveSchema, gameIdSchema } from '@chess-website/shared';
-import { ZodError } from 'zod';
 import { services } from '../services/serviceContainer';
 
 export class GameController extends BaseController {
@@ -15,21 +14,22 @@ export class GameController extends BaseController {
         return;
       }
 
-      const input = createGameSchema.parse(req.body);
-      const game = await this.gameService.createGame(userId, input);
-
-      this.handleSuccess(res, game, 'Game created successfully', 201);
-    } catch (error) {
-      if (error instanceof ZodError) {
+      const inputResult = createGameSchema.safeParse(req.body);
+      if (!inputResult.success) {
         const details: Record<string, string[]> = {};
-        error.issues.forEach((issue) => {
-          const path = issue.path.join('.');
+        inputResult.error.issues.forEach((issue) => {
+          const path = issue.path.join('.') || 'body';
           if (!details[path]) details[path] = [];
           details[path].push(issue.message);
         });
         this.handleValidationError(res, details);
         return;
       }
+
+      const game = await this.gameService.createGame(userId, inputResult.data);
+
+      this.handleSuccess(res, game, 'Game created successfully', 201);
+    } catch (error) {
       this.handleError(error, res, 'GameController.createGame');
     }
   }
@@ -90,21 +90,22 @@ export class GameController extends BaseController {
         return;
       }
       const gameId = gameIdResult.data;
-      const moveInput = makeMoveSchema.parse(req.body);
 
-      const result = await this.gameService.makeMove(gameId, userId, moveInput);
-      this.handleSuccess(res, result);
-    } catch (error) {
-      if (error instanceof ZodError) {
+      const moveResult = makeMoveSchema.safeParse(req.body);
+      if (!moveResult.success) {
         const details: Record<string, string[]> = {};
-        error.issues.forEach((issue) => {
-          const path = issue.path.join('.');
+        moveResult.error.issues.forEach((issue) => {
+          const path = issue.path.join('.') || 'body';
           if (!details[path]) details[path] = [];
           details[path].push(issue.message);
         });
         this.handleValidationError(res, details);
         return;
       }
+
+      const result = await this.gameService.makeMove(gameId, userId, moveResult.data);
+      this.handleSuccess(res, result);
+    } catch (error) {
       // Handle specific game errors
       if (error instanceof Error) {
         if (error.message === 'Game not found') {
