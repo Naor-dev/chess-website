@@ -37,6 +37,11 @@ model Game {
 
   user User @relation(fields: [userId], references: [id])
 
+  // Performance indexes for common queries
+  @@index([userId])            // For: findByUserId, listGames
+  @@index([status])            // For: listGames with status filter
+  @@index([userId, status])    // For: listActiveGames, compound queries
+  @@index([updatedAt])         // For: ORDER BY updatedAt DESC (history sorting)
   @@map("games")
 }
 
