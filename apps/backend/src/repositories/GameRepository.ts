@@ -217,4 +217,139 @@ export class GameRepository extends BaseRepository {
       { userId }
     );
   }
+
+  /**
+   * Updates a game with optimistic locking.
+   * Uses version check to detect concurrent modifications.
+   * @param gameId - The game's unique identifier
+   * @param expectedVersion - The version expected (from when the game was read)
+   * @param data - Fields to update
+   * @returns Object with success flag and updated game (if successful)
+   */
+  async updateWithVersion(
+    gameId: string,
+    expectedVersion: number,
+    data: UpdateGameData
+  ): Promise<{ success: boolean; game?: Game }> {
+    return this.executeWithErrorHandling(
+      'updateWithVersion',
+      async () => {
+        // Use updateMany with version check for atomic operation
+        // Returns count of affected rows (0 if version mismatch)
+        const result = await this.prisma.game.updateMany({
+          where: {
+            id: gameId,
+            version: expectedVersion,
+          },
+          data: {
+            ...data,
+            version: { increment: 1 },
+          },
+        });
+
+        if (result.count === 0) {
+          // Version mismatch - concurrent modification detected
+          return { success: false };
+        }
+
+        // Fetch the updated game to return
+        const game = await this.prisma.game.findUnique({
+          where: { id: gameId },
+        });
+
+        return { success: true, game: game ?? undefined };
+      },
+      { gameId, expectedVersion }
+    );
+  }
+
+  /**
+   * Atomically adds a move with optimistic locking.
+   * Uses version check to prevent concurrent move additions.
+   * @param gameId - The game's unique identifier
+   * @param expectedVersion - The version expected (from when the game was read)
+   * @param move - The move in algebraic notation
+   * @param newFen - The new board position after the move
+   * @returns Object with success flag and updated game (if successful)
+   */
+  async addMoveWithVersion(
+    gameId: string,
+    expectedVersion: number,
+    move: string,
+    newFen: string
+  ): Promise<{ success: boolean; game?: Game }> {
+    return this.executeWithErrorHandling(
+      'addMoveWithVersion',
+      async () => {
+        // Use a transaction to ensure atomicity of push + version increment
+        const result = await this.prisma.$transaction(async (tx) => {
+          // First check if version matches
+          const game = await tx.game.findFirst({
+            where: { id: gameId, version: expectedVersion },
+          });
+
+          if (!game) {
+            return { success: false };
+          }
+
+          // Update with move and increment version
+          const updated = await tx.game.update({
+            where: { id: gameId },
+            data: {
+              movesHistory: { push: move },
+              currentFen: newFen,
+              version: { increment: 1 },
+            },
+          });
+
+          return { success: true, game: updated };
+        });
+
+        return result;
+      },
+      { gameId, expectedVersion, move }
+    );
+  }
+
+  /**
+   * Marks a game as finished with optimistic locking.
+   * Uses version check to prevent race conditions in game ending.
+   * @param gameId - The game's unique identifier
+   * @param expectedVersion - The version expected (from when the game was read)
+   * @param result - The game result
+   * @returns Object with success flag and finished game (if successful)
+   */
+  async finishGameWithVersion(
+    gameId: string,
+    expectedVersion: number,
+    result: string
+  ): Promise<{ success: boolean; game?: Game }> {
+    return this.executeWithErrorHandling(
+      'finishGameWithVersion',
+      async () => {
+        const updateResult = await this.prisma.game.updateMany({
+          where: {
+            id: gameId,
+            version: expectedVersion,
+          },
+          data: {
+            status: GameStatus.FINISHED,
+            result,
+            version: { increment: 1 },
+          },
+        });
+
+        if (updateResult.count === 0) {
+          return { success: false };
+        }
+
+        const game = await this.prisma.game.findUnique({
+          where: { id: gameId },
+        });
+
+        return { success: true, game: game ?? undefined };
+      },
+      { gameId, expectedVersion, result }
+    );
+  }
 }

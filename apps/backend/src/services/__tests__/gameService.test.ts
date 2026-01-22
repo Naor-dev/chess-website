@@ -10,6 +10,7 @@ import {
   InvalidMoveError,
   CannotSaveFinishedGameError,
   CannotResignFinishedGameError,
+  ConcurrentModificationError,
 } from '../../errors';
 
 // Mock Sentry
@@ -41,6 +42,7 @@ describe('GameService', () => {
     timeLeftEngine: 300000,
     turnStartedAt: null, // null by default to skip timeout checks in most tests
     result: null,
+    version: 1, // Optimistic locking version
     createdAt: new Date('2026-01-18T10:00:00Z'),
     updatedAt: new Date('2026-01-18T10:00:00Z'),
     ...overrides,
@@ -58,6 +60,27 @@ describe('GameService', () => {
       addMove: jest.fn(),
       finishGame: jest.fn(),
       countByStatus: jest.fn(),
+      // Version-aware methods for optimistic locking - default to success
+      updateWithVersion: jest.fn().mockImplementation(async (_gameId, version, data) => ({
+        success: true,
+        game: createMockGame({ version: version + 1, ...data }),
+      })),
+      addMoveWithVersion: jest.fn().mockImplementation(async (_gameId, version, move, newFen) => ({
+        success: true,
+        game: createMockGame({
+          version: version + 1,
+          currentFen: newFen,
+          movesHistory: [move],
+        }),
+      })),
+      finishGameWithVersion: jest.fn().mockImplementation(async (_gameId, version, result) => ({
+        success: true,
+        game: createMockGame({
+          version: version + 1,
+          status: GameStatus.FINISHED,
+          result,
+        }),
+      })),
     } as unknown as jest.Mocked<GameRepository>;
 
     gameService = new GameService(mockGameRepository);
@@ -355,17 +378,13 @@ describe('GameService', () => {
   describe('saveGame', () => {
     it('should save game and return timestamp', async () => {
       const mockGame = createMockGame();
-      const updatedGame = createMockGame({
-        updatedAt: new Date('2026-01-18T12:00:00Z'),
-      });
 
       mockGameRepository.findByIdAndUserId.mockResolvedValue(mockGame);
-      mockGameRepository.update.mockResolvedValue(updatedGame);
 
       const result = await gameService.saveGame(mockGameId, mockUserId);
 
       expect(mockGameRepository.findByIdAndUserId).toHaveBeenCalledWith(mockGameId, mockUserId);
-      expect(mockGameRepository.update).toHaveBeenCalledWith(mockGameId, {});
+      expect(mockGameRepository.updateWithVersion).toHaveBeenCalledWith(mockGameId, 1, {});
       expect(result.savedAt).toBeDefined();
       expect(typeof result.savedAt).toBe('string');
       // Verify it's a valid ISO date
@@ -422,13 +441,13 @@ describe('GameService', () => {
       );
 
       mockGameRepository.findByIdAndUserId.mockResolvedValue(mockGame);
-      mockGameRepository.update.mockResolvedValue(mockGame);
 
       await gameService.saveGame(mockGameId, mockUserId);
 
       // Should deduct elapsed time from user and reset turnStartedAt
-      expect(mockGameRepository.update).toHaveBeenCalledWith(
+      expect(mockGameRepository.updateWithVersion).toHaveBeenCalledWith(
         mockGameId,
+        1, // version
         expect.objectContaining({
           timeLeftUser: expect.any(Number),
           turnStartedAt: expect.any(Date),
@@ -436,8 +455,8 @@ describe('GameService', () => {
       );
 
       // Verify the time was deducted (approximately 30 seconds)
-      const updateCall = mockGameRepository.update.mock.calls[0];
-      const timeLeftUser = updateCall[1].timeLeftUser;
+      const updateCall = mockGameRepository.updateWithVersion.mock.calls[0];
+      const timeLeftUser = updateCall[2].timeLeftUser;
       // Should be around 270000 (300000 - 30000), allow some tolerance for test execution time
       expect(timeLeftUser).toBeLessThan(300000);
       expect(timeLeftUser).toBeGreaterThan(260000);
@@ -462,13 +481,13 @@ describe('GameService', () => {
       );
 
       mockGameRepository.findByIdAndUserId.mockResolvedValue(mockGame);
-      mockGameRepository.update.mockResolvedValue(mockGame);
 
       await gameService.saveGame(mockGameId, mockUserId);
 
       // Should deduct elapsed time from engine and reset turnStartedAt
-      expect(mockGameRepository.update).toHaveBeenCalledWith(
+      expect(mockGameRepository.updateWithVersion).toHaveBeenCalledWith(
         mockGameId,
+        1, // version
         expect.objectContaining({
           timeLeftEngine: expect.any(Number),
           turnStartedAt: expect.any(Date),
@@ -476,8 +495,8 @@ describe('GameService', () => {
       );
 
       // Verify the time was deducted (approximately 10 seconds)
-      const updateCall = mockGameRepository.update.mock.calls[0];
-      const timeLeftEngine = updateCall[1].timeLeftEngine;
+      const updateCall = mockGameRepository.updateWithVersion.mock.calls[0];
+      const timeLeftEngine = updateCall[2].timeLeftEngine;
       // Should be around 290000 (300000 - 10000), allow some tolerance
       expect(timeLeftEngine).toBeLessThan(300000);
       expect(timeLeftEngine).toBeGreaterThan(280000);
@@ -492,12 +511,11 @@ describe('GameService', () => {
       });
 
       mockGameRepository.findByIdAndUserId.mockResolvedValue(mockGame);
-      mockGameRepository.update.mockResolvedValue(mockGame);
 
       await gameService.saveGame(mockGameId, mockUserId);
 
       // Should just touch updatedAt without syncing time
-      expect(mockGameRepository.update).toHaveBeenCalledWith(mockGameId, {});
+      expect(mockGameRepository.updateWithVersion).toHaveBeenCalledWith(mockGameId, 1, {});
     });
 
     it('should not sync time when turnStartedAt is null', async () => {
@@ -509,12 +527,11 @@ describe('GameService', () => {
       });
 
       mockGameRepository.findByIdAndUserId.mockResolvedValue(mockGame);
-      mockGameRepository.update.mockResolvedValue(mockGame);
 
       await gameService.saveGame(mockGameId, mockUserId);
 
       // Should just touch updatedAt without syncing time
-      expect(mockGameRepository.update).toHaveBeenCalledWith(mockGameId, {});
+      expect(mockGameRepository.updateWithVersion).toHaveBeenCalledWith(mockGameId, 1, {});
     });
 
     it('should not reduce time below zero', async () => {
@@ -536,13 +553,12 @@ describe('GameService', () => {
       );
 
       mockGameRepository.findByIdAndUserId.mockResolvedValue(mockGame);
-      mockGameRepository.update.mockResolvedValue(mockGame);
 
       await gameService.saveGame(mockGameId, mockUserId);
 
       // Time should be clamped to 0, not negative
-      const updateCall = mockGameRepository.update.mock.calls[0];
-      const timeLeftUser = updateCall[1].timeLeftUser;
+      const updateCall = mockGameRepository.updateWithVersion.mock.calls[0];
+      const timeLeftUser = updateCall[2].timeLeftUser;
       expect(timeLeftUser).toBe(0);
     });
   });
@@ -637,10 +653,9 @@ describe('GameService', () => {
 
     it('should make a valid move and update game state', async () => {
       const mockGame = createMockGame();
-      const updatedGame = createMockGame({ currentFen: newFen, movesHistory: ['e4'] });
+      const updatedGame = createMockGame({ currentFen: newFen, movesHistory: ['e4'], version: 2 });
 
       mockGameRepository.findByIdAndUserId.mockResolvedValue(mockGame);
-      mockGameRepository.addMove.mockResolvedValue(updatedGame);
       mockGameRepository.findById.mockResolvedValue(updatedGame);
 
       // Mock Chess for the service
@@ -664,7 +679,12 @@ describe('GameService', () => {
 
       expect(result.success).toBe(true);
       expect(mockGameRepository.findByIdAndUserId).toHaveBeenCalledWith(mockGameId, mockUserId);
-      expect(mockGameRepository.addMove).toHaveBeenCalledWith(mockGameId, 'e4', newFen);
+      expect(mockGameRepository.addMoveWithVersion).toHaveBeenCalledWith(
+        mockGameId,
+        1, // version
+        'e4',
+        newFen
+      );
     });
 
     it('should throw error when game not found', async () => {
@@ -761,7 +781,11 @@ describe('GameService', () => {
       const result = await gameService.makeMove(mockGameId, mockUserId, { from: 'h5', to: 'f7' });
 
       expect(result.success).toBe(true);
-      expect(mockGameRepository.finishGame).toHaveBeenCalledWith(mockGameId, 'user_win_checkmate');
+      expect(mockGameRepository.finishGameWithVersion).toHaveBeenCalledWith(
+        mockGameId,
+        1, // version
+        'user_win_checkmate'
+      );
     });
 
     it('should handle promotion moves', async () => {
@@ -1112,6 +1136,199 @@ describe('GameService', () => {
         expect(result.success).toBe(true);
         expect(result.engineMove?.promotion).toBe('q');
         expect(result.engineMove?.san).toBe('e8=Q+');
+      });
+    });
+  });
+
+  describe('Optimistic Locking', () => {
+    describe('makeMove with version checking', () => {
+      it('should throw ConcurrentModificationError when addMoveWithVersion fails', async () => {
+        const mockGame = createMockGame({ version: 1 });
+        mockGameRepository.findByIdAndUserId.mockResolvedValue(mockGame);
+
+        // Set up Chess mock for valid move
+        const mockChessInstance = {
+          turn: jest.fn().mockReturnValue('w'),
+          move: jest.fn().mockReturnValue({ san: 'e4', from: 'e2', to: 'e4' }),
+          fen: jest
+            .fn()
+            .mockReturnValue('rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1'),
+          isCheck: jest.fn().mockReturnValue(false),
+          isGameOver: jest.fn().mockReturnValue(false),
+          isCheckmate: jest.fn().mockReturnValue(false),
+          isStalemate: jest.fn().mockReturnValue(false),
+          isThreefoldRepetition: jest.fn().mockReturnValue(false),
+          isDrawByFiftyMoves: jest.fn().mockReturnValue(false),
+          isInsufficientMaterial: jest.fn().mockReturnValue(false),
+        };
+        (Chess as jest.MockedClass<typeof Chess>).mockImplementation(
+          () => mockChessInstance as unknown as Chess
+        );
+
+        // Simulate version mismatch (concurrent modification)
+        mockGameRepository.addMoveWithVersion.mockResolvedValue({ success: false });
+
+        await expect(
+          gameService.makeMove(mockGameId, mockUserId, { from: 'e2', to: 'e4' })
+        ).rejects.toThrow(ConcurrentModificationError);
+      });
+
+      it('should succeed when addMoveWithVersion succeeds', async () => {
+        const mockGame = createMockGame({ version: 1 });
+        const updatedGame = createMockGame({
+          version: 2,
+          currentFen: 'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1',
+          movesHistory: ['e4'],
+        });
+        mockGameRepository.findByIdAndUserId.mockResolvedValue(mockGame);
+        mockGameRepository.findById.mockResolvedValue(updatedGame);
+
+        // Set up Chess mock for valid move
+        const mockChessInstance = {
+          turn: jest.fn().mockReturnValue('w'),
+          move: jest.fn().mockReturnValue({ san: 'e4', from: 'e2', to: 'e4' }),
+          fen: jest
+            .fn()
+            .mockReturnValue('rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1'),
+          isCheck: jest.fn().mockReturnValue(false),
+          isGameOver: jest.fn().mockReturnValue(false),
+          isCheckmate: jest.fn().mockReturnValue(false),
+          isStalemate: jest.fn().mockReturnValue(false),
+          isThreefoldRepetition: jest.fn().mockReturnValue(false),
+          isDrawByFiftyMoves: jest.fn().mockReturnValue(false),
+          isInsufficientMaterial: jest.fn().mockReturnValue(false),
+        };
+        (Chess as jest.MockedClass<typeof Chess>).mockImplementation(
+          () => mockChessInstance as unknown as Chess
+        );
+
+        // Simulate successful version check
+        mockGameRepository.addMoveWithVersion.mockResolvedValue({
+          success: true,
+          game: updatedGame,
+        });
+        mockGameRepository.update.mockResolvedValue(updatedGame);
+
+        const result = await gameService.makeMove(mockGameId, mockUserId, { from: 'e2', to: 'e4' });
+
+        expect(result.success).toBe(true);
+        expect(mockGameRepository.addMoveWithVersion).toHaveBeenCalledWith(
+          mockGameId,
+          1, // Expected version
+          'e4',
+          expect.any(String)
+        );
+      });
+
+      it('should throw ConcurrentModificationError when finishGameWithVersion fails during checkmate', async () => {
+        const mockGame = createMockGame({ version: 1 });
+        mockGameRepository.findByIdAndUserId.mockResolvedValue(mockGame);
+
+        // Set up Chess mock for checkmate
+        const mockChessInstance = {
+          turn: jest.fn().mockReturnValue('w'),
+          move: jest.fn().mockReturnValue({ san: 'Qh7#', from: 'd3', to: 'h7' }),
+          fen: jest.fn().mockReturnValue('checkmate-fen'),
+          isCheck: jest.fn().mockReturnValue(true),
+          isGameOver: jest.fn().mockReturnValue(true),
+          isCheckmate: jest.fn().mockReturnValue(true),
+          isStalemate: jest.fn().mockReturnValue(false),
+          isThreefoldRepetition: jest.fn().mockReturnValue(false),
+          isDrawByFiftyMoves: jest.fn().mockReturnValue(false),
+          isInsufficientMaterial: jest.fn().mockReturnValue(false),
+        };
+        (Chess as jest.MockedClass<typeof Chess>).mockImplementation(
+          () => mockChessInstance as unknown as Chess
+        );
+
+        // Simulate version mismatch on finish
+        mockGameRepository.finishGameWithVersion.mockResolvedValue({ success: false });
+
+        await expect(
+          gameService.makeMove(mockGameId, mockUserId, { from: 'd3', to: 'h7' })
+        ).rejects.toThrow(ConcurrentModificationError);
+      });
+    });
+
+    describe('saveGame with version checking', () => {
+      it('should throw ConcurrentModificationError when updateWithVersion fails', async () => {
+        const mockGame = createMockGame({
+          version: 1,
+          timeControlType: 'blitz_5min',
+          turnStartedAt: new Date(Date.now() - 10000), // 10 seconds ago
+        });
+        mockGameRepository.findByIdAndUserId.mockResolvedValue(mockGame);
+
+        // Set up Chess mock
+        const mockChessInstance = {
+          turn: jest.fn().mockReturnValue('w'),
+        };
+        (Chess as jest.MockedClass<typeof Chess>).mockImplementation(
+          () => mockChessInstance as unknown as Chess
+        );
+
+        // Simulate version mismatch
+        mockGameRepository.updateWithVersion.mockResolvedValue({ success: false });
+
+        await expect(gameService.saveGame(mockGameId, mockUserId)).rejects.toThrow(
+          ConcurrentModificationError
+        );
+      });
+
+      it('should succeed when updateWithVersion succeeds', async () => {
+        const mockGame = createMockGame({
+          version: 1,
+          timeControlType: 'blitz_5min',
+          turnStartedAt: new Date(Date.now() - 10000), // 10 seconds ago
+        });
+        const updatedGame = createMockGame({ version: 2 });
+        mockGameRepository.findByIdAndUserId.mockResolvedValue(mockGame);
+
+        // Set up Chess mock
+        const mockChessInstance = {
+          turn: jest.fn().mockReturnValue('w'),
+        };
+        (Chess as jest.MockedClass<typeof Chess>).mockImplementation(
+          () => mockChessInstance as unknown as Chess
+        );
+
+        // Simulate successful version check
+        mockGameRepository.updateWithVersion.mockResolvedValue({
+          success: true,
+          game: updatedGame,
+        });
+
+        const result = await gameService.saveGame(mockGameId, mockUserId);
+
+        expect(result.savedAt).toBeDefined();
+        expect(mockGameRepository.updateWithVersion).toHaveBeenCalledWith(
+          mockGameId,
+          1, // Expected version
+          expect.objectContaining({
+            timeLeftUser: expect.any(Number),
+            turnStartedAt: expect.any(Date),
+          })
+        );
+      });
+
+      it('should use version checking even for games without time control', async () => {
+        const mockGame = createMockGame({
+          version: 1,
+          timeControlType: 'none',
+          turnStartedAt: null,
+        });
+        const updatedGame = createMockGame({ version: 2 });
+        mockGameRepository.findByIdAndUserId.mockResolvedValue(mockGame);
+
+        mockGameRepository.updateWithVersion.mockResolvedValue({
+          success: true,
+          game: updatedGame,
+        });
+
+        const result = await gameService.saveGame(mockGameId, mockUserId);
+
+        expect(result.savedAt).toBeDefined();
+        expect(mockGameRepository.updateWithVersion).toHaveBeenCalledWith(mockGameId, 1, {});
       });
     });
   });

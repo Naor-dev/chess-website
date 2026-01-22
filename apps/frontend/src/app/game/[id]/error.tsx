@@ -2,12 +2,11 @@
 
 import { useEffect } from 'react';
 import Link from 'next/link';
+import * as Sentry from '@sentry/nextjs';
 
 /**
  * Error boundary for the game page.
  * Provides game-specific error messaging and navigation options.
- *
- * Note: Sentry integration will be added in Task 1.2
  */
 export default function GameError({
   error,
@@ -20,8 +19,14 @@ export default function GameError({
     // Log error to console in development
     console.error('Game error:', error);
 
-    // TODO: When Sentry is integrated (Task 1.2), add:
-    // Sentry.captureException(error, { tags: { page: 'game' } });
+    // Capture game-specific error in Sentry with explicit context
+    Sentry.captureException(error, {
+      tags: {
+        boundary: 'game',
+        page: 'game',
+        errorDigest: error.digest ?? 'none',
+      },
+    });
   }, [error]);
 
   return (

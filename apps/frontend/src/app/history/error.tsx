@@ -2,12 +2,11 @@
 
 import { useEffect } from 'react';
 import Link from 'next/link';
+import * as Sentry from '@sentry/nextjs';
 
 /**
  * Error boundary for the history page.
  * Provides history-specific error messaging and navigation options.
- *
- * Note: Sentry integration will be added in Task 1.2
  */
 export default function HistoryError({
   error,
@@ -20,8 +19,14 @@ export default function HistoryError({
     // Log error to console in development
     console.error('History page error:', error);
 
-    // TODO: When Sentry is integrated (Task 1.2), add:
-    // Sentry.captureException(error, { tags: { page: 'history' } });
+    // Capture history-specific error in Sentry with explicit context
+    Sentry.captureException(error, {
+      tags: {
+        boundary: 'history',
+        page: 'history',
+        errorDigest: error.digest ?? 'none',
+      },
+    });
   }, [error]);
 
   return (
