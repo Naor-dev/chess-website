@@ -12,6 +12,17 @@ import { TIME_CONTROL_CONFIGS, STARTING_FEN } from '@chess-website/shared';
 import { GameRepository, Game } from '../repositories/GameRepository';
 import type { EngineService } from './engineService';
 
+/** Maximum allowed time value in milliseconds (24 hours) */
+const MAX_TIME_MS = 86_400_000;
+
+/**
+ * Clamps a time value to valid bounds [0, MAX_TIME_MS].
+ * Prevents time manipulation through overflow/underflow.
+ */
+function clampTimeValue(time: number): number {
+  return Math.max(0, Math.min(MAX_TIME_MS, time));
+}
+
 export class GameService {
   constructor(
     private readonly gameRepository: GameRepository,
@@ -426,12 +437,12 @@ export class GameService {
       // Deduct elapsed time from current player and reset turn timer
       if (currentTurn === 'w') {
         await this.gameRepository.update(gameId, {
-          timeLeftUser: Math.max(0, game.timeLeftUser - elapsed),
+          timeLeftUser: clampTimeValue(game.timeLeftUser - elapsed),
           turnStartedAt: now,
         });
       } else {
         await this.gameRepository.update(gameId, {
-          timeLeftEngine: Math.max(0, game.timeLeftEngine - elapsed),
+          timeLeftEngine: clampTimeValue(game.timeLeftEngine - elapsed),
           turnStartedAt: now,
         });
       }
@@ -569,13 +580,13 @@ export class GameService {
    * Applies time increment to a player's remaining time.
    * @param timeLeft - Current time remaining in milliseconds
    * @param timeControlType - The time control type
-   * @returns Updated time with increment added
+   * @returns Updated time with increment added, clamped to valid bounds
    */
   private applyIncrement(timeLeft: number, timeControlType: string): number {
     const timeConfig = TIME_CONTROL_CONFIGS[timeControlType as keyof typeof TIME_CONTROL_CONFIGS];
     if (timeConfig && timeConfig.increment > 0) {
-      return timeLeft + timeConfig.increment;
+      return clampTimeValue(timeLeft + timeConfig.increment);
     }
-    return timeLeft;
+    return clampTimeValue(timeLeft);
   }
 }

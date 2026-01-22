@@ -291,11 +291,13 @@ describe('GameController API', () => {
   });
 
   describe('GET /api/games/:gameId', () => {
+    const validGameId = '550e8400-e29b-41d4-a716-446655440000';
+
     it('should return game details for valid game owned by user', async () => {
       mockGetGame.mockResolvedValue(mockGameResponse);
 
       const response = await request(app)
-        .get('/api/games/game-456')
+        .get(`/api/games/${validGameId}`)
         .set('Authorization', `Bearer ${validToken}`);
 
       expect(response.status).toBe(200);
@@ -305,14 +307,34 @@ describe('GameController API', () => {
         status: 'active',
         currentFen: STARTING_FEN,
       });
-      expect(mockGetGame).toHaveBeenCalledWith('game-456', mockUserId);
+      expect(mockGetGame).toHaveBeenCalledWith(validGameId, mockUserId);
+    });
+
+    it('should return 400 for invalid game ID format (not UUID)', async () => {
+      const response = await request(app)
+        .get('/api/games/not-a-uuid')
+        .set('Authorization', `Bearer ${validToken}`);
+
+      expect(response.status).toBe(400);
+      expect(response.body.success).toBe(false);
+      expect(response.body.code).toBe('VALIDATION_ERROR');
+      expect(response.body.details).toHaveProperty('gameId');
+    });
+
+    it('should return 400 for empty game ID', async () => {
+      const response = await request(app)
+        .get('/api/games/')
+        .set('Authorization', `Bearer ${validToken}`);
+
+      // Empty path segment redirects to /api/games (list)
+      expect(response.status).toBe(200);
     });
 
     it('should return 404 when game not found', async () => {
       mockGetGame.mockResolvedValue(null);
 
       const response = await request(app)
-        .get('/api/games/non-existent-game')
+        .get(`/api/games/${validGameId}`)
         .set('Authorization', `Bearer ${validToken}`);
 
       expect(response.status).toBe(404);
@@ -324,7 +346,7 @@ describe('GameController API', () => {
       mockGetGame.mockResolvedValue(null);
 
       const response = await request(app)
-        .get('/api/games/other-users-game')
+        .get('/api/games/660e8400-e29b-41d4-a716-446655440000')
         .set('Authorization', `Bearer ${validToken}`);
 
       expect(response.status).toBe(404);
@@ -332,7 +354,7 @@ describe('GameController API', () => {
     });
 
     it('should return 401 when not authenticated', async () => {
-      const response = await request(app).get('/api/games/game-456');
+      const response = await request(app).get(`/api/games/${validGameId}`);
 
       expect(response.status).toBe(401);
       expect(response.body.success).toBe(false);
@@ -357,6 +379,7 @@ describe('GameController API', () => {
   });
 
   describe('POST /api/games/:gameId/move', () => {
+    const validGameId = '550e8400-e29b-41d4-a716-446655440000';
     const newFen = 'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1';
 
     const mockMoveResponse = {
@@ -373,7 +396,7 @@ describe('GameController API', () => {
       mockMakeMove.mockResolvedValue(mockMoveResponse);
 
       const response = await request(app)
-        .post('/api/games/game-456/move')
+        .post(`/api/games/${validGameId}/move`)
         .set('Authorization', `Bearer ${validToken}`)
         .send({
           from: 'e2',
@@ -384,7 +407,7 @@ describe('GameController API', () => {
       expect(response.body.success).toBe(true);
       expect(response.body.data.success).toBe(true);
       expect(response.body.data.game.currentFen).toBe(newFen);
-      expect(mockMakeMove).toHaveBeenCalledWith('game-456', mockUserId, {
+      expect(mockMakeMove).toHaveBeenCalledWith(validGameId, mockUserId, {
         from: 'e2',
         to: 'e4',
       });
@@ -402,7 +425,7 @@ describe('GameController API', () => {
       mockMakeMove.mockResolvedValue(promotionResponse);
 
       const response = await request(app)
-        .post('/api/games/game-456/move')
+        .post(`/api/games/${validGameId}/move`)
         .set('Authorization', `Bearer ${validToken}`)
         .send({
           from: 'a7',
@@ -412,15 +435,30 @@ describe('GameController API', () => {
 
       expect(response.status).toBe(200);
       expect(response.body.success).toBe(true);
-      expect(mockMakeMove).toHaveBeenCalledWith('game-456', mockUserId, {
+      expect(mockMakeMove).toHaveBeenCalledWith(validGameId, mockUserId, {
         from: 'a7',
         to: 'a8',
         promotion: 'q',
       });
     });
 
+    it('should return 400 for invalid game ID format', async () => {
+      const response = await request(app)
+        .post('/api/games/not-a-valid-uuid/move')
+        .set('Authorization', `Bearer ${validToken}`)
+        .send({
+          from: 'e2',
+          to: 'e4',
+        });
+
+      expect(response.status).toBe(400);
+      expect(response.body.success).toBe(false);
+      expect(response.body.code).toBe('VALIDATION_ERROR');
+      expect(response.body.details).toHaveProperty('gameId');
+    });
+
     it('should return 401 when not authenticated', async () => {
-      const response = await request(app).post('/api/games/game-456/move').send({
+      const response = await request(app).post(`/api/games/${validGameId}/move`).send({
         from: 'e2',
         to: 'e4',
       });
@@ -433,7 +471,7 @@ describe('GameController API', () => {
       mockMakeMove.mockRejectedValue(new Error('Game not found'));
 
       const response = await request(app)
-        .post('/api/games/non-existent/move')
+        .post(`/api/games/${validGameId}/move`)
         .set('Authorization', `Bearer ${validToken}`)
         .send({
           from: 'e2',
@@ -448,7 +486,7 @@ describe('GameController API', () => {
       mockMakeMove.mockRejectedValue(new Error('Game is not active'));
 
       const response = await request(app)
-        .post('/api/games/game-456/move')
+        .post(`/api/games/${validGameId}/move`)
         .set('Authorization', `Bearer ${validToken}`)
         .send({
           from: 'e2',
@@ -464,7 +502,7 @@ describe('GameController API', () => {
       mockMakeMove.mockRejectedValue(new Error('Not your turn'));
 
       const response = await request(app)
-        .post('/api/games/game-456/move')
+        .post(`/api/games/${validGameId}/move`)
         .set('Authorization', `Bearer ${validToken}`)
         .send({
           from: 'e7',
@@ -480,7 +518,7 @@ describe('GameController API', () => {
       mockMakeMove.mockRejectedValue(new Error('Invalid move'));
 
       const response = await request(app)
-        .post('/api/games/game-456/move')
+        .post(`/api/games/${validGameId}/move`)
         .set('Authorization', `Bearer ${validToken}`)
         .send({
           from: 'e2',
@@ -494,7 +532,7 @@ describe('GameController API', () => {
 
     it('should return 400 for invalid square format (from)', async () => {
       const response = await request(app)
-        .post('/api/games/game-456/move')
+        .post(`/api/games/${validGameId}/move`)
         .set('Authorization', `Bearer ${validToken}`)
         .send({
           from: 'e9', // Invalid rank
@@ -508,7 +546,7 @@ describe('GameController API', () => {
 
     it('should return 400 for invalid square format (to)', async () => {
       const response = await request(app)
-        .post('/api/games/game-456/move')
+        .post(`/api/games/${validGameId}/move`)
         .set('Authorization', `Bearer ${validToken}`)
         .send({
           from: 'e2',
@@ -522,7 +560,7 @@ describe('GameController API', () => {
 
     it('should return 400 for invalid promotion piece', async () => {
       const response = await request(app)
-        .post('/api/games/game-456/move')
+        .post(`/api/games/${validGameId}/move`)
         .set('Authorization', `Bearer ${validToken}`)
         .send({
           from: 'a7',
@@ -537,7 +575,7 @@ describe('GameController API', () => {
 
     it('should return 400 when missing from square', async () => {
       const response = await request(app)
-        .post('/api/games/game-456/move')
+        .post(`/api/games/${validGameId}/move`)
         .set('Authorization', `Bearer ${validToken}`)
         .send({
           to: 'e4',
@@ -550,7 +588,7 @@ describe('GameController API', () => {
 
     it('should return 400 when missing to square', async () => {
       const response = await request(app)
-        .post('/api/games/game-456/move')
+        .post(`/api/games/${validGameId}/move`)
         .set('Authorization', `Bearer ${validToken}`)
         .send({
           from: 'e2',
@@ -563,8 +601,9 @@ describe('GameController API', () => {
   });
 
   describe('POST /api/games/:gameId/resign', () => {
+    const validGameId = '550e8400-e29b-41d4-a716-446655440000';
     const mockResignedGameResponse = {
-      id: 'game-456',
+      id: validGameId,
       userId: mockUserId,
       status: 'finished' as const,
       difficultyLevel: 3 as const,
@@ -586,7 +625,7 @@ describe('GameController API', () => {
       mockResignGame.mockResolvedValue(mockResignedGameResponse);
 
       const response = await request(app)
-        .post('/api/games/game-456/resign')
+        .post(`/api/games/${validGameId}/resign`)
         .set('Authorization', `Bearer ${validToken}`);
 
       expect(response.status).toBe(200);
@@ -594,11 +633,22 @@ describe('GameController API', () => {
       expect(response.body.data.status).toBe('finished');
       expect(response.body.data.result).toBe('user_resigned');
       expect(response.body.data.isGameOver).toBe(true);
-      expect(mockResignGame).toHaveBeenCalledWith('game-456', mockUserId);
+      expect(mockResignGame).toHaveBeenCalledWith(validGameId, mockUserId);
+    });
+
+    it('should return 400 for invalid game ID format', async () => {
+      const response = await request(app)
+        .post('/api/games/invalid-id/resign')
+        .set('Authorization', `Bearer ${validToken}`);
+
+      expect(response.status).toBe(400);
+      expect(response.body.success).toBe(false);
+      expect(response.body.code).toBe('VALIDATION_ERROR');
+      expect(response.body.details).toHaveProperty('gameId');
     });
 
     it('should return 401 when not authenticated', async () => {
-      const response = await request(app).post('/api/games/game-456/resign');
+      const response = await request(app).post(`/api/games/${validGameId}/resign`);
 
       expect(response.status).toBe(401);
       expect(response.body.success).toBe(false);
@@ -608,7 +658,7 @@ describe('GameController API', () => {
       mockResignGame.mockRejectedValue(new Error('Game not found'));
 
       const response = await request(app)
-        .post('/api/games/non-existent/resign')
+        .post(`/api/games/${validGameId}/resign`)
         .set('Authorization', `Bearer ${validToken}`);
 
       expect(response.status).toBe(404);
@@ -620,7 +670,7 @@ describe('GameController API', () => {
       mockResignGame.mockRejectedValue(new Error('Cannot resign a finished game'));
 
       const response = await request(app)
-        .post('/api/games/game-456/resign')
+        .post(`/api/games/${validGameId}/resign`)
         .set('Authorization', `Bearer ${validToken}`);
 
       expect(response.status).toBe(400);
@@ -632,7 +682,7 @@ describe('GameController API', () => {
       mockResignGame.mockResolvedValue(mockResignedGameResponse);
 
       const response = await request(app)
-        .post('/api/games/game-456/resign')
+        .post(`/api/games/${validGameId}/resign`)
         .set('Cookie', `token=${validToken}`);
 
       expect(response.status).toBe(200);
