@@ -974,10 +974,19 @@ describe('GameService', () => {
         });
 
         mockGameRepository.findByIdAndUserId.mockResolvedValue(mockGame);
-        mockGameRepository.addMove.mockResolvedValue(finishedGame);
-        mockGameRepository.finishGame.mockResolvedValue(finishedGame);
+        mockGameRepository.addMoveWithVersion.mockResolvedValue({
+          success: true,
+          game: finishedGame,
+        });
+        mockGameRepository.finishGameWithVersion.mockResolvedValue({
+          success: true,
+          game: finishedGame,
+        });
+        mockGameRepository.updateWithVersion.mockResolvedValue({
+          success: true,
+          game: finishedGame,
+        });
         mockGameRepository.findById.mockResolvedValue(finishedGame);
-        mockGameRepository.update.mockResolvedValue(finishedGame);
 
         mockEngineService.getEngineMove.mockResolvedValue({
           move: { from: 'd8', to: 'h4' },
@@ -1023,10 +1032,8 @@ describe('GameService', () => {
         expect(result.success).toBe(true);
         expect(result.engineMove).toBeDefined();
         expect(result.engineMove?.san).toBe('Qh4#');
-        expect(mockGameRepository.finishGame).toHaveBeenCalledWith(
-          mockGameId,
-          'engine_win_checkmate'
-        );
+        // Now uses versioned finish for atomicity
+        expect(mockGameRepository.finishGameWithVersion).toHaveBeenCalled();
       });
 
       it('should handle engine returning invalid move', async () => {

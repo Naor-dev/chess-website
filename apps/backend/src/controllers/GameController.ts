@@ -167,6 +167,10 @@ export class GameController extends BaseController {
         this.handleBadRequest(res, 'Cannot save a finished game');
         return;
       }
+      if (error instanceof ConcurrentModificationError) {
+        this.handleConflict(res, 'Game was modified. Please refresh and try again.');
+        return;
+      }
       this.handleError(error, res, 'GameController.saveGame');
     }
   }
