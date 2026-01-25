@@ -110,6 +110,15 @@ Key files:
 - **Custom hooks** at `src/hooks/` - Reusable React hooks (e.g., `useBoardSize` for responsive board sizing)
 - **Styling** via TailwindCSS v4
 - **Chess board** via react-chessboard v5 (uses `options` prop pattern)
+- **Error tracking** via Sentry (`sentry.client.config.ts`, `sentry.server.config.ts`, `sentry.edge.config.ts`)
+
+**Sentry error boundaries** at `src/app/error.tsx`, `global-error.tsx`, `game/[id]/error.tsx`, `history/error.tsx`:
+
+```typescript
+Sentry.captureException(error, { tags: { boundary: 'root' } }); // or 'global', page: 'game', page: 'history'
+```
+
+**Env vars:** `NEXT_PUBLIC_SENTRY_DSN`, `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, `SENTRY_PROJECT`
 
 Key pages:
 
@@ -173,6 +182,37 @@ async findById(id: string): Promise<Entity | null> {
 import { prisma, connectWithRetry, verifyConnection } from '../database/prisma';
 ```
 
+## Optimistic Locking Pattern
+
+The Game model uses a `version` field for concurrent modification detection:
+
+```typescript
+// Repository methods use transactions for atomic version check + update
+async updateWithVersion(gameId: string, expectedVersion: number, data: UpdateGameData) {
+  return this.executeWithErrorHandling('updateWithVersion', async () => {
+    return this.prisma.$transaction(async (tx) => {
+      const game = await tx.game.findFirst({ where: { id: gameId, version: expectedVersion } });
+      if (!game) return { success: false };
+      const updated = await tx.game.update({
+        where: { id: gameId },
+        data: { ...data, version: { increment: 1 } },
+      });
+      return { success: true, game: updated };
+    });
+  }, { gameId, expectedVersion });
+}
+
+// Service layer chains versioned operations
+const moveResult = await this.gameRepository.addMoveWithVersion(gameId, game.version, san, fen);
+if (!moveResult.success) throw new ConcurrentModificationError(gameId);
+// Use new version for next operation
+await this.gameRepository.updateWithVersion(gameId, moveResult.game!.version, { ... });
+```
+
+**Key methods:** `updateWithVersion()`, `addMoveWithVersion()`, `finishGameWithVersion()`
+
+**Error:** `ConcurrentModificationError` → 409 Conflict response
+
 ## Testing
 
 **Framework:** Jest + ts-jest (backend), Supertest for API tests
@@ -224,7 +264,7 @@ const response = await request(app)
   .send({ difficultyLevel: 3, timeControlType: 'blitz_5min' });
 ```
 
-**Current coverage:** 128 tests (40 gameService + 64 gameController + 24 authController)
+**Current coverage:** 134 tests (40 gameService + 64 gameController + 24 authController + 6 engineService)
 
 ### Playwright UI Testing
 
@@ -368,6 +408,8 @@ GitHub Actions workflows in `.github/workflows/`:
 
 **Recently Completed:**
 
+- Optimistic locking (#135, PR #139) - version field with transaction-based atomic updates, 409 Conflict on concurrent modification
+- Sentry frontend integration (#135, PR #139) - error boundaries capture exceptions with tags, source map uploads
 - Show possible moves (#25) - click piece to see valid destination squares with dots/rings for captures
 - Game history sorting/filtering (#88) - sort by date, filter by status and result
 - Quick wins bundle (#26, #28, #80) - illegal move shake animation, check alert, navigation buttons in game header
@@ -469,7 +511,10 @@ dev/active/[feature-name]/
 **Active work items:**
 
 - `dev/active/code-review-remediation/` - Tracking #135 remediation tasks
-- `dev/active/optimistic-locking-sentry/` - Tasks 1.1 and 1.2 implementation
+
+**Completed:**
+
+- `dev/active/optimistic-locking-sentry/` - Tasks 1.1 (optimistic locking) and 1.2 (Sentry frontend) - PR #139
 
 **Usage:** Start session with "Read dev/active/[feature]/[feature]-context.md for context"
 
