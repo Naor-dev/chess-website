@@ -130,21 +130,34 @@ export class GameService {
       const timeoutCheck = this.checkTimeout(game, currentTurn);
 
       if (timeoutCheck.isTimeout) {
-        // Auto-finish the game due to timeout
+        // Auto-finish the game due to timeout - use version check to prevent race conditions
         Sentry.addBreadcrumb({
           message: 'Game timeout detected on fetch',
           category: 'game',
           data: { gameId, result: timeoutCheck.result },
         });
 
-        const finishedGame = await this.gameRepository.finishGame(gameId, timeoutCheck.result!);
-        await this.gameRepository.update(gameId, {
+        const finishResult = await this.gameRepository.finishGameWithVersion(
+          gameId,
+          game.version,
+          timeoutCheck.result!
+        );
+
+        if (!finishResult.success) {
+          // Game was modified concurrently - re-fetch and return current state
+          // The timeout may no longer be valid after the concurrent modification
+          const refreshedGame = await this.gameRepository.findByIdAndUserId(gameId, userId);
+          return refreshedGame ? this.toGameResponse(refreshedGame) : null;
+        }
+
+        // Update times using the new version from finished game
+        await this.gameRepository.updateWithVersion(gameId, finishResult.game!.version, {
           timeLeftUser: timeoutCheck.timeLeftUser,
           timeLeftEngine: timeoutCheck.timeLeftEngine,
           turnStartedAt: null,
         });
 
-        return this.toGameResponse(finishedGame, {
+        return this.toGameResponse(finishResult.game!, {
           timeLeftUser: timeoutCheck.timeLeftUser,
           timeLeftEngine: timeoutCheck.timeLeftEngine,
         });
@@ -218,7 +231,8 @@ export class GameService {
       if (!finishResult.success) {
         throw new ConcurrentModificationError(gameId);
       }
-      await this.gameRepository.update(gameId, {
+      // Use new version for time update
+      await this.gameRepository.updateWithVersion(gameId, finishResult.game!.version, {
         timeLeftUser: 0,
         turnStartedAt: null,
       });
@@ -260,12 +274,19 @@ export class GameService {
       if (!finishResult.success) {
         throw new ConcurrentModificationError(gameId);
       }
-      // Use new version for subsequent updates
-      await this.gameRepository.addMove(gameId, moveResult.san, chess.fen());
-      await this.gameRepository.update(gameId, {
-        timeLeftUser: newTimeLeftUser,
-        turnStartedAt: null, // Game over, no turn
-      });
+      // Use new version for subsequent updates - chain versioned operations
+      const moveAddResult = await this.gameRepository.addMoveWithVersion(
+        gameId,
+        finishResult.game!.version,
+        moveResult.san,
+        chess.fen()
+      );
+      if (moveAddResult.success) {
+        await this.gameRepository.updateWithVersion(gameId, moveAddResult.game!.version, {
+          timeLeftUser: newTimeLeftUser,
+          turnStartedAt: null, // Game over, no turn
+        });
+      }
 
       return {
         success: true,
@@ -292,11 +313,19 @@ export class GameService {
     if (!moveAddResult.success) {
       throw new ConcurrentModificationError(gameId);
     }
-    // User's move is now locked in - engine operations happen sequentially after this
-    await this.gameRepository.update(gameId, {
-      timeLeftUser: newTimeLeftUser,
-      turnStartedAt: engineTurnStartedAt,
-    });
+    // User's move is now locked in - use new version for time update
+    const timeUpdateResult = await this.gameRepository.updateWithVersion(
+      gameId,
+      moveAddResult.game!.version,
+      {
+        timeLeftUser: newTimeLeftUser,
+        turnStartedAt: engineTurnStartedAt,
+      }
+    );
+    // Track current version for engine operations
+    const currentVersion = timeUpdateResult.success
+      ? timeUpdateResult.game!.version
+      : moveAddResult.game!.version;
 
     // 8. Get engine move if engine service is available
     let engineMoveResult: MoveResponse['engineMove'] | undefined;
@@ -324,24 +353,30 @@ export class GameService {
           newTimeLeftEngine = Math.max(0, game.timeLeftEngine - engineElapsed);
 
           if (newTimeLeftEngine <= 0) {
-            // Engine timed out
+            // Engine timed out - use versioned finish
             Sentry.addBreadcrumb({
               message: 'Engine timeout detected',
               category: 'game',
               data: { gameId, engineElapsed },
             });
 
-            const finishedGame = await this.gameRepository.finishGame(gameId, 'user_win_timeout');
-            await this.gameRepository.update(gameId, {
-              timeLeftEngine: 0,
-              turnStartedAt: null,
-            });
+            const finishResult = await this.gameRepository.finishGameWithVersion(
+              gameId,
+              currentVersion,
+              'user_win_timeout'
+            );
+            if (finishResult.success) {
+              await this.gameRepository.updateWithVersion(gameId, finishResult.game!.version, {
+                timeLeftEngine: 0,
+                turnStartedAt: null,
+              });
+            }
 
             return {
               success: true,
               game: this.toGameResponse(
                 {
-                  ...finishedGame,
+                  ...(finishResult.game ?? game),
                   currentFen: chess.fen(),
                   movesHistory: [...game.movesHistory, moveResult.san],
                 },
@@ -374,22 +409,32 @@ export class GameService {
         const engineGameEndCheck = this.checkGameEnd(chess);
 
         if (engineGameEndCheck.isOver) {
-          // Game ended after engine's move
-          const finishedGame = await this.gameRepository.finishGame(
+          // Game ended after engine's move - use versioned operations
+          const finishResult = await this.gameRepository.finishGameWithVersion(
             gameId,
+            currentVersion,
             engineGameEndCheck.result!
           );
-          await this.gameRepository.addMove(gameId, engineMove.san, chess.fen());
-          await this.gameRepository.update(gameId, {
-            timeLeftEngine: newTimeLeftEngine,
-            turnStartedAt: null,
-          });
+          if (finishResult.success) {
+            const moveResult2 = await this.gameRepository.addMoveWithVersion(
+              gameId,
+              finishResult.game!.version,
+              engineMove.san,
+              chess.fen()
+            );
+            if (moveResult2.success) {
+              await this.gameRepository.updateWithVersion(gameId, moveResult2.game!.version, {
+                timeLeftEngine: newTimeLeftEngine,
+                turnStartedAt: null,
+              });
+            }
+          }
 
           return {
             success: true,
             game: this.toGameResponse(
               {
-                ...finishedGame,
+                ...(finishResult.game ?? game),
                 currentFen: chess.fen(),
                 movesHistory: [...game.movesHistory, moveResult.san, engineMove.san],
               },
@@ -404,13 +449,20 @@ export class GameService {
           };
         }
 
-        // 12. Save engine move and switch turn back to user
+        // 12. Save engine move and switch turn back to user - use versioned operations
         const userTurnStartedAt = game.timeControlType !== 'none' ? new Date() : null;
-        await this.gameRepository.addMove(gameId, engineMove.san, chess.fen());
-        await this.gameRepository.update(gameId, {
-          timeLeftEngine: newTimeLeftEngine,
-          turnStartedAt: userTurnStartedAt,
-        });
+        const engineMoveAddResult = await this.gameRepository.addMoveWithVersion(
+          gameId,
+          currentVersion,
+          engineMove.san,
+          chess.fen()
+        );
+        if (engineMoveAddResult.success) {
+          await this.gameRepository.updateWithVersion(gameId, engineMoveAddResult.game!.version, {
+            timeLeftEngine: newTimeLeftEngine,
+            turnStartedAt: userTurnStartedAt,
+          });
+        }
 
         engineMoveResult = {
           from: engineResult.move.from,
@@ -423,9 +475,9 @@ export class GameService {
         Sentry.captureException(error, {
           extra: { gameId, fen: chess.fen() },
         });
-        // Revert to user's turn since engine failed
+        // Revert to user's turn since engine failed - use versioned update
         const userTurnStartedAt = game.timeControlType !== 'none' ? new Date() : null;
-        await this.gameRepository.update(gameId, {
+        await this.gameRepository.updateWithVersion(gameId, currentVersion, {
           turnStartedAt: userTurnStartedAt,
         });
         // Continue without engine move - user's move was already saved

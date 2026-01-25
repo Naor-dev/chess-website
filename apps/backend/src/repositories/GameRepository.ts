@@ -234,30 +234,31 @@ export class GameRepository extends BaseRepository {
     return this.executeWithErrorHandling(
       'updateWithVersion',
       async () => {
-        // Use updateMany with version check for atomic operation
-        // Returns count of affected rows (0 if version mismatch)
-        const result = await this.prisma.game.updateMany({
-          where: {
-            id: gameId,
-            version: expectedVersion,
-          },
-          data: {
-            ...data,
-            version: { increment: 1 },
-          },
+        // Use a transaction to ensure atomicity of version check + update
+        const result = await this.prisma.$transaction(async (tx) => {
+          // First verify version matches
+          const game = await tx.game.findFirst({
+            where: { id: gameId, version: expectedVersion },
+          });
+
+          if (!game) {
+            // Version mismatch - concurrent modification detected
+            return { success: false };
+          }
+
+          // Update atomically within transaction
+          const updated = await tx.game.update({
+            where: { id: gameId },
+            data: {
+              ...data,
+              version: { increment: 1 },
+            },
+          });
+
+          return { success: true, game: updated };
         });
 
-        if (result.count === 0) {
-          // Version mismatch - concurrent modification detected
-          return { success: false };
-        }
-
-        // Fetch the updated game to return
-        const game = await this.prisma.game.findUnique({
-          where: { id: gameId },
-        });
-
-        return { success: true, game: game ?? undefined };
+        return result;
       },
       { gameId, expectedVersion }
     );
@@ -322,34 +323,39 @@ export class GameRepository extends BaseRepository {
   async finishGameWithVersion(
     gameId: string,
     expectedVersion: number,
-    result: string
+    gameResult: string
   ): Promise<{ success: boolean; game?: Game }> {
     return this.executeWithErrorHandling(
       'finishGameWithVersion',
       async () => {
-        const updateResult = await this.prisma.game.updateMany({
-          where: {
-            id: gameId,
-            version: expectedVersion,
-          },
-          data: {
-            status: GameStatus.FINISHED,
-            result,
-            version: { increment: 1 },
-          },
+        // Use a transaction to ensure atomicity of version check + finish
+        const result = await this.prisma.$transaction(async (tx) => {
+          // First verify version matches
+          const game = await tx.game.findFirst({
+            where: { id: gameId, version: expectedVersion },
+          });
+
+          if (!game) {
+            // Version mismatch - concurrent modification detected
+            return { success: false };
+          }
+
+          // Finish game atomically within transaction
+          const updated = await tx.game.update({
+            where: { id: gameId },
+            data: {
+              status: GameStatus.FINISHED,
+              result: gameResult,
+              version: { increment: 1 },
+            },
+          });
+
+          return { success: true, game: updated };
         });
 
-        if (updateResult.count === 0) {
-          return { success: false };
-        }
-
-        const game = await this.prisma.game.findUnique({
-          where: { id: gameId },
-        });
-
-        return { success: true, game: game ?? undefined };
+        return result;
       },
-      { gameId, expectedVersion, result }
+      { gameId, expectedVersion, result: gameResult }
     );
   }
 }
