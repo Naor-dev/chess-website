@@ -974,9 +974,18 @@ describe('GameService', () => {
         });
 
         mockGameRepository.findByIdAndUserId.mockResolvedValue(mockGame);
-        mockGameRepository.addMoveWithVersion.mockResolvedValue({ success: true, game: finishedGame });
-        mockGameRepository.finishGameWithVersion.mockResolvedValue({ success: true, game: finishedGame });
-        mockGameRepository.updateWithVersion.mockResolvedValue({ success: true, game: finishedGame });
+        mockGameRepository.addMoveWithVersion.mockResolvedValue({
+          success: true,
+          game: finishedGame,
+        });
+        mockGameRepository.finishGameWithVersion.mockResolvedValue({
+          success: true,
+          game: finishedGame,
+        });
+        mockGameRepository.updateWithVersion.mockResolvedValue({
+          success: true,
+          game: finishedGame,
+        });
         mockGameRepository.findById.mockResolvedValue(finishedGame);
 
         mockEngineService.getEngineMove.mockResolvedValue({
