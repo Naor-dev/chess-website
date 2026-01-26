@@ -26,6 +26,7 @@ export interface UnifiedConfig {
   engine: {
     timeout: number; // milliseconds for move analysis
     initTimeout: number; // milliseconds for engine initialization
+    poolSize: number; // number of engine instances in the pool
   };
   cors: {
     origin: string;
@@ -68,6 +69,7 @@ export const config: UnifiedConfig = {
   engine: {
     timeout: parseInt(process.env.ENGINE_TIMEOUT || '30000', 10), // 30 seconds default
     initTimeout: parseInt(process.env.ENGINE_INIT_TIMEOUT || '10000', 10), // 10 seconds default
+    poolSize: Math.max(1, Math.min(10, parseInt(process.env.ENGINE_POOL_SIZE || '2', 10))), // 1-10 engines
   },
   cors: {
     origin: process.env.CORS_ORIGIN || 'http://localhost:3000',

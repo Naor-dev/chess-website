@@ -1,6 +1,7 @@
 import * as Sentry from '@sentry/node';
 import type { ChessEngine, EngineConfig, EngineResult } from './types';
 import { Stockfish } from '@se-oss/stockfish';
+import { Mutex } from '../utils/Mutex';
 
 // Security: FEN validation regex - defense in depth
 // FEN format: pieces activeColor castling enPassant halfmove fullmove
@@ -29,6 +30,7 @@ export class StockfishEngine implements ChessEngine {
   readonly name = 'stockfish';
   private engine: Stockfish | null = null;
   private ready = false;
+  private mutex = new Mutex();
 
   async initialize(): Promise<void> {
     if (this.ready) {
@@ -68,13 +70,16 @@ export class StockfishEngine implements ChessEngine {
     // Security: Bound depth value (defense in depth)
     const safeDepth = Math.max(MIN_DEPTH, Math.min(MAX_DEPTH, engineConfig.depth));
 
-    Sentry.addBreadcrumb({
-      message: 'Getting best move from Stockfish',
-      category: 'engine',
-      data: { fen, depth: safeDepth },
-    });
+    // Acquire mutex to serialize access to this engine instance
+    const release = await this.mutex.acquire();
 
     try {
+      Sentry.addBreadcrumb({
+        message: 'Getting best move from Stockfish',
+        category: 'engine',
+        data: { fen, depth: safeDepth },
+      });
+
       const analysis = await this.engine.analyze(fen, safeDepth);
 
       if (!analysis.bestmove) {
@@ -114,6 +119,8 @@ export class StockfishEngine implements ChessEngine {
     } catch (error) {
       Sentry.captureException(error);
       throw new Error(`Engine analysis failed: ${error}`);
+    } finally {
+      release();
     }
   }
 

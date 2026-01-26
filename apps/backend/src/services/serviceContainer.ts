@@ -32,6 +32,14 @@ class ServiceContainer {
     }
     return ServiceContainer.instance;
   }
+
+  /**
+   * Dispose of all services that hold resources.
+   * Should be called during graceful shutdown.
+   */
+  public async dispose(): Promise<void> {
+    await this.engineService.dispose();
+  }
 }
 
 export const services = ServiceContainer.getInstance();

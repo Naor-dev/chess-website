@@ -97,6 +97,13 @@ Key files:
 - Depth bounds: MIN_DEPTH=1, MAX_DEPTH=30
 - Test with: `cd apps/backend && npx tsx scripts/test-stockfish.ts`
 
+**Engine Pooling:**
+
+- `src/engines/EnginePool.ts` - Pool of StockfishEngine instances (configurable via `ENGINE_POOL_SIZE`, default: 2, max: 10)
+- `src/utils/Mutex.ts` - Async mutex for serializing engine access per instance
+- `src/services/engineService.ts` - Uses pool with acquire/release pattern
+- Graceful shutdown: `services.dispose()` called in `server.ts` on SIGTERM/SIGINT
+
 ### Frontend (apps/frontend)
 
 **Next.js App Router** with feature-based organization
@@ -127,6 +134,7 @@ Key pages:
 - `/auth/error` - Auth error display
 - `/game/new` - New game settings (difficulty, time control)
 - `/game/[id]` - Game board with clocks and status
+- `/game/[id]/components/` - Extracted components (ChessClock, GameInfo, DifficultyBadge, GameOverModal, EngineThinkingOverlay)
 - `/history` - Game history (active and completed games)
 
 ### Shared Package (packages/shared)
@@ -389,37 +397,19 @@ GitHub Actions workflows in `.github/workflows/`:
 
 **Done:**
 
-- #90: Frontend project (Next.js)
-- #91: Backend project (Express)
-- #92: Database setup (PostgreSQL + Prisma)
-- #93: CI/CD pipeline (GitHub Actions)
-- #94: Hosting (Vercel + Koyeb + Supabase)
-- #96: HTTPS and domain
-- Google OAuth authentication (PR #107)
-- Epic 2: New Game Creation (#10-#18, #72) - difficulty/time selection, game creation API
-- PR #110: Game Board Page (#75-#78, #20, #21, #27, #42) - chess board display, clocks, status messages
-- Epic 8: Home Page UI (#67-#71) - design, logo, description, centered login
-- PR #111: UI/UX improvements - chess-themed design system, dark mode, animations
-- PR #114: Move handling + BFF auth pattern (#22, #23) - chess.js integration, drag and drop, cross-browser auth
-- #36: Stockfish engine integration - AI moves via `@se-oss/stockfish` WASM
-- #79: Save button functional - confirms game state saved
-- Game history page - view active and completed games
-- #43: Clock management - clocks tick on active turn, timeout detection, time increments
-
-**Recently Completed:**
-
-- Optimistic locking (#135, PR #139) - version field with transaction-based atomic updates, 409 Conflict on concurrent modification
-- Sentry frontend integration (#135, PR #139) - error boundaries capture exceptions with tags, source map uploads
-- Show possible moves (#25) - click piece to see valid destination squares with dots/rings for captures
-- Game history sorting/filtering (#88) - sort by date, filter by status and result
-- Quick wins bundle (#26, #28, #80) - illegal move shake animation, check alert, navigation buttons in game header
-- Game end detection (#126) - proper checkmate, stalemate, draw detection using chess.js methods
-- Mobile responsive design (#73, #81) - home page and game page responsive across mobile, tablet, desktop
-- Resign functionality - users can resign active games with confirmation dialog
-- Full dependency upgrade - all packages updated to latest (ESLint 9, Zod 4, Express 5, Sentry 10, Jest 30, react-chessboard 5)
-- Move-by-move replay (#57) - view finished games with navigation controls, keyboard shortcuts
-- Server time sync (#47) - accurate clock sync on save and tab visibility change
-- Input validation (#132) - Zod validation for gameId, email, googleId, query params, time bounds
+- Infrastructure: Frontend (Next.js), Backend (Express), Database (PostgreSQL + Prisma), CI/CD, Hosting
+- Google OAuth authentication with BFF pattern (cross-browser cookie support)
+- New game creation with difficulty (1-5) and time control selection
+- Game board with chess.js validation, drag-and-drop, click-to-move, possible moves display
+- Stockfish engine integration with engine pooling and mutex-based concurrency
+- Chess clocks with timeout detection, increments, server time sync
+- Game history page with sorting/filtering
+- Save, resign, and move-by-move replay functionality
+- Optimistic locking with version field for concurrent modification detection
+- Sentry integration (frontend error boundaries + backend error tracking)
+- Mobile responsive design, dark mode, animations
+- Input validation with Zod (gameId, email, query params, time bounds)
+- GamePage component extraction (ChessClock, GameInfo, DifficultyBadge, GameOverModal, EngineThinkingOverlay)
 
 ## Authentication Flow (BFF Pattern)
 
