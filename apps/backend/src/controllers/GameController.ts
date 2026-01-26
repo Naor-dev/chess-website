@@ -25,13 +25,7 @@ export class GameController extends BaseController {
 
       const inputResult = createGameSchema.safeParse(req.body);
       if (!inputResult.success) {
-        const details: Record<string, string[]> = {};
-        inputResult.error.issues.forEach((issue) => {
-          const path = issue.path.join('.') || 'body';
-          if (!details[path]) details[path] = [];
-          details[path].push(issue.message);
-        });
-        this.handleValidationError(res, details);
+        this.handleValidationError(res, this.formatZodError(inputResult.error));
         return;
       }
 
@@ -102,13 +96,7 @@ export class GameController extends BaseController {
 
       const moveResult = makeMoveSchema.safeParse(req.body);
       if (!moveResult.success) {
-        const details: Record<string, string[]> = {};
-        moveResult.error.issues.forEach((issue) => {
-          const path = issue.path.join('.') || 'body';
-          if (!details[path]) details[path] = [];
-          details[path].push(issue.message);
-        });
-        this.handleValidationError(res, details);
+        this.handleValidationError(res, this.formatZodError(moveResult.error));
         return;
       }
 

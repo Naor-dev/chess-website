@@ -159,6 +159,14 @@ Import in apps: `import { GameResponse, createGameSchema } from '@chess-website/
 4. **Repositories extend BaseRepository** - Use `executeWithErrorHandling(operation, fn, context)` for all DB operations
 5. **Validate all input** - Use Zod v4 schemas from shared package (note: use `error.issues` not `error.errors`)
 6. **Always verify game ownership** - When implementing game endpoints, use `gameService.getGame(gameId, userId)` to verify the user owns the game before any operation
+7. **Use safeParse + formatZodError for validation** - Use `safeParse()` consistently (never `parse()`), and use `this.formatZodError()` from BaseController:
+   ```typescript
+   const result = schema.safeParse(req.body);
+   if (!result.success) {
+     this.handleValidationError(res, this.formatZodError(result.error));
+     return;
+   }
+   ```
 
 ## API Response Pattern
 

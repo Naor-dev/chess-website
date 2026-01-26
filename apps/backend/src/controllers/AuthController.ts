@@ -204,13 +204,7 @@ export class AuthController extends BaseController {
       // Validate input with Zod schema
       const inputResult = bffExchangeSchema.safeParse(req.body);
       if (!inputResult.success) {
-        const details: Record<string, string[]> = {};
-        inputResult.error.issues.forEach((issue) => {
-          const path = issue.path.join('.') || 'body';
-          if (!details[path]) details[path] = [];
-          details[path].push(issue.message);
-        });
-        this.handleValidationError(res, details);
+        this.handleValidationError(res, this.formatZodError(inputResult.error));
         return;
       }
       const { googleId, email, displayName } = inputResult.data;
