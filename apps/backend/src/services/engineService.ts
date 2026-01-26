@@ -1,27 +1,27 @@
 import * as Sentry from '@sentry/node';
 import type { DifficultyLevel } from '@chess-website/shared';
 import type {
-  ChessEngine,
   PlayStyleStrategy,
   EngineConfig,
   EngineResult,
   EngineProvider,
 } from '../engines/types';
 import { stockfishProvider } from '../engines/StockfishEngine';
+import { EnginePool } from '../engines/EnginePool';
 import { DefaultPlayStyle } from '../engines/styles/DefaultPlayStyle';
 import { config } from '../config/unifiedConfig';
 
 /**
- * EngineService - Orchestrates chess engine and play styles
+ * EngineService - Orchestrates chess engine pool and play styles
  *
  * Responsibilities:
- * - Manages engine lifecycle (initialization, disposal)
+ * - Manages engine pool lifecycle (initialization, disposal)
  * - Applies play style modifications
  * - Handles opening book lookups
  * - Provides extension points for MCP/RAG integration
  */
 export class EngineService {
-  private engine: ChessEngine | null = null;
+  private enginePool: EnginePool | null = null;
   private playStyle: PlayStyleStrategy;
   private providers: Map<string, EngineProvider> = new Map();
   private currentProvider = 'stockfish';
@@ -68,10 +68,10 @@ export class EngineService {
       throw new Error(`Unknown engine provider: ${providerName}`);
     }
 
-    // Dispose current engine
-    if (this.engine) {
-      await this.engine.dispose();
-      this.engine = null;
+    // Dispose current engine pool
+    if (this.enginePool) {
+      await this.enginePool.disposeAll();
+      this.enginePool = null;
       this.initializationPromise = null;
     }
 
@@ -84,10 +84,10 @@ export class EngineService {
   }
 
   /**
-   * Initialize the engine (lazy initialization)
+   * Initialize the engine pool (lazy initialization)
    */
   private async ensureInitialized(): Promise<void> {
-    if (this.engine?.isReady()) {
+    if (this.enginePool && !this.enginePool.isPoolDisposed()) {
       return;
     }
 
@@ -96,23 +96,24 @@ export class EngineService {
       return this.initializationPromise;
     }
 
-    this.initializationPromise = this.initializeEngine();
+    this.initializationPromise = this.initializeEnginePool();
     await this.initializationPromise;
   }
 
-  private async initializeEngine(): Promise<void> {
+  private async initializeEnginePool(): Promise<void> {
     const provider = this.providers.get(this.currentProvider);
     if (!provider) {
       throw new Error(`Engine provider not found: ${this.currentProvider}`);
     }
 
     Sentry.addBreadcrumb({
-      message: `Initializing engine from provider: ${this.currentProvider}`,
+      message: `Initializing engine pool from provider: ${this.currentProvider}`,
       category: 'engine',
+      data: { poolSize: config.engine.poolSize },
     });
 
-    this.engine = provider.createEngine();
-    await this.engine.initialize();
+    this.enginePool = new EnginePool(provider, config.engine.poolSize);
+    await this.enginePool.initialize();
   }
 
   /**
@@ -150,11 +151,11 @@ export class EngineService {
       }
     }
 
-    // Ensure engine is initialized
+    // Ensure engine pool is initialized
     await this.ensureInitialized();
 
-    if (!this.engine) {
-      throw new Error('Engine failed to initialize');
+    if (!this.enginePool) {
+      throw new Error('Engine pool failed to initialize');
     }
 
     // Build engine config
@@ -167,36 +168,44 @@ export class EngineService {
     // Allow play style to modify config
     const engineConfig = this.playStyle.modifyConfig(baseConfig);
 
-    // Get move from engine
-    const result = await this.engine.getBestMove(fen, engineConfig);
+    // Acquire an engine from the pool
+    const engine = await this.enginePool.acquire();
 
-    Sentry.addBreadcrumb({
-      message: 'Engine move calculated',
-      category: 'engine',
-      data: {
-        move: result.move,
-        depth: result.depth,
-        score: result.score,
-      },
-    });
+    try {
+      // Get move from engine
+      const result = await engine.getBestMove(fen, engineConfig);
 
-    return result;
+      Sentry.addBreadcrumb({
+        message: 'Engine move calculated',
+        category: 'engine',
+        data: {
+          move: result.move,
+          depth: result.depth,
+          score: result.score,
+        },
+      });
+
+      return result;
+    } finally {
+      // Always release the engine back to the pool
+      this.enginePool.release(engine);
+    }
   }
 
   /**
-   * Check if engine is ready
+   * Check if engine pool is ready
    */
   isReady(): boolean {
-    return this.engine?.isReady() ?? false;
+    return this.enginePool !== null && !this.enginePool.isPoolDisposed();
   }
 
   /**
-   * Dispose of engine resources
+   * Dispose of all engine resources
    */
   async dispose(): Promise<void> {
-    if (this.engine) {
-      await this.engine.dispose();
-      this.engine = null;
+    if (this.enginePool) {
+      await this.enginePool.disposeAll();
+      this.enginePool = null;
       this.initializationPromise = null;
 
       Sentry.addBreadcrumb({
@@ -204,5 +213,19 @@ export class EngineService {
         category: 'engine',
       });
     }
+  }
+
+  /**
+   * Get pool statistics for monitoring
+   */
+  getPoolStats(): { poolSize: number; available: number; waiting: number } | null {
+    if (!this.enginePool) {
+      return null;
+    }
+    return {
+      poolSize: this.enginePool.getPoolSize(),
+      available: this.enginePool.getAvailableCount(),
+      waiting: this.enginePool.getWaitQueueLength(),
+    };
   }
 }

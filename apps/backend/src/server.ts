@@ -1,6 +1,7 @@
 import app from './app';
 import { config, validateConfig } from './config/unifiedConfig';
 import { connectWithRetry, disconnectWithTimeout } from './database/prisma';
+import { services } from './services/serviceContainer';
 
 // Validate configuration
 validateConfig();
@@ -30,6 +31,13 @@ async function startServer(): Promise<void> {
       // eslint-disable-next-line no-console
       console.log('HTTP server closed');
     });
+
+    // Dispose services (engine pool, etc.)
+    // eslint-disable-next-line no-console
+    console.log('Disposing services...');
+    await services.dispose();
+    // eslint-disable-next-line no-console
+    console.log('Services disposed');
 
     // Disconnect from database with timeout
     await disconnectWithTimeout(5000);

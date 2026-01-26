@@ -85,6 +85,15 @@ export class GameService {
     };
   }
 
+  /**
+   * Creates a new game for the user with specified settings.
+   * Initializes the chess board with the starting position and sets up
+   * time controls based on the selected time control type.
+   *
+   * @param userId - The ID of the user creating the game
+   * @param input - Game creation input with difficulty level and time control
+   * @returns The created game with initial state and time settings
+   */
   async createGame(userId: string, input: CreateGameInput): Promise<GameResponse> {
     Sentry.addBreadcrumb({
       message: 'Creating new game',
@@ -110,6 +119,15 @@ export class GameService {
     return this.toGameResponse(game);
   }
 
+  /**
+   * Retrieves a game by ID with ownership verification.
+   * Performs timeout detection for active games with time control,
+   * automatically finishing games when a player's clock expires.
+   *
+   * @param gameId - The ID of the game to retrieve
+   * @param userId - The ID of the user (for ownership verification)
+   * @returns The game if found and owned by user, null otherwise
+   */
   async getGame(gameId: string, userId: string): Promise<GameResponse | null> {
     Sentry.addBreadcrumb({
       message: 'Fetching game',
@@ -173,6 +191,12 @@ export class GameService {
     return this.toGameResponse(game);
   }
 
+  /**
+   * Lists all games for a user.
+   *
+   * @param userId - The ID of the user
+   * @returns Array of game list items ordered by most recent first
+   */
   async listGames(userId: string): Promise<GameListItem[]> {
     Sentry.addBreadcrumb({
       message: 'Listing games',
@@ -184,6 +208,21 @@ export class GameService {
     return games.map((game) => this.toGameListItem(game));
   }
 
+  /**
+   * Processes a chess move with validation and engine response.
+   * Validates the move is legal, applies time deductions, checks for game end
+   * conditions, and triggers the engine to make a response move.
+   *
+   * @param gameId - The ID of the game
+   * @param userId - The ID of the user making the move
+   * @param move - The move to make (from, to, optional promotion)
+   * @returns Move response with updated game state and optional engine move
+   * @throws {GameNotFoundError} When game doesn't exist or user doesn't own it
+   * @throws {GameNotActiveError} When game is already finished
+   * @throws {NotYourTurnError} When it's the engine's turn
+   * @throws {InvalidMoveError} When the move is not legal
+   * @throws {ConcurrentModificationError} When game was modified concurrently
+   */
   async makeMove(gameId: string, userId: string, move: MakeMoveInput): Promise<MoveResponse> {
     Sentry.addBreadcrumb({
       message: 'Making move',
@@ -500,6 +539,18 @@ export class GameService {
     };
   }
 
+  /**
+   * Saves the current game state, syncing time for timed games.
+   * Updates the turn timer to ensure accurate clock values when
+   * the user explicitly saves or when tab visibility changes.
+   *
+   * @param gameId - The ID of the game to save
+   * @param userId - The ID of the user (for ownership verification)
+   * @returns Object with savedAt ISO timestamp
+   * @throws {GameNotFoundError} When game doesn't exist or user doesn't own it
+   * @throws {CannotSaveFinishedGameError} When game is already finished
+   * @throws {ConcurrentModificationError} When game was modified concurrently
+   */
   async saveGame(gameId: string, userId: string): Promise<{ savedAt: string }> {
     Sentry.addBreadcrumb({
       message: 'Saving game',
@@ -554,6 +605,16 @@ export class GameService {
     return { savedAt: new Date().toISOString() };
   }
 
+  /**
+   * Resigns the game for the user.
+   * Marks the game as finished with user_resigned result and clears the turn timer.
+   *
+   * @param gameId - The ID of the game to resign
+   * @param userId - The ID of the user (for ownership verification)
+   * @returns The updated game with finished status
+   * @throws {GameNotFoundError} When game doesn't exist or user doesn't own it
+   * @throws {CannotResignFinishedGameError} When game is already finished
+   */
   async resignGame(gameId: string, userId: string): Promise<GameResponse> {
     Sentry.addBreadcrumb({
       message: 'Resigning game',
@@ -581,6 +642,14 @@ export class GameService {
     return this.toGameResponse(finishedGame);
   }
 
+  /**
+   * Validates whether a move is legal for the given position.
+   * Uses chess.js to attempt the move and checks if it succeeds.
+   *
+   * @param fen - The current board position in FEN notation
+   * @param move - The move to validate (from, to, optional promotion)
+   * @returns True if the move is legal, false otherwise
+   */
   validateMove(fen: string, move: MakeMoveInput): boolean {
     const chess = new Chess(fen);
     try {
@@ -595,6 +664,14 @@ export class GameService {
     }
   }
 
+  /**
+   * Checks if the game has ended and determines the result.
+   * Detects checkmate, stalemate, threefold repetition,
+   * insufficient material, and fifty-move rule draws.
+   *
+   * @param chess - The chess.js instance with current game state
+   * @returns Object with isOver flag and optional result string
+   */
   checkGameEnd(chess: Chess): {
     isOver: boolean;
     result?: string;
