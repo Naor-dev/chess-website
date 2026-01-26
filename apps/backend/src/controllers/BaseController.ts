@@ -1,6 +1,7 @@
 import { Response } from 'express';
 import * as Sentry from '@sentry/node';
 import type { ApiResponse, ApiError } from '@chess-website/shared';
+import type { ZodError } from 'zod';
 import { config } from '../config/unifiedConfig';
 
 export abstract class BaseController {
@@ -49,6 +50,22 @@ export abstract class BaseController {
       details,
     };
     res.status(400).json(response);
+  }
+
+  /**
+   * Formats a ZodError into a details object for handleValidationError.
+   * Groups error messages by field path.
+   * @param error - The ZodError from a failed safeParse
+   * @returns Record mapping field paths to arrays of error messages
+   */
+  protected formatZodError(error: ZodError): Record<string, string[]> {
+    const details: Record<string, string[]> = {};
+    error.issues.forEach((issue) => {
+      const path = issue.path.join('.') || 'body';
+      if (!details[path]) details[path] = [];
+      details[path].push(issue.message);
+    });
+    return details;
   }
 
   protected handleNotFound(res: Response, resource: string): void {
