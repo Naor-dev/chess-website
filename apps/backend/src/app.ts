@@ -17,7 +17,27 @@ import passport from './config/passport';
 const app: Application = express();
 
 // Security middleware
-app.use(helmet());
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'"],
+        styleSrc: ["'self'"],
+        imgSrc: ["'self'", 'data:'],
+        fontSrc: ["'self'"],
+        connectSrc: ["'self'", '*.ingest.sentry.io'],
+        frameAncestors: ["'none'"],
+        formAction: ["'self'"],
+        objectSrc: ["'none'"],
+        baseUri: ["'self'"],
+        upgradeInsecureRequests: config.server.nodeEnv === 'production' ? [] : null,
+      },
+    },
+    crossOriginEmbedderPolicy: false,
+    crossOriginResourcePolicy: { policy: 'same-origin' },
+  })
+);
 app.use(
   cors({
     origin: config.cors.origin,
@@ -25,9 +45,9 @@ app.use(
   })
 );
 
-// Request parsing
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+// Request parsing (10kb limit - chess moves are ~200 bytes, this blocks large payload attacks)
+app.use(express.json({ limit: '10kb' }));
+app.use(express.urlencoded({ extended: true, limit: '10kb' }));
 app.use(cookieParser());
 app.use(compression());
 
