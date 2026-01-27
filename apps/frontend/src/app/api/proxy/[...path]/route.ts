@@ -1,5 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
+import {
+  validateCsrfToken,
+  shouldSkipCsrfValidation,
+  CSRF_COOKIE_NAME,
+  CSRF_HEADER_NAME,
+} from '@/lib/csrf';
 
 // Backend URL (server-side only, not exposed to browser)
 const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:3001';
@@ -95,8 +101,15 @@ function validateProxyPath(path: string): string | null {
 }
 
 /**
+ * Methods that require CSRF validation.
+ * GET and HEAD are safe (read-only) and don't need CSRF protection.
+ */
+const MUTATING_METHODS = ['POST', 'PUT', 'DELETE', 'PATCH'];
+
+/**
  * Forwards a request to the backend API with JWT authentication.
  * Reads token from HttpOnly cookie and adds as Authorization header.
+ * Validates CSRF token for mutating methods (POST, PUT, DELETE, PATCH).
  */
 async function proxyRequest(
   request: NextRequest,
@@ -111,7 +124,21 @@ async function proxyRequest(
       { status: 400 }
     );
   }
+
   const cookieStore = await cookies();
+
+  // Validate CSRF token for mutating methods (in production)
+  if (MUTATING_METHODS.includes(method) && !shouldSkipCsrfValidation()) {
+    const csrfCookie = cookieStore.get(CSRF_COOKIE_NAME)?.value;
+    const csrfHeader = request.headers.get(CSRF_HEADER_NAME);
+
+    if (!validateCsrfToken(csrfCookie, csrfHeader)) {
+      return NextResponse.json(
+        { success: false, error: 'CSRF token validation failed', code: 'CSRF_TOKEN_INVALID' },
+        { status: 403 }
+      );
+    }
+  }
   const token = cookieStore.get(COOKIE_NAME)?.value;
 
   // Build headers for backend request

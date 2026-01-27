@@ -449,8 +449,36 @@ User clicks "Sign in with Google"
 - Path traversal protection (blocks `..`, encoded variants, control characters)
 - OAuth redirects use hardcoded paths only (no user input in destinations)
 - All gameId params validated as UUID format before processing
+- CSRF protection via double-submit cookie pattern (see below)
 
 Token revocation via `tokenVersion` field - incrementing invalidates all existing JWTs.
+
+**CSRF Protection (Double-Submit Cookie):**
+
+```
+Login:
+  → BFF sets csrf_token cookie (non-HttpOnly, JS-readable)
+  → Cookie has 256 bits of entropy (32 random bytes)
+
+Mutating requests (POST/PUT/DELETE/PATCH):
+  → Frontend reads csrf_token cookie
+  → Sends token in X-CSRF-Token header
+  → BFF validates: cookie token == header token (constant-time comparison)
+  → Returns 403 if validation fails
+
+Logout:
+  → BFF clears csrf_token cookie along with auth cookie
+```
+
+Key files:
+
+- `apps/frontend/src/lib/csrf.ts` - Token generation, validation, cookie options
+- `apps/frontend/src/lib/apiClient.ts` - Request interceptor adds CSRF header
+- `apps/frontend/src/lib/authApi.ts` - Logout methods include CSRF header
+- `apps/frontend/src/app/api/proxy/[...path]/route.ts` - Validates CSRF on mutating requests
+- `apps/frontend/src/app/api/auth/[...path]/route.ts` - Sets/clears CSRF cookie, validates on logout
+
+**Note:** CSRF validation is skipped in development/test environments (similar to rate limiter).
 
 ## Backend API Endpoints
 

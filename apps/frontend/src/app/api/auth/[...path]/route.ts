@@ -1,5 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
+import {
+  generateCsrfToken,
+  getCsrfCookieOptions,
+  validateCsrfToken,
+  shouldSkipCsrfValidation,
+  CSRF_COOKIE_NAME,
+  CSRF_HEADER_NAME,
+} from '@/lib/csrf';
 
 // Backend URL (server-side only, not exposed to browser)
 const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:3001';
@@ -208,6 +216,9 @@ export async function GET(
     // Set the JWT as an HttpOnly cookie
     response.cookies.set(COOKIE_NAME, result.token, getAuthCookieOptions());
 
+    // Set CSRF token cookie (non-HttpOnly so JS can read it)
+    response.cookies.set(CSRF_COOKIE_NAME, generateCsrfToken(), getCsrfCookieOptions());
+
     return response;
   }
 
@@ -253,6 +264,8 @@ export async function GET(
  * POST handler for auth routes.
  * - /api/auth/logout - Clear auth cookie
  * - /api/auth/logout-all - Clear cookie and invalidate all tokens on backend
+ *
+ * Both logout routes require CSRF validation (in production).
  */
 export async function POST(
   request: NextRequest,
@@ -261,10 +274,26 @@ export async function POST(
   const { path } = await params;
   const pathStr = path.join('/');
 
+  // Validate CSRF token for logout routes (in production)
+  if ((pathStr === 'logout' || pathStr === 'logout-all') && !shouldSkipCsrfValidation()) {
+    const cookieStore = await cookies();
+    const csrfCookie = cookieStore.get(CSRF_COOKIE_NAME)?.value;
+    const csrfHeader = request.headers.get(CSRF_HEADER_NAME);
+
+    if (!validateCsrfToken(csrfCookie, csrfHeader)) {
+      return NextResponse.json(
+        { success: false, error: 'CSRF token validation failed', code: 'CSRF_TOKEN_INVALID' },
+        { status: 403 }
+      );
+    }
+  }
+
   // POST /api/auth/logout - Clear auth cookie
   if (pathStr === 'logout') {
     const response = NextResponse.json({ success: true, message: 'Logged out successfully' });
     response.cookies.set(COOKIE_NAME, '', getAuthCookieOptions(0));
+    // Clear CSRF cookie on logout
+    response.cookies.set(CSRF_COOKIE_NAME, '', { ...getCsrfCookieOptions(), maxAge: 0 });
     return response;
   }
 
@@ -293,6 +322,8 @@ export async function POST(
       message: 'Logged out from all devices',
     });
     response.cookies.set(COOKIE_NAME, '', getAuthCookieOptions(0));
+    // Clear CSRF cookie on logout
+    response.cookies.set(CSRF_COOKIE_NAME, '', { ...getCsrfCookieOptions(), maxAge: 0 });
     return response;
   }
 
