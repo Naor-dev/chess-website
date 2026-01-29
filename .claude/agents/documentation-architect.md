@@ -67,8 +67,8 @@ docs/CODEMAPS/
 
 ## Entry Points
 
-| File | Purpose |
-|------|---------|
+| File         | Purpose           |
+| ------------ | ----------------- |
 | `src/app.ts` | Express app setup |
 
 ## Architecture
@@ -77,8 +77,8 @@ docs/CODEMAPS/
 
 ## Modules
 
-| Module | Path | Responsibility |
-|--------|------|----------------|
+| Module      | Path                          | Responsibility      |
+| ----------- | ----------------------------- | ------------------- |
 | GameService | `src/services/gameService.ts` | Game business logic |
 
 ## Data Flow
@@ -89,8 +89,8 @@ docs/CODEMAPS/
 
 ## Dependencies
 
-| Internal | External |
-|----------|----------|
+| Internal                | External            |
+| ----------------------- | ------------------- |
 | `@chess-website/shared` | `prisma`, `express` |
 ```
 
@@ -158,7 +158,9 @@ Brief description.
 ## Quick Start
 
 \`\`\`bash
+
 # Minimal steps to use
+
 \`\`\`
 
 ## Usage
@@ -168,7 +170,7 @@ Detailed usage with examples.
 ## API Reference
 
 | Method | Parameters | Returns |
-|--------|------------|---------|
+| ------ | ---------- | ------- |
 
 ## Troubleshooting
 
@@ -186,8 +188,8 @@ Create a new game.
 
 \`\`\`typescript
 {
-  difficultyLevel: 1-5,
-  timeControlType: "blitz_5min" | "rapid_10min" | ...
+difficultyLevel: 1-5,
+timeControlType: "blitz_5min" | "rapid_10min" | ...
 }
 \`\`\`
 
@@ -195,17 +197,17 @@ Create a new game.
 
 \`\`\`typescript
 {
-  success: true,
-  data: { id: string, fen: string, ... }
+success: true,
+data: { id: string, fen: string, ... }
 }
 \`\`\`
 
 ### Errors
 
-| Code | Meaning |
-|------|---------|
-| 400 | Invalid parameters |
-| 401 | Not authenticated |
+| Code | Meaning            |
+| ---- | ------------------ |
+| 400  | Invalid parameters |
+| 401  | Not authenticated  |
 ```
 
 ### Data Flow Diagrams
@@ -215,10 +217,10 @@ Use Mermaid for visual flows:
 ```markdown
 \`\`\`mermaid
 sequenceDiagram
-    participant C as Client
-    participant A as API
-    participant S as Service
-    participant D as Database
+participant C as Client
+participant A as API
+participant S as Service
+participant D as Database
 
     C->>A: POST /api/games
     A->>S: createGame()
@@ -226,6 +228,7 @@ sequenceDiagram
     D-->>S: game
     S-->>A: GameResponse
     A-->>C: { success: true, data: game }
+
 \`\`\`
 ```
 
@@ -254,12 +257,12 @@ sequenceDiagram
 
 Update documentation when:
 
-| Trigger | Action |
-|---------|--------|
+| Trigger     | Action                                |
+| ----------- | ------------------------------------- |
 | New feature | Create feature docs + update codemaps |
-| API change | Update API docs + examples |
-| Refactor | Regenerate affected codemaps |
-| Pre-release | Full validation audit |
+| API change  | Update API docs + examples            |
+| Refactor    | Regenerate affected codemaps          |
+| Pre-release | Full validation audit                 |
 
 ---
 

@@ -156,16 +156,14 @@ if (!result.success) {
 
 ```typescript
 // ❌ DANGEROUS - Raw SQL with interpolation
-const user = await prisma.$queryRawUnsafe(
-  `SELECT * FROM users WHERE email = '${email}'`
-);
+const user = await prisma.$queryRawUnsafe(`SELECT * FROM users WHERE email = '${email}'`);
 
 // ❌ DANGEROUS - String concatenation
 const query = `SELECT * FROM games WHERE id = '${gameId}'`;
 
 // ✅ SAFE - Prisma's query builder (always parameterized)
 const user = await prisma.user.findUnique({
-  where: { email }
+  where: { email },
 });
 
 // ✅ SAFE - Raw SQL with parameters
@@ -175,6 +173,7 @@ const user = await prisma.$queryRaw`
 ```
 
 **Rules:**
+
 - Never use `$queryRawUnsafe` with user input
 - Never concatenate strings into SQL
 - Always use Prisma's query builder or tagged template literals
@@ -214,7 +213,7 @@ const securityHeaders = [
       "img-src 'self' data: https:",
       "font-src 'self'",
       "connect-src 'self' https://api.example.com",
-    ].join('; ')
+    ].join('; '),
   },
   { key: 'X-Content-Type-Options', value: 'nosniff' },
   { key: 'X-Frame-Options', value: 'DENY' },
@@ -245,15 +244,13 @@ if (!cookieToken || !headerToken) {
 }
 
 // Use constant-time comparison
-if (!crypto.timingSafeEqual(
-  Buffer.from(cookieToken),
-  Buffer.from(headerToken)
-)) {
+if (!crypto.timingSafeEqual(Buffer.from(cookieToken), Buffer.from(headerToken))) {
   return res.status(403).json({ error: 'Invalid CSRF token' });
 }
 ```
 
 **Rules:**
+
 - CSRF protection required on all state-changing requests (POST, PUT, DELETE, PATCH)
 - Use constant-time comparison to prevent timing attacks
 - Generate tokens with sufficient entropy (32 bytes minimum)
@@ -314,6 +311,7 @@ catch (error) {
 ```
 
 **Rules:**
+
 - Never send `error.message` or `error.stack` to clients
 - Log detailed errors server-side (Sentry)
 - Use generic error messages for users
@@ -349,18 +347,18 @@ function validateUpload(file: File): void {
 
 ## OWASP Top 10 Quick Reference
 
-| # | Vulnerability | Our Protection |
-|---|--------------|----------------|
-| 1 | Broken Access Control | Ownership checks, JWT validation |
-| 2 | Cryptographic Failures | Explicit algorithms, bcrypt for passwords |
-| 3 | Injection | Prisma (parameterized), Zod validation |
-| 4 | Insecure Design | Code review, threat modeling |
-| 5 | Security Misconfiguration | Explicit configs, no defaults |
-| 6 | Vulnerable Components | `pnpm audit`, Dependabot |
-| 7 | Auth Failures | JWT with explicit alg, httpOnly cookies |
-| 8 | Data Integrity Failures | CSRF tokens, input validation |
-| 9 | Logging Failures | Sentry, no secrets in logs |
-| 10 | SSRF | URL validation, allowlists |
+| #   | Vulnerability             | Our Protection                            |
+| --- | ------------------------- | ----------------------------------------- |
+| 1   | Broken Access Control     | Ownership checks, JWT validation          |
+| 2   | Cryptographic Failures    | Explicit algorithms, bcrypt for passwords |
+| 3   | Injection                 | Prisma (parameterized), Zod validation    |
+| 4   | Insecure Design           | Code review, threat modeling              |
+| 5   | Security Misconfiguration | Explicit configs, no defaults             |
+| 6   | Vulnerable Components     | `pnpm audit`, Dependabot                  |
+| 7   | Auth Failures             | JWT with explicit alg, httpOnly cookies   |
+| 8   | Data Integrity Failures   | CSRF tokens, input validation             |
+| 9   | Logging Failures          | Sentry, no secrets in logs                |
+| 10  | SSRF                      | URL validation, allowlists                |
 
 ## Security Testing Examples
 
@@ -373,9 +371,7 @@ test('rejects unauthenticated requests', async () => {
 
 // Test: Authorization (ownership)
 test('user cannot access other user games', async () => {
-  const res = await request(app)
-    .get('/api/games/other-user-game-id')
-    .set('Cookie', userACookie);
+  const res = await request(app).get('/api/games/other-user-game-id').set('Cookie', userACookie);
   expect(res.status).toBe(404); // Not 403, don't reveal existence
 });
 
@@ -400,28 +396,33 @@ test('handles SQL injection attempt safely', async () => {
 ## Pre-Commit Security Checklist
 
 ### Secrets & Config
+
 - [ ] No hardcoded API keys, tokens, or passwords
 - [ ] All secrets from environment variables
 - [ ] `.env` files in `.gitignore`
 
 ### Authentication & Authorization
+
 - [ ] JWT verified with explicit algorithm
 - [ ] Cookie attributes set (httpOnly, secure, sameSite)
 - [ ] Ownership checks on resource access
 - [ ] No user enumeration (same response for invalid user/password)
 
 ### Input & Output
+
 - [ ] All user input validated with Zod
 - [ ] No string concatenation in SQL
 - [ ] No `dangerouslySetInnerHTML` without sanitization
 - [ ] Error messages don't expose internals
 
 ### Protection Mechanisms
+
 - [ ] CSRF tokens on state-changing operations
 - [ ] Rate limiting on sensitive endpoints
 - [ ] File uploads validated (size, type, extension)
 
 ### Code Quality
+
 - [ ] Constant-time comparison for secrets
 - [ ] Explicit crypto algorithms
 - [ ] Errors logged to Sentry, not exposed to users

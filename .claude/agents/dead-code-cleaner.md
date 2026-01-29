@@ -46,6 +46,7 @@ npx eslint --report-unused-disable-directives .
 ```
 
 **Install if needed:**
+
 ```bash
 pnpm add -D knip depcheck ts-prune madge
 ```
@@ -72,11 +73,11 @@ grep -r "import(" --include="*.ts" --include="*.tsx" | grep -i "filename"
 
 Categorize each finding:
 
-| Risk | Criteria | Action |
-|------|----------|--------|
-| **SAFE** | No imports found, not in public API, tool confirmed unused | Remove directly |
+| Risk        | Criteria                                                     | Action            |
+| ----------- | ------------------------------------------------------------ | ----------------- |
+| **SAFE**    | No imports found, not in public API, tool confirmed unused   | Remove directly   |
 | **CAREFUL** | Dynamic import possible, recently modified, part of patterns | Verify thoroughly |
-| **RISKY** | Public API, auth/security related, complex dependencies | Skip or ask user |
+| **RISKY**   | Public API, auth/security related, complex dependencies      | Skip or ask user  |
 
 ### Phase 3: Safe Removal
 
@@ -100,13 +101,13 @@ Categorize each finding:
 
 ### NEVER REMOVE (Critical Systems)
 
-| Category | Files/Patterns | Reason |
-|----------|----------------|--------|
-| **Auth** | `**/auth/**`, `AuthContext`, `useAuth` | Authentication flow |
-| **Database** | `prisma.ts`, `*Repository.ts` | Data persistence |
-| **Engine** | `StockfishEngine.ts`, `EnginePool.ts` | Core game logic |
-| **Config** | `unifiedConfig.ts`, `instrument.ts` | App configuration |
-| **Shared Types** | `packages/shared/**` | Cross-app contracts |
+| Category         | Files/Patterns                           | Reason              |
+| ---------------- | ---------------------------------------- | ------------------- |
+| **Auth**         | `**/auth/**`, `AuthContext`, `useAuth`   | Authentication flow |
+| **Database**     | `prisma.ts`, `*Repository.ts`            | Data persistence    |
+| **Engine**       | `StockfishEngine.ts`, `EnginePool.ts`    | Core game logic     |
+| **Config**       | `unifiedConfig.ts`, `instrument.ts`      | App configuration   |
+| **Shared Types** | `packages/shared/**`                     | Cross-app contracts |
 | **Base Classes** | `BaseController.ts`, `BaseRepository.ts` | Pattern enforcement |
 
 ### SAFE TO REMOVE
@@ -146,12 +147,13 @@ Before removing ANY code:
 
 Create/update `docs/DELETION_LOG.md` after each cleanup:
 
-```markdown
+````markdown
 # Deletion Log
 
 ## [Date] - Cleanup Session
 
 ### Summary
+
 - Files removed: X
 - Exports removed: Y
 - Dependencies removed: Z
@@ -159,20 +161,20 @@ Create/update `docs/DELETION_LOG.md` after each cleanup:
 
 ### Removed Dependencies
 
-| Package | Reason | Verified By |
-|---------|--------|-------------|
+| Package  | Reason           | Verified By     |
+| -------- | ---------------- | --------------- |
 | `lodash` | No imports found | depcheck + grep |
 
 ### Deleted Files
 
-| File | Reason | Risk Level |
-|------|--------|------------|
-| `src/utils/oldHelper.ts` | Unused after refactor | SAFE |
+| File                     | Reason                | Risk Level |
+| ------------------------ | --------------------- | ---------- |
+| `src/utils/oldHelper.ts` | Unused after refactor | SAFE       |
 
 ### Removed Exports
 
-| Export | File | Reason |
-|--------|------|--------|
+| Export          | File            | Reason                   |
+| --------------- | --------------- | ------------------------ |
 | `formatOldDate` | `utils/date.ts` | Replaced by `formatDate` |
 
 ### Test Results
@@ -184,10 +186,13 @@ Create/update `docs/DELETION_LOG.md` after each cleanup:
 ### Rollback
 
 If issues found:
+
 ```bash
 git revert <commit-hash>
 ```
-```
+````
+
+````
 
 ---
 
@@ -230,7 +235,7 @@ After analysis, provide:
 ## Next Steps
 
 Awaiting approval to remove SAFE items.
-```
+````
 
 ---
 

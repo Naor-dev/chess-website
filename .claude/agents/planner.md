@@ -53,6 +53,7 @@ ls apps/frontend/src/app/
 ### 3. Step Breakdown
 
 Create detailed steps with:
+
 - Clear, specific actions
 - File paths and locations
 - Dependencies between steps
@@ -74,22 +75,25 @@ Create detailed steps with:
 # Implementation Plan: [Feature Name]
 
 ## Overview
+
 [2-3 sentence summary]
 
 ## Requirements
+
 - [Requirement 1]
 - [Requirement 2]
 
 ## Affected Files
 
-| Layer | File | Change |
-|-------|------|--------|
-| Backend | `apps/backend/src/services/gameService.ts` | Add method |
-| Frontend | `apps/frontend/src/app/game/[id]/page.tsx` | Add UI |
+| Layer    | File                                       | Change     |
+| -------- | ------------------------------------------ | ---------- |
+| Backend  | `apps/backend/src/services/gameService.ts` | Add method |
+| Frontend | `apps/frontend/src/app/game/[id]/page.tsx` | Add UI     |
 
 ## Implementation Steps
 
 ### Phase 1: Backend
+
 1. **[Step Name]** (`apps/backend/src/...`)
    - Action: Specific action to take
    - Why: Reason for this step
@@ -97,23 +101,28 @@ Create detailed steps with:
    - Risk: Low/Medium/High
 
 ### Phase 2: Frontend
+
 1. **[Step Name]** (`apps/frontend/src/...`)
    ...
 
 ### Phase 3: Integration
+
 ...
 
 ## Testing Strategy
+
 - Unit tests: [files to test]
 - Integration tests: [flows to test]
 - E2E tests: [user journeys with Playwright]
 
 ## Risks & Mitigations
-| Risk | Impact | Mitigation |
-|------|--------|------------|
-| [Risk 1] | High | [How to address] |
+
+| Risk     | Impact | Mitigation       |
+| -------- | ------ | ---------------- |
+| [Risk 1] | High   | [How to address] |
 
 ## Success Criteria
+
 - [ ] Criterion 1
 - [ ] Criterion 2
 ```
@@ -170,14 +179,14 @@ apps/frontend/src/app/[feature]/
 
 ## Red Flags to Check
 
-| Issue | Threshold | Action |
-|-------|-----------|--------|
-| Large functions | >50 lines | Break down |
-| Deep nesting | >4 levels | Refactor |
-| Duplicated code | >3 occurrences | Extract |
-| Missing validation | Any user input | Add Zod schema |
-| Missing error handling | Any async | Add try/catch + Sentry |
-| No ownership check | Game operations | Add userId verification |
+| Issue                  | Threshold       | Action                  |
+| ---------------------- | --------------- | ----------------------- |
+| Large functions        | >50 lines       | Break down              |
+| Deep nesting           | >4 levels       | Refactor                |
+| Duplicated code        | >3 occurrences  | Extract                 |
+| Missing validation     | Any user input  | Add Zod schema          |
+| Missing error handling | Any async       | Add try/catch + Sentry  |
+| No ownership check     | Game operations | Add userId verification |
 
 ---
 

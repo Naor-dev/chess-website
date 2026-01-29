@@ -28,6 +28,7 @@ git diff HEAD~1
 ```
 
 Check documentation:
+
 - `CLAUDE.md` - Project standards
 - `./dev/active/[task]/` - Task context if exists
 
@@ -37,16 +38,16 @@ Check documentation:
 
 ### Checklist
 
-| Category | What to Check | Risk |
-|----------|---------------|------|
-| **Secrets** | No hardcoded API keys, tokens, passwords | 🔴 Critical |
-| **SQL Injection** | All queries use Prisma, no string concatenation | 🔴 Critical |
-| **XSS** | No unsanitized `dangerouslySetInnerHTML` | 🔴 Critical |
-| **Input Validation** | All input validated with Zod | 🟠 High |
-| **Authentication** | Protected routes verify JWT | 🟠 High |
-| **Authorization** | Ownership checks on resources | 🟠 High |
-| **CSRF** | State-changing ops use CSRF tokens | 🟠 High |
-| **Error Leaks** | No internal details in error responses | 🟡 Medium |
+| Category             | What to Check                                   | Risk        |
+| -------------------- | ----------------------------------------------- | ----------- |
+| **Secrets**          | No hardcoded API keys, tokens, passwords        | 🔴 Critical |
+| **SQL Injection**    | All queries use Prisma, no string concatenation | 🔴 Critical |
+| **XSS**              | No unsanitized `dangerouslySetInnerHTML`        | 🔴 Critical |
+| **Input Validation** | All input validated with Zod                    | 🟠 High     |
+| **Authentication**   | Protected routes verify JWT                     | 🟠 High     |
+| **Authorization**    | Ownership checks on resources                   | 🟠 High     |
+| **CSRF**             | State-changing ops use CSRF tokens              | 🟠 High     |
+| **Error Leaks**      | No internal details in error responses          | 🟡 Medium   |
 
 ### Security Anti-Patterns to Flag
 
@@ -83,13 +84,13 @@ catch (error) {
 
 ### Checklist
 
-| Category | What to Check | Risk |
-|----------|---------------|------|
-| **N+1 Queries** | Use `include` or batch, not loops | 🟠 High |
+| Category             | What to Check                         | Risk      |
+| -------------------- | ------------------------------------- | --------- |
+| **N+1 Queries**      | Use `include` or batch, not loops     | 🟠 High   |
 | **React Re-renders** | `useMemo`, `useCallback` where needed | 🟡 Medium |
-| **Bundle Size** | Dynamic imports for heavy components | 🟡 Medium |
-| **Database** | Indexes on queried fields | 🟡 Medium |
-| **Caching** | TanStack Query staleTime configured | 🟢 Low |
+| **Bundle Size**      | Dynamic imports for heavy components  | 🟡 Medium |
+| **Database**         | Indexes on queried fields             | 🟡 Medium |
+| **Caching**          | TanStack Query staleTime configured   | 🟢 Low    |
 
 ### Performance Anti-Patterns to Flag
 
@@ -124,14 +125,14 @@ import { format } from 'date-fns/format';
 
 ### Checklist
 
-| Category | What to Check |
-|----------|---------------|
-| **TypeScript** | Strict mode, no `any`, proper types |
-| **Error Handling** | Try/catch, Sentry integration |
-| **Naming** | Clear, consistent (camelCase, PascalCase) |
-| **File Size** | Components < 300 lines |
-| **DRY** | No duplicate code |
-| **Tests** | Critical paths tested |
+| Category           | What to Check                             |
+| ------------------ | ----------------------------------------- |
+| **TypeScript**     | Strict mode, no `any`, proper types       |
+| **Error Handling** | Try/catch, Sentry integration             |
+| **Naming**         | Clear, consistent (camelCase, PascalCase) |
+| **File Size**      | Components < 300 lines                    |
+| **DRY**            | No duplicate code                         |
+| **Tests**          | Critical paths tested                     |
 
 ---
 
@@ -139,13 +140,13 @@ import { format } from 'date-fns/format';
 
 ### Checklist
 
-| Category | What to Check |
-|----------|---------------|
+| Category             | What to Check                                  |
+| -------------------- | ---------------------------------------------- |
 | **Layer Separation** | Routes → Controllers → Services → Repositories |
-| **Correct Location** | Code in appropriate module |
-| **Project Patterns** | Follows CLAUDE.md patterns |
-| **API Consistency** | REST conventions, response format |
-| **Type Sharing** | Use `@chess-website/shared` types |
+| **Correct Location** | Code in appropriate module                     |
+| **Project Patterns** | Follows CLAUDE.md patterns                     |
+| **API Consistency**  | REST conventions, response format              |
+| **Type Sharing**     | Use `@chess-website/shared` types              |
 
 ### Project-Specific Patterns
 
@@ -179,22 +180,22 @@ const game = await gameService.getGame(gameId, userId);
 
 ## Severity Levels
 
-| Level | Icon | Meaning | Action |
-|-------|------|---------|--------|
-| **CRITICAL** | 🔴 | Security vulnerability, data loss | Must fix |
-| **HIGH** | 🟠 | Significant bug, performance issue | Should fix |
-| **MEDIUM** | 🟡 | Code quality, maintainability | Consider fixing |
-| **LOW** | 🟢 | Style, minor improvement | Nice to have |
+| Level        | Icon | Meaning                            | Action          |
+| ------------ | ---- | ---------------------------------- | --------------- |
+| **CRITICAL** | 🔴   | Security vulnerability, data loss  | Must fix        |
+| **HIGH**     | 🟠   | Significant bug, performance issue | Should fix      |
+| **MEDIUM**   | 🟡   | Code quality, maintainability      | Consider fixing |
+| **LOW**      | 🟢   | Style, minor improvement           | Nice to have    |
 
 ---
 
 ## Approval Decision
 
-| Decision | Criteria |
-|----------|----------|
-| ✅ **APPROVE** | No 🔴 or 🟠 issues |
-| ⚠️ **APPROVE WITH COMMENTS** | Only 🟡/🟢 issues |
-| ❌ **REQUEST CHANGES** | Has 🔴 or 🟠 issues |
+| Decision                     | Criteria            |
+| ---------------------------- | ------------------- |
+| ✅ **APPROVE**               | No 🔴 or 🟠 issues  |
+| ⚠️ **APPROVE WITH COMMENTS** | Only 🟡/🟢 issues   |
+| ❌ **REQUEST CHANGES**       | Has 🔴 or 🟠 issues |
 
 ---
 
@@ -219,6 +220,7 @@ Save to: `./dev/active/[task-name]/[task-name]-code-review.md`
 ## 🔴 Critical Issues
 
 ### [Issue Title]
+
 **File:** `path/to/file.ts:123`
 **Problem:** [Description]
 **Fix:**

@@ -355,26 +355,26 @@ That's it! Agents work immediately.
 
 ## Agent Quick Reference
 
-| Agent                      | Complexity | Customization       | Auth Required |
-| -------------------------- | ---------- | ------------------- | ------------- |
-| architect                  | High       | ✅ None             | No            |
-| code-reviewer              | Medium     | ✅ None             | No            |
-| code-refactor-master       | High       | ✅ None             | No            |
-| database-reviewer          | Medium     | ✅ None             | No            |
-| dead-code-cleaner          | Medium     | ✅ None             | No            |
-| documentation-architect    | Medium     | ✅ None             | No            |
-| e2e-runner                 | Medium     | ✅ None             | No            |
-| frontend-error-fixer       | Medium     | ⚠️ Screenshot paths | No            |
-| go-build-resolver          | Low        | ✅ None             | No (Go only)  |
-| go-reviewer                | Medium     | ✅ None             | No (Go only)  |
-| planner                    | Medium     | ✅ None             | No            |
-| plan-reviewer              | Low        | ✅ None             | No            |
-| refactor-planner           | Medium     | ✅ None             | No            |
-| tdd-guide                  | Medium     | ✅ None             | No            |
-| web-research-specialist    | Low        | ✅ None             | No            |
-| auth-route-tester          | Medium     | ⚠️ Auth setup       | JWT cookies   |
-| auth-route-debugger        | Medium     | ⚠️ Auth setup       | JWT cookies   |
-| auto-error-resolver        | Low        | ⚠️ Paths            | No            |
+| Agent                   | Complexity | Customization       | Auth Required |
+| ----------------------- | ---------- | ------------------- | ------------- |
+| architect               | High       | ✅ None             | No            |
+| code-reviewer           | Medium     | ✅ None             | No            |
+| code-refactor-master    | High       | ✅ None             | No            |
+| database-reviewer       | Medium     | ✅ None             | No            |
+| dead-code-cleaner       | Medium     | ✅ None             | No            |
+| documentation-architect | Medium     | ✅ None             | No            |
+| e2e-runner              | Medium     | ✅ None             | No            |
+| frontend-error-fixer    | Medium     | ⚠️ Screenshot paths | No            |
+| go-build-resolver       | Low        | ✅ None             | No (Go only)  |
+| go-reviewer             | Medium     | ✅ None             | No (Go only)  |
+| planner                 | Medium     | ✅ None             | No            |
+| plan-reviewer           | Low        | ✅ None             | No            |
+| refactor-planner        | Medium     | ✅ None             | No            |
+| tdd-guide               | Medium     | ✅ None             | No            |
+| web-research-specialist | Low        | ✅ None             | No            |
+| auth-route-tester       | Medium     | ⚠️ Auth setup       | JWT cookies   |
+| auth-route-debugger     | Medium     | ⚠️ Auth setup       | JWT cookies   |
+| auto-error-resolver     | Low        | ⚠️ Paths            | No            |
 
 ---
 
