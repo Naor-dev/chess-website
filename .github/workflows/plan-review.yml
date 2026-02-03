@@ -13,26 +13,16 @@ on:
       - 'dev/active/**/*-plan.md'
 
 jobs:
-  review-plan:
+  find-plans:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      pull-requests: write
-      issues: write
-
+    outputs:
+      has_plans: ${{ steps.find-plans.outputs.has_plans }}
+      plans: ${{ steps.find-plans.outputs.plans }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-
-      - name: Install Claude Code
-        run: npm install -g @anthropic-ai/claude-code
 
       - name: Find plan files
         id: find-plans
@@ -62,20 +52,46 @@ jobs:
             echo "has_plans=true" >> $GITHUB_OUTPUT
           fi
 
-      - name: Review plans with Claude Code
+  review-plan-claude:
+    needs: find-plans
+    if: needs.find-plans.outputs.has_plans == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        model: [opus, sonnet]
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install Claude Code
+        run: npm install -g @anthropic-ai/claude-code
+
+      - name: Review plans with Claude Code (${{ matrix.model }})
         id: review
-        if: steps.find-plans.outputs.has_plans == 'true'
         continue-on-error: true
         env:
           CLAUDE_CODE_USE_BEDROCK: '0'
           ANTHROPIC_AUTH_TOKEN: ${{ secrets.CLAUDE_TOKEN }}
         run: |
-          REVIEW_OUTPUT="/tmp/plan-review.md"
+          MODEL="${{ matrix.model }}"
+          REVIEW_OUTPUT="/tmp/plan-review-${MODEL}.md"
           ERROR_LOG="/tmp/claude-error.log"
 
-          echo "# 🤖 Claude Plan Review" > "$REVIEW_OUTPUT"
+          echo "# 🤖 Claude Plan Review (${MODEL^^})" > "$REVIEW_OUTPUT"
           echo "" >> "$REVIEW_OUTPUT"
-          echo "*Automated review by Claude Code (plan-reviewer agent)*" >> "$REVIEW_OUTPUT"
+          echo "*Automated review by Claude Code (plan-reviewer agent, model: ${MODEL})*" >> "$REVIEW_OUTPUT"
           echo "" >> "$REVIEW_OUTPUT"
 
           REVIEW_SUCCESS=true
@@ -84,16 +100,16 @@ jobs:
             [ -z "$plan_file" ] && continue
             [ ! -f "$plan_file" ] && continue
 
-            echo "Reviewing: $plan_file"
+            echo "Reviewing with $MODEL: $plan_file"
             echo "---" >> "$REVIEW_OUTPUT"
             echo "" >> "$REVIEW_OUTPUT"
             echo "## 📄 $plan_file" >> "$REVIEW_OUTPUT"
             echo "" >> "$REVIEW_OUTPUT"
 
-            # Run Claude Code with plan-reviewer agent
+            # Run Claude Code with plan-reviewer agent and specific model
             PLAN_CONTENT=$(cat "$plan_file")
 
-            if claude -p --agent plan-reviewer --output-format text \
+            if claude -p --agent plan-reviewer --model "$MODEL" --output-format text \
               "Review the following implementation plan:
 
 ---
@@ -101,7 +117,7 @@ File: $plan_file
 
 $PLAN_CONTENT
 ---" >> "$REVIEW_OUTPUT" 2> "$ERROR_LOG"; then
-              echo "✅ Review completed for $plan_file"
+              echo "✅ Review completed for $plan_file ($MODEL)"
             else
               REVIEW_SUCCESS=false
               ERROR_MSG=$(cat "$ERROR_LOG")
@@ -124,7 +140,7 @@ $PLAN_CONTENT
             fi
 
             echo "" >> "$REVIEW_OUTPUT"
-          done <<< "${{ steps.find-plans.outputs.plans }}"
+          done <<< "${{ needs.find-plans.outputs.plans }}"
 
           echo "Review complete. Output:"
           cat "$REVIEW_OUTPUT"
@@ -134,18 +150,77 @@ $PLAN_CONTENT
           fi
 
       - name: Post review comment
-        if: steps.find-plans.outputs.has_plans == 'true' && github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request'
         uses: actions/github-script@v7
         with:
           script: |
             const fs = require('fs');
-            const reviewPath = '/tmp/plan-review.md';
+            const model = '${{ matrix.model }}';
+            const reviewPath = `/tmp/plan-review-${model}.md`;
 
             let body;
             if (fs.existsSync(reviewPath)) {
               body = fs.readFileSync(reviewPath, 'utf8');
             } else {
-              body = `# 🤖 Claude Plan Review
+              body = `# 🤖 Claude Plan Review (${model.toUpperCase()})
+
+⚠️ **Review Unavailable**
+
+The automated plan review could not be completed. Please review manually.`;
+            }
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: body
+            });
+
+  review-plan-gemini:
+    needs: find-plans
+    if: needs.find-plans.outputs.has_plans == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install dependencies
+        run: cd .github/scripts && npm install
+
+      - name: Review plans with Gemini
+        id: review
+        continue-on-error: true
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_MODEL: gemini-2.0-flash
+          PLAN_FILES: ${{ needs.find-plans.outputs.plans }}
+        run: node .github/scripts/review-plan-gemini.mjs
+
+      - name: Post review comment
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const reviewPath = '/tmp/plan-review-gemini.md';
+
+            let body;
+            if (fs.existsSync(reviewPath)) {
+              body = fs.readFileSync(reviewPath, 'utf8');
+            } else {
+              body = `# 🤖 Gemini Plan Review
 
 ⚠️ **Review Unavailable**
 
