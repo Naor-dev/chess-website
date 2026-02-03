@@ -17,18 +17,33 @@ Agents are autonomous Claude instances that handle specific complex tasks. Unlik
 
 ---
 
-## Available Agents (10)
+## Available Agents (18)
 
-### code-architecture-reviewer
+### architect
 
-**Purpose:** Review code for architectural consistency and best practices
+**Purpose:** Software architecture specialist for system design, scalability, and technical decisions
+
+**When to use:**
+
+- Planning major new features
+- Evaluating technical trade-offs
+- Making architectural decisions
+- Designing system scalability
+
+**Integration:** ✅ Copy as-is
+
+---
+
+### code-reviewer
+
+**Purpose:** Review code for security (OWASP, XSS, SQL injection, CSRF), performance (N+1, React), and best practices
 
 **When to use:**
 
 - After implementing a new feature
+- When modifying auth/security code
 - Before merging significant changes
-- When refactoring code
-- To validate architectural decisions
+- To catch security vulnerabilities early
 
 **Integration:** ✅ Copy as-is
 
@@ -49,18 +64,64 @@ Agents are autonomous Claude instances that handle specific complex tasks. Unlik
 
 ---
 
-### documentation-architect
+### dead-code-cleaner
 
-**Purpose:** Create comprehensive documentation
+**Purpose:** Identify and safely remove dead code, unused exports, and redundant dependencies
 
 **When to use:**
 
-- Documenting new features
-- Creating API documentation
-- Writing developer guides
-- Generating architectural overviews
+- After major refactors (find orphaned code)
+- Reducing bundle size (unused dependencies)
+- Codebase cleanup (unused exports, duplicate code)
+- Pre-release cleanup
+
+**Integration:** ✅ Copy as-is (install knip/depcheck/ts-prune if needed)
+
+---
+
+### database-reviewer
+
+**Purpose:** PostgreSQL/Prisma specialist for query optimization, schema design, and N+1 detection
+
+**When to use:**
+
+- Reviewing database queries
+- Optimizing slow queries
+- Schema design review
+- Detecting N+1 patterns
 
 **Integration:** ✅ Copy as-is
+
+---
+
+### documentation-architect
+
+**Purpose:** Create documentation and codemaps that match actual code (uses AST analysis)
+
+**When to use:**
+
+- Generating codemaps (`docs/CODEMAPS/`)
+- Documenting new features
+- Creating/updating API documentation
+- Validating existing docs are current
+- Pre-release documentation audit
+
+**Integration:** ✅ Copy as-is (install madge/jsdoc2md if needed for AST features)
+
+---
+
+### e2e-runner
+
+**Purpose:** E2E testing specialist using Playwright for critical user journey testing
+
+**When to use:**
+
+- Creating E2E tests for user flows
+- Running and debugging E2E tests
+- Managing flaky tests
+- CI/CD test integration
+
+**Integration:** ✅ Copy as-is (requires Playwright)
 
 ---
 
@@ -79,13 +140,60 @@ Agents are autonomous Claude instances that handle specific complex tasks. Unlik
 
 ---
 
+### go-build-resolver
+
+**Purpose:** Diagnose and fix Go compilation errors with minimal changes
+
+**When to use:**
+
+- Go build failures
+- `go vet` warnings
+- Module dependency issues
+- Type errors in Go code
+
+**Integration:** ✅ Copy as-is (Go projects only)
+
+---
+
+### go-reviewer
+
+**Purpose:** Go code review for security, error handling, concurrency, and best practices
+
+**When to use:**
+
+- Reviewing Go code changes
+- Security audit of Go code
+- Concurrency review
+- Error handling patterns
+
+**Integration:** ✅ Copy as-is (Go projects only)
+
+---
+
+### planner
+
+**Purpose:** Create detailed implementation plans for complex features (use BEFORE coding)
+
+**When to use:**
+
+- Before implementing new features
+- Planning complex refactoring
+- Architectural decisions
+- Breaking down large tasks
+
+**Integration:** ✅ Copy as-is
+
+**Workflow:** `planner` (creates plan) → `plan-reviewer` (reviews) → Implementation
+
+---
+
 ### plan-reviewer
 
 **Purpose:** Review development plans before implementation
 
 **When to use:**
 
-- Before starting complex features
+- After planner creates a plan
 - Validating architectural plans
 - Identifying potential issues early
 - Getting second opinion on approach
@@ -104,6 +212,21 @@ Agents are autonomous Claude instances that handle specific complex tasks. Unlik
 - Modernizing legacy code
 - Breaking down large files
 - Improving code structure
+
+**Integration:** ✅ Copy as-is
+
+---
+
+### tdd-guide
+
+**Purpose:** Test-driven development specialist enforcing write-tests-first methodology
+
+**When to use:**
+
+- Starting new features with TDD
+- Improving test coverage
+- Learning TDD workflow
+- Enforcing testing standards
 
 **Integration:** ✅ Copy as-is
 
@@ -232,18 +355,26 @@ That's it! Agents work immediately.
 
 ## Agent Quick Reference
 
-| Agent                      | Complexity | Customization       | Auth Required |
-| -------------------------- | ---------- | ------------------- | ------------- |
-| code-architecture-reviewer | Medium     | ✅ None             | No            |
-| code-refactor-master       | High       | ✅ None             | No            |
-| documentation-architect    | Medium     | ✅ None             | No            |
-| frontend-error-fixer       | Medium     | ⚠️ Screenshot paths | No            |
-| plan-reviewer              | Low        | ✅ None             | No            |
-| refactor-planner           | Medium     | ✅ None             | No            |
-| web-research-specialist    | Low        | ✅ None             | No            |
-| auth-route-tester          | Medium     | ⚠️ Auth setup       | JWT cookies   |
-| auth-route-debugger        | Medium     | ⚠️ Auth setup       | JWT cookies   |
-| auto-error-resolver        | Low        | ⚠️ Paths            | No            |
+| Agent                   | Complexity | Customization       | Auth Required |
+| ----------------------- | ---------- | ------------------- | ------------- |
+| architect               | High       | ✅ None             | No            |
+| code-reviewer           | Medium     | ✅ None             | No            |
+| code-refactor-master    | High       | ✅ None             | No            |
+| database-reviewer       | Medium     | ✅ None             | No            |
+| dead-code-cleaner       | Medium     | ✅ None             | No            |
+| documentation-architect | Medium     | ✅ None             | No            |
+| e2e-runner              | Medium     | ✅ None             | No            |
+| frontend-error-fixer    | Medium     | ⚠️ Screenshot paths | No            |
+| go-build-resolver       | Low        | ✅ None             | No (Go only)  |
+| go-reviewer             | Medium     | ✅ None             | No (Go only)  |
+| planner                 | Medium     | ✅ None             | No            |
+| plan-reviewer           | Low        | ✅ None             | No            |
+| refactor-planner        | Medium     | ✅ None             | No            |
+| tdd-guide               | Medium     | ✅ None             | No            |
+| web-research-specialist | Low        | ✅ None             | No            |
+| auth-route-tester       | Medium     | ⚠️ Auth setup       | JWT cookies   |
+| auth-route-debugger     | Medium     | ⚠️ Auth setup       | JWT cookies   |
+| auto-error-resolver     | Low        | ⚠️ Paths            | No            |
 
 ---
 

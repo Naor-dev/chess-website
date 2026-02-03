@@ -356,15 +356,11 @@ gh api graphql -f query='
 - **ux-advisor** - Web design guidance (toggle: `/ux-advisor-on`, `/ux-advisor-off`)
 - **route-tester** - Testing authenticated API routes
 - **error-tracking** - Sentry integration patterns
+- **skill-developer** - Creating Claude Code skills and hooks
 
 ## Available Agents
 
-Use the Task tool with these specialized agents:
-
-- **Plan** - Design implementation plans before coding
-- **code-architecture-reviewer** - Review code for best practices
-- **refactor-planner** - Plan refactoring strategies
-- **frontend-error-fixer** - Debug frontend errors
+See `.claude/agents/README.md` for full list and usage. Key agents: `planner`, `code-reviewer`, `dead-code-cleaner`, `documentation-architect`.
 
 ## CI/CD Pipeline
 
