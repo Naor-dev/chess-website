@@ -51,7 +51,9 @@ while IFS= read -r repo; do
     fi
     
     # Run TSC and capture output
-    if ! output=$(eval "$tsc_cmd" 2>&1); then
+    # Run command safely without eval - tsc_cmd values come from hardcoded get_tsc_command()
+    # shellcheck disable=SC2086
+    if ! output=$($tsc_cmd 2>&1); then
         # TSC failed - we have errors
         has_errors=true
         

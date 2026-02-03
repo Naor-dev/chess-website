@@ -76,7 +76,9 @@ run_tsc_check() {
         echo "$tsc_cmd" > "$cache_file"
     fi
     
-    eval "$tsc_cmd" 2>&1
+    # Run command safely without eval - all tsc_cmd values are hardcoded in get_tsc_command()
+    # shellcheck disable=SC2086
+    $tsc_cmd 2>&1
 }
 
 # Only process file modification tools
