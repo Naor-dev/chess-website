@@ -116,20 +116,132 @@ const payload = jwt.verify(idToken, publicKey, {
 });
 ```
 
-### 7. API Keys & Secrets
+### 7. Secrets Management
+
+#### Never Expose Secrets
 
 - Never log secrets (even partially)
 - Never include in error messages
-- Use constant-time comparison
+- Never commit to git
 
 ```typescript
-// Bad - timing attack vulnerable
+// ❌ BAD - Logging secrets
+console.log('API Key:', apiKey);
+console.log('Config:', JSON.stringify(config)); // May contain secrets
+
+// ✅ GOOD - Redact secrets in logs
+console.log('API Key:', apiKey ? '[REDACTED]' : '[MISSING]');
+```
+
+#### Environment Variables Best Practices
+
+```typescript
+// ❌ BAD - Direct access without validation
+const secret = process.env.JWT_SECRET;
+jwt.sign(payload, secret); // Could be undefined!
+
+// ✅ GOOD - Validate on startup (unifiedConfig pattern)
+// config/unifiedConfig.ts
+const requiredEnvVars = [
+  'JWT_SECRET',
+  'DATABASE_URL',
+  'GOOGLE_CLIENT_ID',
+  'GOOGLE_CLIENT_SECRET',
+] as const;
+
+function validateEnv(): void {
+  const missing = requiredEnvVars.filter((key) => !process.env[key]);
+  if (missing.length > 0) {
+    throw new Error(`Missing required environment variables: ${missing.join(', ')}`);
+  }
+}
+
+// Call on app startup
+validateEnv();
+
+export const config = {
+  jwtSecret: process.env.JWT_SECRET!, // Safe after validation
+  // ...
+};
+```
+
+#### .env File Security
+
+```bash
+# .gitignore - MUST include
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+```
+
+```typescript
+// ✅ GOOD - Use .env.example for documentation (no real values)
+// .env.example
+JWT_SECRET=your-jwt-secret-here
+DATABASE_URL=postgresql://user:password@localhost:5432/db
+GOOGLE_CLIENT_ID=your-google-client-id
+```
+
+#### Constant-Time Comparison
+
+```typescript
+// ❌ BAD - Timing attack vulnerable
 if (apiKey === storedKey) {
 }
 
-// Good - constant time
-crypto.timingSafeEqual(Buffer.from(apiKey), Buffer.from(storedKey));
+// ✅ GOOD - Constant time comparison
+import crypto from 'crypto';
+
+function secureCompare(a: string, b: string): boolean {
+  if (a.length !== b.length) {
+    // Still compare to prevent timing leak on length
+    crypto.timingSafeEqual(Buffer.from(a), Buffer.from(a));
+    return false;
+  }
+  return crypto.timingSafeEqual(Buffer.from(a), Buffer.from(b));
+}
 ```
+
+#### Secret Rotation
+
+```typescript
+// Support multiple valid secrets during rotation
+const validSecrets = [
+  process.env.JWT_SECRET_CURRENT,
+  process.env.JWT_SECRET_PREVIOUS, // Still valid during rotation
+].filter(Boolean);
+
+function verifyToken(token: string): JWTPayload {
+  for (const secret of validSecrets) {
+    try {
+      return jwt.verify(token, secret!, { algorithms: ['HS256'] });
+    } catch {
+      continue;
+    }
+  }
+  throw new Error('Invalid token');
+}
+
+// Sign with current secret only
+function signToken(payload: object): string {
+  return jwt.sign(payload, process.env.JWT_SECRET_CURRENT!, {
+    algorithm: 'HS256',
+    expiresIn: '7d',
+  });
+}
+```
+
+#### Secrets Checklist
+
+- [ ] All secrets from environment variables (never hardcoded)
+- [ ] `.env` files in `.gitignore`
+- [ ] Required env vars validated on startup
+- [ ] `.env.example` exists (without real values)
+- [ ] Secrets never logged or in error messages
+- [ ] Constant-time comparison for secret validation
+- [ ] Secret rotation strategy in place
 
 ### 8. Input Validation
 
@@ -426,6 +538,14 @@ test('handles SQL injection attempt safely', async () => {
 - [ ] Constant-time comparison for secrets
 - [ ] Explicit crypto algorithms
 - [ ] Errors logged to Sentry, not exposed to users
+
+## Resource Files
+
+### [cloud-infrastructure-security.md](resources/cloud-infrastructure-security.md)
+
+Cloud & infrastructure security: IAM, CI/CD pipelines, logging, secrets in cloud, Vercel/AWS/Railway deployment security.
+
+---
 
 ## Why This Matters
 

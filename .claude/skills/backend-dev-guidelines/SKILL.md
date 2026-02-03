@@ -251,6 +251,7 @@ import { asyncErrorWrapper } from './middleware/errorBoundary';
 | Handle async/errors       | [async-and-errors.md](async-and-errors.md)                   |
 | Write tests               | [testing-guide.md](testing-guide.md)                         |
 | See examples              | [complete-examples.md](complete-examples.md)                 |
+| Caching, queues, retry    | [advanced-patterns.md](advanced-patterns.md)                 |
 
 ---
 
@@ -299,6 +300,10 @@ Unit/integration tests, mocking, coverage
 ### [complete-examples.md](complete-examples.md)
 
 Full examples, refactoring guide
+
+### [advanced-patterns.md](advanced-patterns.md)
+
+Caching (Redis), rate limiting, background jobs, retry with backoff, structured logging, N+1 prevention
 
 ---
 
