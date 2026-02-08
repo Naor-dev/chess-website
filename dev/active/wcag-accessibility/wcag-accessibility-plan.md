@@ -162,3 +162,4 @@ Perform a comprehensive accessibility audit and remediation across the entire ch
 - `@axe-core/playwright` (new test dependency)
 - react-chessboard v5 accessibility limitations (work around)
 
+
