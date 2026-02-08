@@ -73,7 +73,7 @@ Key patterns:
 - **Repositories** extend `BaseRepository` with `executeWithErrorHandling()` for automatic Sentry capture
 - **Config** via `src/config/unifiedConfig.ts` (NEVER use process.env directly)
 - **Validation** via Zod schemas from `@chess-website/shared`
-- **Error tracking** via Sentry v10 (`src/instrument.ts` must be first import)
+- **Error tracking** via Sentry v10.35 (`src/instrument.ts` must be first import)
 - **Database** via Prisma singleton at `src/database/prisma.ts`
 - **Prisma 7 Config** at `prisma.config.ts` (in backend root, NOT in prisma/ folder)
 - **ESLint 9** with flat config (`eslint.config.mjs` files, NOT `.eslintrc.js`)
@@ -350,13 +350,24 @@ gh api graphql -f query='
 
 ## Available Skills
 
+**Core development:**
+
 - **backend-dev-guidelines** - Node.js/Express/TypeScript patterns (auto-activates for backend files)
 - **frontend-dev-guidelines** - React/TypeScript patterns (auto-activates for frontend files)
 - **secure-coding** - Security patterns for auth, JWT, tokens, passwords (auto-activates)
-- **ux-advisor** - Web design guidance (toggle: `/ux-advisor-on`, `/ux-advisor-off`)
-- **route-tester** - Testing authenticated API routes
 - **error-tracking** - Sentry integration patterns
+- **route-tester** - Testing authenticated API routes
+
+**Plan review (CI):**
+
+- **check-plan-review** - Check for plan review feedback from CI on current PR
+- **end-plan** - End planning phase, stop watcher, show final status
+
+**Utilities:**
+
+- **ux-advisor** - Web design guidance (toggle: `/ux-advisor-on`, `/ux-advisor-off`)
 - **skill-developer** - Creating Claude Code skills and hooks
+- **strategic-compact** - Suggests manual context compaction at logical intervals
 
 ## Available Agents
 
@@ -366,11 +377,12 @@ See `.claude/agents/README.md` for full list and usage. Key agents: `planner`, `
 
 GitHub Actions workflows in `.github/workflows/`:
 
-| Workflow                 | Purpose                             | Trigger                 |
-| ------------------------ | ----------------------------------- | ----------------------- |
-| `ci.yml`                 | Build, Lint, Test, Prisma, Security | Every push/PR to main   |
-| `codeql.yml`             | SAST Analysis                       | Every push/PR + Weekly  |
-| `container-security.yml` | Container Scan (Trivy)              | When Dockerfiles change |
+| Workflow                 | Purpose                                    | Trigger                        |
+| ------------------------ | ------------------------------------------ | ------------------------------ |
+| `ci.yml`                 | Build, Lint, Test, Prisma, Security        | Every push/PR to main          |
+| `codeql.yml`             | SAST Analysis                              | Every push/PR + Weekly         |
+| `container-security.yml` | Container Scan (Trivy)                     | When Dockerfiles change        |
+| `plan-review.yml`        | AI plan review (Claude Opus/Sonnet/Gemini) | Push to plan/\*, PR with plans |
 
 **CI checks include:** format, lint, prisma validate/generate, build, test, **outdated/deprecated packages (strict)**, dependency audit, license check, Gitleaks secret scanning.
 
@@ -532,11 +544,13 @@ dev/active/[feature-name]/
 
 **Active work items:**
 
-- `dev/active/code-review-remediation/` - Tracking #135 remediation tasks
+- None currently
 
-**Completed:**
+**Completed:** (in `dev/completed/`)
 
-- `dev/active/optimistic-locking-sentry/` - Tasks 1.1 (optimistic locking) and 1.2 (Sentry frontend) - PR #139
+- `code-review-remediation/` - #135 remediation tasks
+- `optimistic-locking-sentry/` - Optimistic locking + Sentry frontend (PR #139)
+- `dependency-upgrade/` - Major upgrades: Zod 4, Express 5, ESLint 9, Jest 30, Sentry 10, react-chessboard 5
 
 **Usage:** Start session with "Read dev/active/[feature]/[feature]-context.md for context"
 
