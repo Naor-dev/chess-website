@@ -107,8 +107,7 @@ jobs:
         id: review
         continue-on-error: true
         env:
-          CLAUDE_CODE_USE_BEDROCK: '0'
-          ANTHROPIC_AUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
         run: |
           MODEL="${{ matrix.model }}"
           REVIEW_OUTPUT="/tmp/plan-review-${MODEL}.md"
@@ -117,7 +116,7 @@ jobs:
           echo "::group::Setup"
           echo "[$(date -u +%H:%M:%S)] Model: $MODEL"
           echo "[$(date -u +%H:%M:%S)] Claude Code version: $(claude --version 2>/dev/null || echo 'unknown')"
-          echo "[$(date -u +%H:%M:%S)] Auth token set: $([ -n \"$ANTHROPIC_AUTH_TOKEN\" ] && echo 'yes' || echo 'NO - MISSING!')"
+          echo "[$(date -u +%H:%M:%S)] OAuth token set: $([ -n \"$CLAUDE_CODE_OAUTH_TOKEN\" ] && echo 'yes' || echo 'NO - MISSING!')"
           echo "::endgroup::"
 
           echo "# Claude Plan Review (${MODEL^^})" > "$REVIEW_OUTPUT"
