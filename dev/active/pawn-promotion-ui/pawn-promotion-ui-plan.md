@@ -102,3 +102,4 @@ Add an interactive pawn promotion dialog that lets users choose which piece to p
 - react-chessboard v5 piece images (for promotion options display)
 - Existing game page state management
 - No backend changes needed
+
