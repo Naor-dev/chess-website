@@ -1,6 +1,6 @@
 # WCAG 2.1 AA Compliance - Implementation Plan
 
-**Last Updated:** 2026-02-08
+**Last Updated:** 2026-02-09
 
 ## Executive Summary
 
@@ -75,58 +75,80 @@ Perform a comprehensive accessibility audit and remediation across the entire ch
 5. **Audit heading hierarchy and landmarks**
    - Verify `<h1>` -> `<h2>` -> `<h3>` hierarchy on each page
    - Add `<main>`, `<aside>`, `<header>` landmark regions where missing
-   - Verify each page has unique, descriptive `<title>` (WCAG 2.4.2)
-   - **Acceptance:** Heading hierarchy is sequential, all pages have landmarks and unique titles
+   - Audit which pages already have `<main>` (new game page has it) vs which don't
+   - **Acceptance:** Heading hierarchy is sequential, all pages have proper landmarks
 
-6. **Add `prefers-reduced-motion` support**
+6. **Add unique, descriptive page titles** (WCAG 2.4.2 - separate quick win)
+   - `layout.tsx` currently sets static `title: 'Chess Website'` for all pages
+   - Add per-page `metadata` exports: "New Game | Chess Website", "Game History | Chess Website", etc.
+   - Dynamic routes like `game/[id]` need `generateMetadata` function
+   - **Acceptance:** Each page has unique, descriptive `<title>`
+
+7. **Add `prefers-reduced-motion` support**
    - Wrap existing animations with `prefers-reduced-motion` media query
    - Respect user preference globally
    - **Acceptance:** Animations disabled when OS setting is "reduce motion"
 
-### Phase 2a: High-Impact Components (Effort: M)
+### Phase 2a: High-Impact Components (Effort: M-L)
 
-7. **Fix GameOverModal accessibility**
-   - Add `role="dialog"`, `aria-modal="true"`, `aria-labelledby`
-   - Implement focus trap (focus stays within modal)
-   - Escape key closes modal
-   - Focus returns to board/trigger after close
-   - Announce result to screen reader via `aria-live`
-   - **Acceptance:** Modal navigable by keyboard, announced by screen reader
+8. **Document focus management strategy** (before implementing focus traps)
+   - Define where focus goes after: making a move, resign/save, game over, page navigation
+   - Audit focus indicator visibility on all interactive elements (WCAG 2.4.7)
+   - Add consistent `focus-visible` ring styles where missing
+   - **Note:** Strategy may need revision after Phase 3 react-chessboard spike
+   - **Acceptance:** Focus strategy documented, indicators visible on all interactive elements
 
-8. **Fix form accessibility (New Game page)**
-   - Verify all inputs have associated `<label>` with `htmlFor`
-   - Add `aria-describedby` for help text
-   - Error messages linked via `aria-errormessage` (WCAG 3.3.1)
-   - Radio buttons in `<fieldset>` with `<legend>`
-   - **Acceptance:** Forms usable with screen reader, errors announced
+9. **Add `aria-hidden="true"` to all decorative SVG icons**
+   - Systematic issue: DifficultyStars, ResultIcon, navigation arrows, inline SVGs throughout codebase all read by screen readers
+   - Add `aria-hidden="true"` to decorative SVGs, proper `<title>` to meaningful ones
+   - **Acceptance:** Decorative SVGs hidden from screen readers, meaningful SVGs labeled
 
-9. **Fix navigation accessibility**
-   - Add `<nav>` landmark with `aria-label`
-   - Active page indicated with `aria-current="page"`
-   - Mobile menu accessible with keyboard
-   - **Acceptance:** Navigation announced correctly by screen reader
+10. **Add loading state accessibility**
+    - Spinner on new game page (line ~88-95) and "Creating Game..." state (line ~286-289) have no `role="status"` or `aria-live`
+    - Add `role="status"` and `aria-live="polite"` to all loading/spinner elements across all pages
+    - **Acceptance:** Screen readers announce loading states
 
-10. **Document focus management strategy**
-    - Define where focus goes after: making a move, resign/save, game over, page navigation
-    - Audit focus indicator visibility on all interactive elements (WCAG 2.4.7)
-    - Add consistent `focus-visible` ring styles where missing
-    - **Acceptance:** Focus strategy documented, indicators visible on all interactive elements
+11. **Fix GameOverModal accessibility**
+    - Add `role="dialog"`, `aria-modal="true"`, `aria-labelledby`
+    - Implement focus trap (focus stays within modal)
+    - Escape key closes modal
+    - Focus returns to board/trigger after close
+    - Announce result to screen reader via `aria-live`
+    - **Acceptance:** Modal navigable by keyboard, announced by screen reader
+
+12. **Fix New Game page accessibility**
+    - **Note:** Page uses **button groups**, not `<input>` elements - no `<label>`/`htmlFor` needed
+    - Add `role="radiogroup"` to button group containers (difficulty, time control)
+    - Add `role="radio"` and `aria-checked` to individual option buttons
+    - Add `aria-label` or `aria-labelledby` to each radiogroup
+    - Error `<div>` (line ~273) needs `id` and `role="alert"` for screen reader announcement
+    - Selected state currently conveyed by border color only (emerald vs zinc) - add `aria-checked="true"`
+    - **Acceptance:** Button groups function as radio groups for screen readers, errors announced
+
+13. **Fix navigation accessibility**
+    - Add `<nav>` landmark with `aria-label`
+    - Active page indicated with `aria-current="page"`
+    - Fix `<button onClick={router.push}>` pattern - use `<Link>` for navigation (correct semantics, right-click/open-in-new-tab support)
+    - "Back to Home" on new game page and similar navigation buttons should be `<Link>` elements
+    - Mobile menu accessible with keyboard
+    - **Acceptance:** Navigation announced correctly, links are actual `<a>` elements
 
 ### Phase 2b: Game-Specific Components (Effort: M)
 
-11. **Fix EngineThinkingOverlay accessibility**
+14. **Fix EngineThinkingOverlay accessibility**
     - Add `role="status"` and `aria-live="polite"`
     - Screen reader announces "Engine is thinking"
     - **Acceptance:** Screen reader announces thinking state
 
-12. **Fix ChessClock accessibility**
+15. **Fix ChessClock accessibility**
     - Add `aria-label` to each clock ("Your time remaining", "Engine time remaining")
     - Low time state announced via `aria-live="assertive"` when < 30 seconds
     - **Debounce clock announcements** - don't announce every second, only on state change (low time threshold)
+    - Add text/icon alternatives for color-coded low time state (red border/text) - not just color
     - Time format readable by screen readers
-    - **Acceptance:** Screen reader reads clock values and announces low time
+    - **Acceptance:** Screen reader reads clock values, announces low time, non-color indicators present
 
-13. **Fix History page accessibility**
+16. **Fix History page accessibility**
     - Game list as accessible table or list
     - Sort controls with `aria-sort`
     - Filter controls with `aria-label`
@@ -134,7 +156,7 @@ Perform a comprehensive accessibility audit and remediation across the entire ch
     - Verify color-coded UI has text/icon alternatives (difficulty badges, clock warning)
     - **Acceptance:** Game history navigable by screen reader
 
-14. **ARIA live region coordination**
+17. **ARIA live region coordination**
     - Only one `aria-live="assertive"` active at a time
     - Move announcements: `aria-live="polite"` (not assertive)
     - Clock warnings: debounced, not every second
@@ -142,55 +164,57 @@ Perform a comprehensive accessibility audit and remediation across the entire ch
     - Game over: `aria-live="assertive"` (most important)
     - **Acceptance:** No competing live region announcements overwhelming screen readers
 
+### Phase 2c: Axe-core CI Gate (Effort: S)
+
+18. **Add axe-core to CI pipeline** (before Phase 3, catches regressions during board work)
+    - Add `@axe-core/playwright` to Playwright tests
+    - Run accessibility scan on each page
+    - Baseline existing violations as acknowledged (don't block on Phase 3 items)
+    - Zero new violations for Level A and AA
+    - **Acceptance:** CI runs axe-core, blocks on new violations
+
+19. **Fix color contrast issues from Phase 1 audit**
+    - Fix any issues found in Phase 1 audit (don't defer to Phase 4)
+    - Verify all text meets 4.5:1 ratio (normal text) and 3:1 (large text)
+    - Check both light and dark modes
+    - **Acceptance:** All text passes contrast check
+
 ### Phase 3: Chess Board Accessibility (Effort: XL)
 
-15. **Add board description for screen readers**
+20. **Add board description for screen readers**
     - Hidden description of current board state
     - Piece positions announced (e.g., "White King on e1")
     - Board summary (material count, whose turn)
     - **Acceptance:** Screen reader user understands board state
 
-16. **Add move announcements**
+21. **Add move announcements**
     - ARIA live region (`polite`) announces each move in algebraic notation
     - Announces check, checkmate, draw conditions
     - Announces captures and special moves
     - **Acceptance:** Each game event is announced
 
-17. **Add keyboard move input** (stretch goal - consider splitting to separate PR)
+22. **Add keyboard move input** (stretch goal - consider splitting to separate PR)
     - Text input for algebraic notation (e.g., "e2e4" or "Nf3")
     - Validate input against legal moves
     - Show error for illegal moves
     - Tab to input, type move, Enter to submit
     - **Acceptance:** Moves can be made via keyboard input only
 
-### Phase 4: Testing & Verification (Effort: M-L)
+### Phase 4: Final Verification (Effort: M)
 
-18. **Add axe-core to CI pipeline**
-    - Add `@axe-core/playwright` to Playwright tests
-    - Run accessibility scan on each page
-    - Zero violations for Level A and AA
-    - Integrate into CI to prevent regressions
-    - **Acceptance:** All pages pass axe-core scan, CI blocks on new violations
-
-19. **Manual testing with screen readers**
+23. **Manual testing with screen readers**
     - Test with NVDA (Windows) and VoiceOver (macOS)
     - Complete game flow: login -> new game -> play -> game over
     - Verify all announcements and navigation
     - Document testing matrix (browser + screen reader combinations)
     - **Acceptance:** Complete game flow usable with screen reader
 
-20. **Color contrast fix implementation**
-    - Fix any issues found in Phase 1 audit
-    - Verify all text meets 4.5:1 ratio (normal text) and 3:1 (large text)
-    - Check both light and dark modes
-    - **Acceptance:** All text passes contrast check
-
-21. **Content reflow at 400% zoom**
+24. **Content reflow at 400% zoom**
     - Verify no horizontal scrolling at 400% zoom (WCAG 1.4.10)
     - Fix any reflow issues
     - **Acceptance:** All pages usable at 400% zoom without horizontal scroll
 
-22. **Color-only information audit**
+25. **Color-only information audit**
     - Verify all color-coded UI has text/icon alternatives
     - Difficulty badges, clock warning states, check indicator, game status
     - Use color blindness simulation to verify
@@ -206,7 +230,10 @@ Perform a comprehensive accessibility audit and remediation across the entire ch
 | Screen reader testing complexity | Medium | Low | Use axe-core for automated, manual for key flows |
 | ARIA live region overuse | Medium | Medium | Coordinate: one assertive at a time, debounce clocks |
 | eslint-plugin-jsx-a11y flood of warnings | High | Low | Install as `warn` first, upgrade to `error` after Phase 2 |
-| Color contrast failures require design changes | Medium | Medium | Audit early in Phase 1, not Phase 4 |
+| Color contrast failures require design changes | Medium | Medium | Audit early in Phase 1, fix in Phase 2c (not Phase 4) |
+| SVG accessibility across all components | High | Medium | Systematic pass in Phase 2a - dozens of inline SVGs without aria-hidden |
+| Button-as-link pattern throughout app | Medium | Medium | `<button onClick={router.push}>` used for navigation in multiple places - needs `<Link>` |
+| Next.js per-page metadata for titles | Low | Low | Straightforward but easy to forget for dynamic routes like `game/[id]` - need `generateMetadata` |
 
 ## Success Metrics
 
@@ -230,5 +257,5 @@ Perform a comprehensive accessibility audit and remediation across the entire ch
 
 - [ ] Run Phase 1 color contrast audit before committing to design
 - [ ] Complete react-chessboard v5 a11y spike before Phase 3 planning
-- [ ] Review `dev/design-guidelines.md` for focus indicator patterns
+- [ ] Audit which pages have `<main>` landmark and which don't (game page, home page, history page)
 - [ ] Review error page `role="img"` usage (semantically incorrect?)
