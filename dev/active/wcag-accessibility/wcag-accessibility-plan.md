@@ -1,6 +1,6 @@
 # WCAG 2.1 AA Compliance - Implementation Plan
 
-**Last Updated:** 2026-02-09
+**Last Updated:** 2026-02-09 (v3)
 
 ## Executive Summary
 
@@ -60,12 +60,12 @@ Perform a comprehensive accessibility audit and remediation across the entire ch
    - Document what the library supports vs what we need to build custom
    - **Acceptance:** Written summary of library capabilities and gaps
 
-3. **Add `eslint-plugin-jsx-a11y`** to frontend ESLint config
-   - Install package
-   - Add to `apps/frontend/eslint.config.mjs`
-   - Install with **`warn` severity initially** (not `error`) to avoid blocking Phase 1 on Phase 2 work
+3. **Configure `eslint-plugin-jsx-a11y` severity** in frontend ESLint config
+   - **Note:** `eslint-config-next/core-web-vitals` already bundles `eslint-plugin-jsx-a11y` - existing a11y lint rules are already active
+   - Add explicit plugin config to `apps/frontend/eslint.config.mjs` for custom severity control
+   - Set to **`warn` severity initially** (not `error`) to avoid blocking Phase 1 on Phase 2 work
    - Upgrade to `error` after Phase 2 is complete
-   - **Acceptance:** Plugin installed, warnings visible
+   - **Acceptance:** Custom severity configured, warnings visible for all a11y rules
 
 4. **Add skip-to-content link**
    - Hidden link at top of page, visible on focus
@@ -74,9 +74,10 @@ Perform a comprehensive accessibility audit and remediation across the entire ch
 
 5. **Audit heading hierarchy and landmarks**
    - Verify `<h1>` -> `<h2>` -> `<h3>` hierarchy on each page
-   - Add `<main>`, `<aside>`, `<header>` landmark regions where missing
-   - Audit which pages already have `<main>` (new game page has it) vs which don't
-   - **Acceptance:** Heading hierarchy is sequential, all pages have proper landmarks
+   - **Known issue:** Game page (`/game/[id]`) has no `<h1>` heading - add one
+   - **All pages already have `<main>`** landmark (home, new game, game, history) - no work needed for `<main>` tags
+   - Add `<aside>`, `<header>` landmark regions where missing
+   - **Acceptance:** Heading hierarchy is sequential on all pages, game page has `<h1>`
 
 6. **Add unique, descriptive page titles** (WCAG 2.4.2 - separate quick win)
    - `layout.tsx` currently sets static `title: 'Chess Website'` for all pages
@@ -109,9 +110,9 @@ Perform a comprehensive accessibility audit and remediation across the entire ch
     - **Acceptance:** Screen readers announce loading states
 
 11. **Fix GameOverModal accessibility**
-    - Add `role="dialog"`, `aria-modal="true"`, `aria-labelledby`
-    - Implement focus trap (focus stays within modal)
-    - Escape key closes modal
+    - **Recommended approach:** Convert to native `<dialog>` element (built-in focus trap, Escape handling, `aria-modal`) - avoids new dependency
+    - Alternative: `focus-trap-react` or hand-rolled `document.addEventListener`
+    - Add `aria-labelledby` pointing to title
     - Focus returns to board/trigger after close
     - Announce result to screen reader via `aria-live`
     - **Acceptance:** Modal navigable by keyboard, announced by screen reader
@@ -125,13 +126,12 @@ Perform a comprehensive accessibility audit and remediation across the entire ch
     - Selected state currently conveyed by border color only (emerald vs zinc) - add `aria-checked="true"`
     - **Acceptance:** Button groups function as radio groups for screen readers, errors announced
 
-13. **Fix navigation accessibility**
+13. **Fix navigation accessibility** (larger scope than it appears - systemic issue)
     - Add `<nav>` landmark with `aria-label`
     - Active page indicated with `aria-current="page"`
-    - Fix `<button onClick={router.push}>` pattern - use `<Link>` for navigation (correct semantics, right-click/open-in-new-tab support)
-    - "Back to Home" on new game page and similar navigation buttons should be `<Link>` elements
-    - Mobile menu accessible with keyboard
-    - **Acceptance:** Navigation announced correctly, links are actual `<a>` elements
+    - **Button-to-Link migration:** 12+ instances of `<button onClick={router.push}>` across home page, game page, new game page, and history page. All should be `<Link>` for correct semantics (right-click, open-in-new-tab, screen reader announces as links)
+    - Mobile menu: hamburger has accessible name, uses `aria-expanded` disclosure pattern, focus trapped in open menu, Escape closes, focus returns to hamburger
+    - **Acceptance:** All navigation links are actual `<a>` elements, mobile menu fully keyboard accessible
 
 ### Phase 2b: Game-Specific Components (Effort: M)
 
@@ -141,12 +141,13 @@ Perform a comprehensive accessibility audit and remediation across the entire ch
     - **Acceptance:** Screen reader announces thinking state
 
 15. **Fix ChessClock accessibility**
+    - Add `role="timer"` (WAI-ARIA semantic role for countdown/countup timers)
     - Add `aria-label` to each clock ("Your time remaining", "Engine time remaining")
+    - **Time format:** Screen reader should announce "5 minutes 30 seconds" not "5:30" - use hidden screen reader text or `aria-label`
     - Low time state announced via `aria-live="assertive"` when < 30 seconds
     - **Debounce clock announcements** - don't announce every second, only on state change (low time threshold)
     - Add text/icon alternatives for color-coded low time state (red border/text) - not just color
-    - Time format readable by screen readers
-    - **Acceptance:** Screen reader reads clock values, announces low time, non-color indicators present
+    - **Acceptance:** Screen reader reads clock values correctly, announces low time, non-color indicators present
 
 16. **Fix History page accessibility**
     - Game list as accessible table or list
@@ -167,11 +168,12 @@ Perform a comprehensive accessibility audit and remediation across the entire ch
 ### Phase 2c: Axe-core CI Gate (Effort: S)
 
 18. **Add axe-core to CI pipeline** (before Phase 3, catches regressions during board work)
+    - **Prerequisite:** No Playwright infrastructure exists yet - must set up Playwright config, test runner, and CI integration first. This is non-trivial scope
     - Add `@axe-core/playwright` to Playwright tests
     - Run accessibility scan on each page
     - Baseline existing violations as acknowledged (don't block on Phase 3 items)
     - Zero new violations for Level A and AA
-    - **Acceptance:** CI runs axe-core, blocks on new violations
+    - **Acceptance:** Playwright configured, CI runs axe-core, blocks on new violations
 
 19. **Fix color contrast issues from Phase 1 audit**
     - Fix any issues found in Phase 1 audit (don't defer to Phase 4)
@@ -253,9 +255,22 @@ Perform a comprehensive accessibility audit and remediation across the entire ch
 - `@axe-core/playwright` (new test dependency)
 - react-chessboard v5 accessibility limitations (investigate in Phase 1 spike)
 
+## Ignored Low-Priority Items
+
+- Security review of ARIA live regions (single-player game, no privacy concerns)
+- Language attribute for algebraic notation (test during implementation)
+- Timeout adjustments WCAG 2.2.1 (already satisfied by time control selection)
+- Performance of board descriptions (test during implementation)
+- Privacy mode for future multiplayer (future feature)
+- Pause feature for single-player games (future feature)
+- Internationalization planning (future scope)
+- Focus order verification WCAG 2.4.3 (verify during implementation)
+
 ## Pre-Implementation Checklist
 
 - [ ] Run Phase 1 color contrast audit before committing to design
 - [ ] Complete react-chessboard v5 a11y spike before Phase 3 planning
-- [ ] Audit which pages have `<main>` landmark and which don't (game page, home page, history page)
-- [ ] Review error page `role="img"` usage (semantically incorrect?)
+- [x] ~~Audit which pages have `<main>` landmark~~ - all pages already have `<main>`
+- [x] ~~Review error page `role="img"` usage~~ - correct WCAG pattern for emoji characters
+- [ ] Set up Playwright infrastructure (config, test runner) before Phase 2c axe-core gate
+- [ ] Verify touch targets >= 44x44px on mobile for all interactive elements
