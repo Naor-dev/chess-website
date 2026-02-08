@@ -83,7 +83,7 @@ jobs:
         continue-on-error: true
         env:
           CLAUDE_CODE_USE_BEDROCK: '0'
-          ANTHROPIC_AUTH_TOKEN: ${{ secrets.CLAUDE_TOKEN }}
+          ANTHROPIC_AUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
         run: |
           MODEL="${{ matrix.model }}"
           REVIEW_OUTPUT="/tmp/plan-review-${MODEL}.md"
@@ -107,16 +107,20 @@ jobs:
             echo "" >> "$REVIEW_OUTPUT"
 
             # Run Claude Code with plan-reviewer agent and specific model
-            PLAN_CONTENT=$(cat "$plan_file")
+            # Pipe prompt via stdin to avoid shell quoting issues with backticks/quotes in plan content
+            PROMPT_FILE="/tmp/plan-prompt-${MODEL}.txt"
+            {
+              echo "Review the following implementation plan:"
+              echo ""
+              echo "---"
+              echo "File: $plan_file"
+              echo ""
+              cat "$plan_file"
+              echo "---"
+            } > "$PROMPT_FILE"
 
-            if claude -p --agent plan-reviewer --model "$MODEL" --output-format text \
-              "Review the following implementation plan:
-
----
-File: $plan_file
-
-$PLAN_CONTENT
----" >> "$REVIEW_OUTPUT" 2> "$ERROR_LOG"; then
+            if cat "$PROMPT_FILE" | claude -p --agent plan-reviewer --model "$MODEL" --output-format text \
+              >> "$REVIEW_OUTPUT" 2> "$ERROR_LOG"; then
               echo "✅ Review completed for $plan_file ($MODEL)"
             else
               REVIEW_SUCCESS=false
