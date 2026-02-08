@@ -11,7 +11,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node $CLAUDE_PROJECT_DIR/.claude/hooks/scripts/session-start.js"
+            "command": "node $CLAUDE_PROJECT_DIR/.claude/hooks/scripts/session-start.cjs"
           }
         ]
       }
@@ -122,7 +122,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node $CLAUDE_PROJECT_DIR/.claude/hooks/scripts/pre-compact.js"
+            "command": "node $CLAUDE_PROJECT_DIR/.claude/hooks/scripts/pre-compact.cjs"
           }
         ]
       }
@@ -146,11 +146,11 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node $CLAUDE_PROJECT_DIR/.claude/hooks/scripts/session-end.js"
+            "command": "node $CLAUDE_PROJECT_DIR/.claude/hooks/scripts/session-end.cjs"
           },
           {
             "type": "command",
-            "command": "node $CLAUDE_PROJECT_DIR/.claude/hooks/scripts/evaluate-session.js"
+            "command": "node $CLAUDE_PROJECT_DIR/.claude/hooks/scripts/evaluate-session.cjs"
           }
         ]
       }
