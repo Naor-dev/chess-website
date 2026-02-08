@@ -56,6 +56,7 @@ jobs:
     needs: find-plans
     if: needs.find-plans.outputs.has_plans == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     strategy:
       matrix:
         model: [opus, sonnet]
@@ -89,7 +90,7 @@ jobs:
           REVIEW_OUTPUT="/tmp/plan-review-${MODEL}.md"
           ERROR_LOG="/tmp/claude-error.log"
 
-          echo "# 🤖 Claude Plan Review (${MODEL^^})" > "$REVIEW_OUTPUT"
+          echo "# Claude Plan Review (${MODEL^^})" > "$REVIEW_OUTPUT"
           echo "" >> "$REVIEW_OUTPUT"
           echo "*Automated review by Claude Code (plan-reviewer agent, model: ${MODEL})*" >> "$REVIEW_OUTPUT"
           echo "" >> "$REVIEW_OUTPUT"
@@ -103,11 +104,10 @@ jobs:
             echo "Reviewing with $MODEL: $plan_file"
             echo "---" >> "$REVIEW_OUTPUT"
             echo "" >> "$REVIEW_OUTPUT"
-            echo "## 📄 $plan_file" >> "$REVIEW_OUTPUT"
+            echo "## Plan: $plan_file" >> "$REVIEW_OUTPUT"
             echo "" >> "$REVIEW_OUTPUT"
 
-            # Run Claude Code with plan-reviewer agent and specific model
-            # Pipe prompt via stdin to avoid shell quoting issues with backticks/quotes in plan content
+            # Build prompt file to avoid shell quoting issues
             PROMPT_FILE="/tmp/plan-prompt-${MODEL}.txt"
             {
               echo "Review the following implementation plan:"
@@ -119,26 +119,29 @@ jobs:
               echo "---"
             } > "$PROMPT_FILE"
 
-            if cat "$PROMPT_FILE" | claude -p --agent plan-reviewer --model "$MODEL" --output-format text \
+            # Run Claude Code with 10-minute timeout and limited turns
+            if timeout 600 bash -c "cat '$PROMPT_FILE' | claude -p --agent plan-reviewer --model '$MODEL' --max-turns 3 --output-format text" \
               >> "$REVIEW_OUTPUT" 2> "$ERROR_LOG"; then
-              echo "✅ Review completed for $plan_file ($MODEL)"
+              echo "Review completed for $plan_file ($MODEL)"
             else
+              EXIT_CODE=$?
               REVIEW_SUCCESS=false
-              ERROR_MSG=$(cat "$ERROR_LOG")
+              ERROR_MSG=$(cat "$ERROR_LOG" 2>/dev/null || echo "No error log")
 
               echo "" >> "$REVIEW_OUTPUT"
-              echo "❌ **Review Failed**" >> "$REVIEW_OUTPUT"
+              echo "**Review Failed**" >> "$REVIEW_OUTPUT"
               echo "" >> "$REVIEW_OUTPUT"
-              echo "Claude Code encountered an error:" >> "$REVIEW_OUTPUT"
-              echo "" >> "$REVIEW_OUTPUT"
-              echo '```' >> "$REVIEW_OUTPUT"
-              echo "$ERROR_MSG" >> "$REVIEW_OUTPUT"
-              echo '```' >> "$REVIEW_OUTPUT"
-              echo "" >> "$REVIEW_OUTPUT"
-              echo "**Possible causes:**" >> "$REVIEW_OUTPUT"
-              echo "- Weekly usage limit (5h/week) exhausted" >> "$REVIEW_OUTPUT"
-              echo "- Token expired (regenerate with \`claude setup-token\`)" >> "$REVIEW_OUTPUT"
-              echo "- Network/service issues" >> "$REVIEW_OUTPUT"
+
+              if [ "$EXIT_CODE" = "124" ]; then
+                echo "Claude Code timed out after 10 minutes." >> "$REVIEW_OUTPUT"
+              else
+                echo "Claude Code encountered an error:" >> "$REVIEW_OUTPUT"
+                echo "" >> "$REVIEW_OUTPUT"
+                echo '```' >> "$REVIEW_OUTPUT"
+                echo "$ERROR_MSG" >> "$REVIEW_OUTPUT"
+                echo '```' >> "$REVIEW_OUTPUT"
+              fi
+
               echo "" >> "$REVIEW_OUTPUT"
               echo "Please review this plan manually." >> "$REVIEW_OUTPUT"
             fi
@@ -166,7 +169,7 @@ jobs:
             if (fs.existsSync(reviewPath)) {
               body = fs.readFileSync(reviewPath, 'utf8');
             } else {
-              body = `# Claude Plan Review (${model.toUpperCase()})\n\nReview Unavailable\n\nThe automated plan review could not be completed. Please review manually.`;
+              body = '# Claude Plan Review (' + model.toUpperCase() + ')\n\n**Review Unavailable**\n\nThe automated plan review could not be completed. Please review manually.';
             }
 
             await github.rest.issues.createComment({
@@ -180,6 +183,7 @@ jobs:
     needs: find-plans
     if: needs.find-plans.outputs.has_plans == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       contents: read
       pull-requests: write
@@ -220,7 +224,7 @@ jobs:
             if (fs.existsSync(reviewPath)) {
               body = fs.readFileSync(reviewPath, 'utf8');
             } else {
-              body = `# Gemini Plan Review\n\nReview Unavailable\n\nThe automated plan review could not be completed. Please review manually.`;
+              body = '# Gemini Plan Review\n\n**Review Unavailable**\n\nThe automated plan review could not be completed. Please review manually.';
             }
 
             await github.rest.issues.createComment({
