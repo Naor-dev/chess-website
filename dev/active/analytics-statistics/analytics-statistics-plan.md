@@ -126,3 +126,4 @@ Add a player statistics dashboard showing win rate, games played, average game l
 - No chart library in MVP (use CSS-based bars), or lightweight chart lib if needed
 
 
+
