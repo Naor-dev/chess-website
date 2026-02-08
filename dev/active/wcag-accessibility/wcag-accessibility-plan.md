@@ -161,3 +161,4 @@ Perform a comprehensive accessibility audit and remediation across the entire ch
 - `eslint-plugin-jsx-a11y` (new dev dependency)
 - `@axe-core/playwright` (new test dependency)
 - react-chessboard v5 accessibility limitations (work around)
+
