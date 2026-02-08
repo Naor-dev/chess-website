@@ -166,11 +166,7 @@ jobs:
             if (fs.existsSync(reviewPath)) {
               body = fs.readFileSync(reviewPath, 'utf8');
             } else {
-              body = `# 🤖 Claude Plan Review (${model.toUpperCase()})
-
-⚠️ **Review Unavailable**
-
-The automated plan review could not be completed. Please review manually.`;
+              body = `# Claude Plan Review (${model.toUpperCase()})\n\nReview Unavailable\n\nThe automated plan review could not be completed. Please review manually.`;
             }
 
             await github.rest.issues.createComment({
@@ -224,11 +220,7 @@ The automated plan review could not be completed. Please review manually.`;
             if (fs.existsSync(reviewPath)) {
               body = fs.readFileSync(reviewPath, 'utf8');
             } else {
-              body = `# 🤖 Gemini Plan Review
-
-⚠️ **Review Unavailable**
-
-The automated plan review could not be completed. Please review manually.`;
+              body = `# Gemini Plan Review\n\nReview Unavailable\n\nThe automated plan review could not be completed. Please review manually.`;
             }
 
             await github.rest.issues.createComment({
