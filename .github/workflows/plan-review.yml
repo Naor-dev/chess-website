@@ -168,7 +168,7 @@ jobs:
 
             # Run Claude Code WITHOUT --agent to avoid codebase exploration (plan content is in the prompt)
             # --max-turns 1: single response, no tool use needed
-            if timeout 300 bash -c "cat '$PROMPT_FILE' | claude -p --model '$MODEL' --max-turns 1 --output-format text" \
+            if timeout 300 bash -c "cat '$PROMPT_FILE' | claude -p --model '$MODEL' --max-turns 3 --output-format text" \
               >> "$REVIEW_OUTPUT" 2> "$ERROR_LOG"; then
               END_TIME=$(date +%s)
               DURATION=$((END_TIME - START_TIME))
