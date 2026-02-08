@@ -1,6 +1,6 @@
 # Analytics & Statistics - Implementation Plan
 
-**Last Updated:** 2026-02-09
+**Last Updated:** 2026-02-09 (v3)
 
 ## Executive Summary
 
@@ -34,52 +34,69 @@ Add a player statistics dashboard showing win rate, games played, average game l
    - **Acceptance:** Types exported and usable in both frontend and backend
 
 2. **Create `StatsRepository`** in `apps/backend/src/repositories/`
-   - Extend `BaseRepository`
+   - Extend `BaseRepository`, use `executeWithErrorHandling()` for ALL methods
    - Aggregation queries using Prisma `groupBy` and `aggregate`
-   - **`movesHistory` array length:** Prisma cannot aggregate array length in `groupBy` - use raw SQL via `prisma.$queryRaw`:
-     ```sql
-     SELECT AVG(array_length("movesHistory", 1)) FROM "Game"
-     WHERE "userId" = $1 AND "status" = 'completed'
+   - **Filter:** Only count `FINISHED` games (exclude `ACTIVE` and `ABANDONED`)
+   - **`movesHistory` array length:** Use tagged template (auto-parameterized, safe from SQL injection):
+     ```typescript
+     const result = await this.prisma.$queryRaw<[{ avg: number }]>`
+       SELECT AVG(COALESCE(array_length("movesHistory", 1), 0)) as avg
+       FROM "Game"
+       WHERE "userId" = ${userId} AND "status" = 'FINISHED'
+     `;
      ```
-   - **Streak calculation:** Fetch recent finished games ordered by `updatedAt`, compute streak in service layer (simpler than SQL window functions)
+   - **NEVER use `$queryRawUnsafe` or string concatenation**
+   - **Result type mapping** (document explicitly to prevent bugs):
+     - Wins: `user_win_checkmate`, `user_win_timeout`
+     - Losses: `engine_win_checkmate`, `engine_win_timeout`, `user_resigned`
+     - Draws: `draw_stalemate`, `draw_repetition`, `draw_fifty_moves`, `draw_insufficient_material`
+   - **Streak calculation:** Fetch recent finished games ordered by `updatedAt`, compute streak in service layer
    - Methods: `getUserStats(userId)`, `getStatsByDifficulty(userId)`, `getStatsByTimeControl(userId)`, `getAvgMoves(userId)`
-   - **Acceptance:** Returns all aggregated data correctly
+   - **Acceptance:** Returns all aggregated data correctly, ABANDONED excluded, SQL injection safe
 
 3. **Create `StatsService`** in `apps/backend/src/services/`
+   - Constructor receives `StatsRepository` via dependency injection (same pattern as `GameService`)
    - Business logic for stats calculation
-   - Win rate computation: `wins / totalFinished * 100`
-   - Average moves per game: from raw SQL query result (step 2)
+   - Win rate: `totalFinished > 0 ? (wins / totalFinished) * 100 : 0` (guard division by zero)
+   - Average moves per game: from raw SQL query result (step 2), use `?? 0` for nullish coalescing
    - Streak calculation: iterate recent finished games ordered by completion time, count consecutive same-result games (wins or losses only, draws break the streak)
+   - Add Sentry breadcrumb: `Sentry.addBreadcrumb({ category: 'stats', message: 'Calculated user statistics', data: { userId, totalGames } })`
    - **Acceptance:** Correct calculations with edge cases (0 games, all wins, all draws, etc.)
 
 4. **Create `StatsController`** in `apps/backend/src/controllers/`
    - Extend `BaseController`
    - `GET /api/users/stats` endpoint
-   - Auth required (uses `req.userId` - NOT `req.user.id`, which doesn't exist)
+   - **Authorization:** Users can only access their own stats (`req.userId` - NOT `req.user.id`)
+   - **Rate limiting:** Apply rate limiter (20 req/15min - stats don't change frequently)
    - Response via `handleSuccess()`
    - Sentry breadcrumbs
    - **Acceptance:** Returns structured stats response, 401 for unauthenticated
 
 5. **Wire up backend plumbing**
-   - **Register in ServiceContainer:** Add `StatsRepository` and `StatsService` to `apps/backend/src/services/serviceContainer.ts`
-   - **Create route file:** `apps/backend/src/routes/statsRoutes.ts` (or `userRoutes.ts`)
-   - **Register routes:** Add `router.use('/users', statsRoutes)` in `apps/backend/src/routes/index.ts`
-   - **Proxy allowlist:** Add `'users'` to `ALLOWED_PATHS` in `apps/frontend/src/app/api/proxy/[...path]/route.ts` (if not already there)
+   - **Register in ServiceContainer:**
+     ```typescript
+     this.statsRepository = new StatsRepository(prisma);
+     this.statsService = new StatsService(this.statsRepository);
+     ```
+   - **Create route file:** `apps/backend/src/routes/statsRoutes.ts` - instantiate controller in route file (per `gameRoutes.ts` pattern)
+   - **Register routes:** Add `router.use('/users', statsRoutes)` in `routes/index.ts` (new route prefix)
+   - **Proxy allowlist:** `'users'` already exists in `ALLOWED_PATH_PREFIXES` - no change needed. Only update `ALLOWED_QUERY_PARAMS` if adding filter params later
    - **Acceptance:** `GET /api/users/stats` is accessible through the BFF proxy
 
 6. **Write backend tests alongside implementation**
    - Unit tests for `StatsService` calculations (write tests in parallel with service code, not deferred)
    - API tests for `StatsController` (authenticated, unauthenticated, no games)
-   - Edge cases: user with 0 games, user with only active games, all wins, all draws
-   - Test raw SQL query for movesHistory average
-   - **Acceptance:** Full coverage of calculation logic
+   - Edge cases: user with 0 games, user with only active/abandoned games, all wins, all draws
+   - Test raw SQL query for movesHistory average (including empty arrays)
+   - **Test authorization:** User cannot access other user's statistics
+   - **Acceptance:** Full coverage, 80%+ test coverage for stats module
 
 ### Phase 2: Frontend Statistics Page (Effort: L)
 
 7. **Create stats API client** in `apps/frontend/src/lib/`
    - `getUserStats()` function using apiClient
-   - TanStack Query hook: `useUserStats()` with `staleTime: 60_000` (stats don't change rapidly)
-   - **Acceptance:** Data fetches correctly via proxy, cached for 60 seconds
+   - **Note:** TanStack Query `queryClient.ts` exists but NO components use it - the codebase uses `useEffect` + `useState` for data fetching. Use the same pattern for consistency, or introduce TanStack Query (would be first usage, requires verifying `QueryClientProvider` is wired up)
+   - **Acceptance:** Data fetches correctly via proxy
 
 8. **Create `/stats` page** in `apps/frontend/src/app/stats/`
    - Overview cards: Total Games, Win Rate, Current Streak, Avg Moves
@@ -143,15 +160,24 @@ Add a player statistics dashboard showing win rate, games played, average game l
 - Page scores 100 on axe-core accessibility
 - Responsive on all breakpoints
 
+## Ignored Low-Priority Items
+
+- Backend caching (Redis/in-memory) - fine for MVP, add post-launch if needed
+- Loading skeleton/state design - follow existing history page pattern during implementation
+- CORS considerations - already handled by existing middleware
+- Database indexing optimization - verify during implementation, not a plan item
+- Accessibility color contrast specific values - determine during implementation
+- Chart library decision - CSS bars for MVP, no pie chart
+
 ## Dependencies
 
 - Existing game data in database (no schema changes needed)
 - Shared types package (add new `UserStatsResponse` type; note existing `UserProfile` type)
 - No chart library in MVP (CSS-based bars only, pie chart deferred)
-- `prisma.$queryRaw` for `movesHistory` array length aggregation
+- `prisma.$queryRaw` tagged template for `movesHistory` array length aggregation
 - ServiceContainer registration for new repository and service
 - Route file and registration in `routes/index.ts`
-- Proxy allowlist update for `users` path
+- Proxy allowlist: `users` already in `ALLOWED_PATH_PREFIXES` - no change needed
 
 
 
