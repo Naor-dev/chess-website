@@ -27,30 +27,54 @@ jobs:
       - name: Find plan files
         id: find-plans
         run: |
-          # Find plan files that were changed
+          echo "::group::Finding plan files"
+          echo "[$(date -u +%H:%M:%S)] Event: ${{ github.event_name }}, Branch: ${{ github.head_ref || github.ref_name }}"
+
+          # Find plan files that were changed (regex matches both file.plan.md and file-plan.md)
           if [ "${{ github.event_name }}" = "pull_request" ]; then
-            CHANGED_FILES=$(git diff --name-only ${{ github.event.pull_request.base.sha }} ${{ github.sha }} | grep -E '\.(plan\.md|plan-.*\.md)$' || true)
+            echo "[$(date -u +%H:%M:%S)] Diffing ${{ github.event.pull_request.base.sha }}..${{ github.sha }}"
+            ALL_CHANGED=$(git diff --name-only ${{ github.event.pull_request.base.sha }} ${{ github.sha }})
+            echo "[$(date -u +%H:%M:%S)] All changed files:"
+            echo "$ALL_CHANGED"
+            CHANGED_FILES=$(echo "$ALL_CHANGED" | grep -E '(-plan\.md|\.plan\.md|plan-.*\.md)$' || true)
           else
-            CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD | grep -E '\.(plan\.md|plan-.*\.md)$' || true)
+            ALL_CHANGED=$(git diff --name-only HEAD~1 HEAD)
+            echo "[$(date -u +%H:%M:%S)] All changed files:"
+            echo "$ALL_CHANGED"
+            CHANGED_FILES=$(echo "$ALL_CHANGED" | grep -E '(-plan\.md|\.plan\.md|plan-.*\.md)$' || true)
           fi
 
-          # Also check dev/active for plan files
-          ACTIVE_PLANS=$(find dev/active -name "*plan*.md" 2>/dev/null | head -5 || true)
+          echo "[$(date -u +%H:%M:%S)] Plan files from diff: ${CHANGED_FILES:-none}"
+
+          # Fallback: check dev/active for plan files (only *-plan.md, not context/tasks)
+          if [ -z "$CHANGED_FILES" ]; then
+            echo "[$(date -u +%H:%M:%S)] No plan files in diff, scanning dev/active/"
+            ACTIVE_PLANS=$(find dev/active -name "*-plan.md" -o -name "*.plan.md" 2>/dev/null | head -5 || true)
+            echo "[$(date -u +%H:%M:%S)] Active plans found: ${ACTIVE_PLANS:-none}"
+          else
+            ACTIVE_PLANS=""
+          fi
 
           # Combine and dedupe
           ALL_PLANS=$(echo -e "${CHANGED_FILES}\n${ACTIVE_PLANS}" | sort -u | grep -v '^$' | head -5)
 
           if [ -z "$ALL_PLANS" ]; then
-            echo "No plan files found"
+            echo "[$(date -u +%H:%M:%S)] No plan files found"
             echo "has_plans=false" >> $GITHUB_OUTPUT
           else
-            echo "Found plans:"
-            echo "$ALL_PLANS"
+            PLAN_COUNT=$(echo "$ALL_PLANS" | wc -l)
+            echo "[$(date -u +%H:%M:%S)] Found $PLAN_COUNT plan(s):"
+            echo "$ALL_PLANS" | while read -r f; do
+              SIZE=$(wc -c < "$f" 2>/dev/null || echo "?")
+              LINES=$(wc -l < "$f" 2>/dev/null || echo "?")
+              echo "  - $f ($LINES lines, $SIZE bytes)"
+            done
             echo "plans<<EOF" >> $GITHUB_OUTPUT
             echo "$ALL_PLANS" >> $GITHUB_OUTPUT
             echo "EOF" >> $GITHUB_OUTPUT
             echo "has_plans=true" >> $GITHUB_OUTPUT
           fi
+          echo "::endgroup::"
 
   review-plan-claude:
     needs: find-plans
@@ -90,18 +114,33 @@ jobs:
           REVIEW_OUTPUT="/tmp/plan-review-${MODEL}.md"
           ERROR_LOG="/tmp/claude-error.log"
 
+          echo "::group::Setup"
+          echo "[$(date -u +%H:%M:%S)] Model: $MODEL"
+          echo "[$(date -u +%H:%M:%S)] Claude Code version: $(claude --version 2>/dev/null || echo 'unknown')"
+          echo "[$(date -u +%H:%M:%S)] Auth token set: $([ -n \"$ANTHROPIC_AUTH_TOKEN\" ] && echo 'yes' || echo 'NO - MISSING!')"
+          echo "::endgroup::"
+
           echo "# Claude Plan Review (${MODEL^^})" > "$REVIEW_OUTPUT"
           echo "" >> "$REVIEW_OUTPUT"
           echo "*Automated review by Claude Code (plan-reviewer agent, model: ${MODEL})*" >> "$REVIEW_OUTPUT"
           echo "" >> "$REVIEW_OUTPUT"
 
           REVIEW_SUCCESS=true
+          PLAN_NUM=0
+          TOTAL_PLANS=$(echo "${{ needs.find-plans.outputs.plans }}" | grep -c '[^ ]' || echo 0)
 
           while IFS= read -r plan_file; do
             [ -z "$plan_file" ] && continue
-            [ ! -f "$plan_file" ] && continue
+            [ ! -f "$plan_file" ] && { echo "[$(date -u +%H:%M:%S)] SKIP: $plan_file (file not found)"; continue; }
 
-            echo "Reviewing with $MODEL: $plan_file"
+            PLAN_NUM=$((PLAN_NUM + 1))
+            FILE_SIZE=$(wc -c < "$plan_file")
+            FILE_LINES=$(wc -l < "$plan_file")
+
+            echo "::group::Review $PLAN_NUM/$TOTAL_PLANS: $plan_file ($MODEL)"
+            echo "[$(date -u +%H:%M:%S)] START reviewing: $plan_file"
+            echo "[$(date -u +%H:%M:%S)] File size: $FILE_LINES lines, $FILE_SIZE bytes"
+
             echo "---" >> "$REVIEW_OUTPUT"
             echo "" >> "$REVIEW_OUTPUT"
             echo "## Plan: $plan_file" >> "$REVIEW_OUTPUT"
@@ -110,7 +149,7 @@ jobs:
             # Build prompt file to avoid shell quoting issues
             PROMPT_FILE="/tmp/plan-prompt-${MODEL}.txt"
             {
-              echo "Review the following implementation plan:"
+              echo "Review the following implementation plan. Provide a concise review with key findings."
               echo ""
               echo "---"
               echo "File: $plan_file"
@@ -119,23 +158,44 @@ jobs:
               echo "---"
             } > "$PROMPT_FILE"
 
-            # Run Claude Code with 10-minute timeout and limited turns
-            if timeout 600 bash -c "cat '$PROMPT_FILE' | claude -p --agent plan-reviewer --model '$MODEL' --max-turns 3 --output-format text" \
+            PROMPT_SIZE=$(wc -c < "$PROMPT_FILE")
+            echo "[$(date -u +%H:%M:%S)] Prompt size: $PROMPT_SIZE bytes"
+            echo "[$(date -u +%H:%M:%S)] Running: timeout 300 claude -p --agent plan-reviewer --model $MODEL --max-turns 3 --output-format text"
+
+            START_TIME=$(date +%s)
+
+            # Run Claude Code with 5-minute timeout per file and limited turns
+            if timeout 300 bash -c "cat '$PROMPT_FILE' | claude -p --agent plan-reviewer --model '$MODEL' --max-turns 3 --output-format text" \
               >> "$REVIEW_OUTPUT" 2> "$ERROR_LOG"; then
-              echo "Review completed for $plan_file ($MODEL)"
+              END_TIME=$(date +%s)
+              DURATION=$((END_TIME - START_TIME))
+              echo "[$(date -u +%H:%M:%S)] SUCCESS: $plan_file reviewed in ${DURATION}s"
             else
               EXIT_CODE=$?
+              END_TIME=$(date +%s)
+              DURATION=$((END_TIME - START_TIME))
               REVIEW_SUCCESS=false
-              ERROR_MSG=$(cat "$ERROR_LOG" 2>/dev/null || echo "No error log")
+
+              echo "[$(date -u +%H:%M:%S)] FAILED: exit code $EXIT_CODE after ${DURATION}s"
+
+              # Log stderr
+              if [ -s "$ERROR_LOG" ]; then
+                echo "[$(date -u +%H:%M:%S)] Error log contents:"
+                cat "$ERROR_LOG"
+              else
+                echo "[$(date -u +%H:%M:%S)] Error log is empty"
+              fi
 
               echo "" >> "$REVIEW_OUTPUT"
               echo "**Review Failed**" >> "$REVIEW_OUTPUT"
               echo "" >> "$REVIEW_OUTPUT"
 
               if [ "$EXIT_CODE" = "124" ]; then
-                echo "Claude Code timed out after 10 minutes." >> "$REVIEW_OUTPUT"
+                echo "Claude Code timed out after 5 minutes." >> "$REVIEW_OUTPUT"
+                echo "[$(date -u +%H:%M:%S)] TIMEOUT: Claude Code exceeded 5-minute limit"
               else
-                echo "Claude Code encountered an error:" >> "$REVIEW_OUTPUT"
+                ERROR_MSG=$(cat "$ERROR_LOG" 2>/dev/null || echo "No error log")
+                echo "Claude Code encountered an error (exit code: $EXIT_CODE):" >> "$REVIEW_OUTPUT"
                 echo "" >> "$REVIEW_OUTPUT"
                 echo '```' >> "$REVIEW_OUTPUT"
                 echo "$ERROR_MSG" >> "$REVIEW_OUTPUT"
@@ -147,10 +207,14 @@ jobs:
             fi
 
             echo "" >> "$REVIEW_OUTPUT"
+            echo "::endgroup::"
           done <<< "${{ needs.find-plans.outputs.plans }}"
 
-          echo "Review complete. Output:"
+          echo "[$(date -u +%H:%M:%S)] All reviews complete. Success: $REVIEW_SUCCESS"
+          echo ""
+          echo "::group::Review output"
           cat "$REVIEW_OUTPUT"
+          echo "::endgroup::"
 
           if [ "$REVIEW_SUCCESS" = false ]; then
             exit 1
