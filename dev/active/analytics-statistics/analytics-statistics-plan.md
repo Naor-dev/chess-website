@@ -124,3 +124,4 @@ Add a player statistics dashboard showing win rate, games played, average game l
 - Existing game data in database (no schema changes needed)
 - Shared types package (add new types)
 - No chart library in MVP (use CSS-based bars), or lightweight chart lib if needed
+
