@@ -6,16 +6,6 @@
     "defaultMode": "acceptEdits"
   },
   "hooks": {
-    "SessionStart": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node $CLAUDE_PROJECT_DIR/.claude/hooks/scripts/session-start.cjs"
-          }
-        ]
-      }
-    ],
     "UserPromptSubmit": [
       {
         "hooks": [
@@ -117,16 +107,6 @@
         ]
       }
     ],
-    "PreCompact": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node $CLAUDE_PROJECT_DIR/.claude/hooks/scripts/pre-compact.cjs"
-          }
-        ]
-      }
-    ],
     "Stop": [
       {
         "hooks": [
@@ -141,19 +121,6 @@
         ]
       }
     ],
-    "SessionEnd": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node $CLAUDE_PROJECT_DIR/.claude/hooks/scripts/session-end.cjs"
-          },
-          {
-            "type": "command",
-            "command": "node $CLAUDE_PROJECT_DIR/.claude/hooks/scripts/evaluate-session.cjs"
-          }
-        ]
-      }
-    ]
+    "SessionEnd": []
   }
 }
