@@ -1,6 +1,6 @@
 # Pawn Promotion UI - Implementation Plan
 
-**Last Updated:** 2026-02-16 (v4 - addressing Sonnet review feedback)
+**Last Updated:** 2026-02-16 (v5 - addressing 4th round Sonnet HIGH items)
 
 ## Executive Summary
 
@@ -115,7 +115,12 @@ Add an interactive pawn promotion dialog that lets users choose which piece to p
 7. **Handle clock behavior during promotion**
    - Clock continues running during promotion selection (realistic chess behavior)
    - If clock expires while dialog is open: close dialog, trigger timeout game-over
-   - **Acceptance:** Clock timeout correctly ends game even during promotion
+   - **If timeout occurs during `api_call` state** (after piece selected, before API response):
+     1. Cancel in-flight request via `AbortController.abort()`
+     2. Close dialog immediately
+     3. Trigger timeout game-over
+     4. Log to Sentry: "Promotion interrupted by timeout"
+   - **Acceptance:** Clock timeout correctly ends game even during promotion or mid-API-call
 
 8. **Handle errors and version conflicts**
    - Try-catch around promotion move API call
@@ -134,13 +139,34 @@ Add an interactive pawn promotion dialog that lets users choose which piece to p
        }
      });
      ```
-   - **Acceptance:** API failures don't break game state, errors tracked in Sentry
+   - **User-facing error messages must be generic** — never expose userId, gameVersion, FEN, or stack traces:
+     ```typescript
+     // Sentry gets full context (above) ✅
+     // User sees only generic messages:
+     if (error instanceof ConcurrentModificationError) {
+       showError('Game state changed. Refreshing...');
+     } else {
+       showError('Failed to complete promotion. Please try again.');
+     }
+     ```
+   - **Acceptance:** API failures don't break game state, errors tracked in Sentry, user-facing messages are generic
 
 9. **Mobile scroll lock during dialog**
    - Prevent body scroll while promotion dialog is open (especially landscape/small viewports)
-   - Use `body { overflow: hidden }` when dialog opens, restore on close
+   - Use `useEffect` cleanup to guarantee overflow restoration (prevents race condition if dialog rapidly closes/reopens or error occurs before cleanup):
+     ```typescript
+     useEffect(() => {
+       if (isPromotionDialogOpen) {
+         const previousOverflow = document.body.style.overflow;
+         document.body.style.overflow = 'hidden';
+         return () => {
+           document.body.style.overflow = previousOverflow;
+         };
+       }
+     }, [isPromotionDialogOpen]);
+     ```
    - Test on iOS Safari with small viewports (iPhone SE)
-   - **Acceptance:** No scroll-through behind promotion dialog on mobile
+   - **Acceptance:** No scroll-through behind promotion dialog on mobile, overflow always restored on close
 
 ### Phase 3: Testing (Effort: M)
 
