@@ -1,6 +1,6 @@
 # Pawn Promotion UI - Implementation Plan
 
-**Last Updated:** 2026-02-09
+**Last Updated:** 2026-02-16 (v4 - addressing Sonnet review feedback)
 
 ## Executive Summary
 
@@ -61,8 +61,10 @@ Add an interactive pawn promotion dialog that lets users choose which piece to p
    - Mobile: larger touch targets (min 44x44px), clear visual feedback
    - Dark mode support
    - Matches existing emerald theme
-   - Test on iOS Safari (touch conflicts with react-chessboard overlays)
-   - Use viewport-relative positioning (avoid `vh` units on iOS)
+   - Test on iOS Safari (touch event propagation may conflict with react-chessboard overlays)
+   - Use `dvh` (dynamic viewport height) or JS `window.innerHeight` instead of `vh` on iOS (URL bar inset issue)
+   - Account for safe area insets on notched devices: `padding: max(16px, env(safe-area-inset-bottom))`
+   - Test on iPhone SE (small viewport), iPhone 14 Pro (notch), iPad landscape
    - **Acceptance:** Usable on 320px+ screens, tested on real iOS device
 
 ### Phase 2: Game Logic Integration (Effort: M)
@@ -75,13 +77,24 @@ Add an interactive pawn promotion dialog that lets users choose which piece to p
    - New state: `pendingPromotion: { from, to, color } | null`
    - On drop/click to promotion square: set state to `pending_promotion`, show dialog
    - On piece selection: validate promotion piece, set state to `api_call`, make move
-   - On cancel: reset board with `chess.undo()`, reset position to `chess.fen()`, clear `pendingPromotion`, re-enable board, return focus to board. If `chess.undo()` fails, log error and reload game state
+   - On cancel: reset board with `chess.undo()`, reset position to `chess.fen()`, clear `pendingPromotion`, re-enable board, return focus to board. If `chess.undo()` fails:
+     1. Load last known valid FEN: `chess.load(lastValidFen)` (tracked before each move attempt)
+     2. If that also fails, fetch fresh game state from API: `refetchGameState(gameId)`
+     3. Log failure to Sentry with FEN context
    - Block ALL state mutations during `pending_promotion` or `api_call` (ignore engine responses, user clicks)
    - **Input validation before API call:**
      ```typescript
      const validPromotions = ['q', 'r', 'b', 'n'] as const;
      if (!validPromotions.includes(piece)) return;
      ```
+   - **Validate promotion square position** (defense in depth):
+     ```typescript
+     function isValidPromotionSquare(square: string, color: 'w' | 'b'): boolean {
+       const rank = square[1];
+       return (color === 'w' && rank === '8') || (color === 'b' && rank === '1');
+     }
+     ```
+     Log to Sentry if invalid square detected (possible tampering or bug)
    - **Acceptance:** Promotion flow pauses for selection, then completes move
 
 5. **Handle promotion that ends the game**
@@ -96,6 +109,7 @@ Add an interactive pawn promotion dialog that lets users choose which piece to p
    - Queue engine response and apply after promotion completes
    - Add loading state during promotion API call
    - Prevent new moves until promotion API resolves
+   - **API response ordering:** Board is disabled during `api_call` state, so user cannot make a second move while first is in-flight. Optimistic locking (version field) provides server-side protection against out-of-order mutations
    - **Acceptance:** No race conditions between promotion and engine responses
 
 7. **Handle clock behavior during promotion**
@@ -111,7 +125,13 @@ Add an interactive pawn promotion dialog that lets users choose which piece to p
      ```typescript
      Sentry.captureException(error, {
        tags: { feature: 'pawn-promotion', boundary: 'game-page' },
-       extra: { from, to, promotion, gameId, userId: user?.id, gameVersion, color, timeRemaining }
+       extra: {
+         from, to, promotion, gameId, userId: user?.id, gameVersion,
+         color, timeRemaining,
+         fen: chess.fen(),              // FEN before promotion attempt
+         gameState: currentGameState,   // 'pending_promotion' | 'api_call' | etc.
+         isEngineThinking: engineThinking // was engine processing when error occurred
+       }
      });
      ```
    - **Acceptance:** API failures don't break game state, errors tracked in Sentry
@@ -146,7 +166,10 @@ Add an interactive pawn promotion dialog that lets users choose which piece to p
     - Select each promotion piece -> correct piece on board
     - Cancel -> pawn returns to original position
     - Test on mobile viewport (scroll lock, touch targets)
-    - **Acceptance:** E2E flow works for all 4 promotions + cancel
+    - Test keyboard-only navigation (no mouse/touch)
+    - Test at 200% zoom (WCAG 2.1 AA requirement)
+    - Test Windows High Contrast Mode (ensure dialog borders/buttons remain visible)
+    - **Acceptance:** E2E flow works for all 4 promotions + cancel, keyboard + zoom + high contrast verified
 
 ## Risk Assessment
 
@@ -158,7 +181,7 @@ Add an interactive pawn promotion dialog that lets users choose which piece to p
 | Race condition with engine response | High | High | Disable engine processing while `pendingPromotion !== null` |
 | Clock timeout during promotion | Medium | Medium | Watch clock state, close dialog on timeout |
 | API failure during promotion | Medium | High | Error boundary + retry option, Sentry tracking |
-| iOS Safari touch conflicts | Medium | Medium | Test on real device, use position: fixed with viewport-relative units |
+| iOS Safari touch conflicts | High | Medium | Test on real device, use dvh/JS viewport units, safe-area insets, test touch propagation with react-chessboard |
 
 ## Success Metrics
 
@@ -170,6 +193,8 @@ Add an interactive pawn promotion dialog that lets users choose which piece to p
 - API errors handled gracefully without state corruption
 - No race conditions with engine responses
 - Works on iOS Safari 15+ (real device tested)
+- Works at 200% zoom and in Windows High Contrast Mode
+- Backend rejects invalid promotion values (e.g., promotion='x' returns 400)
 
 ## Ignored Low-Priority Items
 
