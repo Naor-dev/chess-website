@@ -7,7 +7,7 @@ const router: Router = Router();
 const controller = new StatsController();
 
 // GET /api/users/stats - Get user statistics
-router.get('/stats', authMiddleware, generalLimiter, (req, res) =>
+router.get('/stats', generalLimiter, authMiddleware, (req, res) =>
   controller.getUserStats(req, res)
 );
 
