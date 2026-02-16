@@ -1,6 +1,6 @@
 # Sound Effects - Implementation Plan
 
-**Last Updated:** 2026-02-09
+**Last Updated:** 2026-02-16 (v4 - addressing Opus/Sonnet review feedback)
 
 ## Executive Summary
 
@@ -43,7 +43,7 @@ Add chess sound effects for moves, captures, check, castling, promotion, and gam
    - Game over - draw (neutral)
    - Low time warning (10 seconds remaining)
    - File format: **MP3 only** (universally supported, OGG unnecessary)
-   - Normalize all files to consistent loudness (-23 LUFS, game audio standard)
+   - Normalize all files to consistent loudness (peak normalize to -1dB via Audacity; -23 LUFS is ideal but requires specialized tooling - peak normalization is acceptable)
    - Create `public/sounds/LICENSE.txt` with per-file CC0 attribution and source URLs
    - Target: MP3 at 64kbps mono, ~5-15KB per file
    - Place in `public/sounds/` directory (static paths only, never user-supplied URLs)
@@ -51,7 +51,8 @@ Add chess sound effects for moves, captures, check, castling, promotion, and gam
    - **Tip:** Start steps 2-4 in parallel using placeholder sounds to unblock engineering work
 
 2. **Add `media-src 'self'` to CSP**
-   - `media-src` is **not explicitly defined** in `next.config.ts` - `default-src 'self'` may cover it, but explicitly add `media-src 'self'` for clarity and safety
+   - `media-src` is **not explicitly defined** in `next.config.ts` - `default-src 'self'` already covers same-origin audio, but explicitly add `media-src 'self'` for clarity and future-proofing
+   - **Note:** Audio will likely work without this change (covered by `default-src 'self'`), but explicit is better than implicit - don't use this as a debugging red herring if audio doesn't play
    - **Acceptance:** CSP header includes `media-src 'self'`, audio files load without CSP errors
 
 3. **Create `useSound` hook** in `apps/frontend/src/hooks/`
@@ -61,17 +62,23 @@ Add chess sound effects for moves, captures, check, castling, promotion, and gam
        | 'gameOverWin' | 'gameOverLoss' | 'gameOverDraw' | 'lowTimeWarning';
      ```
    - Expose: `{ play, setVolume, toggleMute, volume, isMuted }`
-   - **Audio pool via `useRef`:** `useRef<Map<SoundType, HTMLAudioElement>>()` to avoid re-renders
-   - Preload audio files on first game page visit (lazy, not app-wide)
+   - **Audio approach: `HTMLAudioElement` pool (primary)** - no `AudioContext` needed for simple sound playback. `AudioContext` is only used as a one-time unlock mechanism on iOS Safari (create + resume on first user gesture, then discard). All actual playback uses `HTMLAudioElement.play()`:
+     ```typescript
+     // Pool for playback (primary)
+     const audioPool = useRef<Map<SoundType, HTMLAudioElement>>();
+     // AudioContext ONLY for iOS Safari unlock - not for playback
+     ```
+   - **Preload timing:** In `useEffect` after game data loads (avoid blocking initial render). Not on app-wide mount - only on game page visit
+   - **Audio load failure handling:** If MP3 file fails to load (404, network error), handle `onerror` on HTMLAudioElement, log to Sentry (not console.error), mark that sound as unavailable, continue silently
    - Handle volume and mute state
    - Persist preferences in localStorage with SSR guard (`typeof window !== 'undefined'`)
    - Handle Safari private mode localStorage errors
-   - **First-interaction handling:** Initialize AudioContext on first board click/drag, show visual mute indicator if audio blocked. If `AudioContext.resume()` fails, degrade gracefully (persistent mute icon, no retry spam)
+   - **First-interaction handling:** On first board click/drag, attempt to play a silent/zero-volume sound to unlock audio. If blocked, show visual mute indicator, degrade gracefully (no retry spam)
    - **localStorage errors:** Fail silently with default values (no console.error revealing browser state)
    - **All `play()` calls wrapped in try-catch** - audio failures never crash the app
    - Sound interruption: `audio.pause(); audio.currentTime = 0;` before each `play()` (reuse pool, limit active Audio objects)
    - **Tab visibility:** Suppress sounds when `document.visibilityState !== 'visible'` (listen to `visibilitychange` event)
-   - **Cleanup on unmount:** Close `AudioContext`, remove event listeners, clear audio pool
+   - **Cleanup on unmount:** Remove event listeners, clear audio pool (close AudioContext only if it was created for Safari unlock)
    - **Acceptance:** Hook plays sounds without lag, respects user preferences, works in SSR, no memory leaks
 
 4. **Create `SoundControl` component** in `apps/frontend/src/app/game/[id]/components/`
@@ -94,8 +101,10 @@ Add chess sound effects for moves, captures, check, castling, promotion, and gam
      - `move.flags` includes 'k' or 'q' -> castling sound
      - `move.flags` includes 'p' -> promotion sound (plays after piece selected, not on pawn drop)
      - Default -> move sound
-   - **Sound priority** (when multiple flags): check > capture > castling > promotion > move
-   - Place in `apps/frontend/src/utils/soundUtils.ts` or co-located with hook
+   - **Sound priority** (when multiple flags): check > promotion > capture > castling > move
+     - **Promotion + capture:** Plays promotion sound (promotion is the rarer, more significant event)
+     - **Promotion + check:** Plays check sound (check takes highest priority always)
+   - Place in `apps/frontend/src/lib/soundUtils.ts` (co-locate with other utility code in `lib/`; `utils/` dir doesn't exist)
    - **Acceptance:** Pure function with full unit test coverage
 
 6. **Retain move flags from `chess.move()` result**
@@ -104,12 +113,14 @@ Add chess sound effects for moves, captures, check, castling, promotion, and gam
    - **Acceptance:** Move flags available for sound selection after every move
 
 7. **Integrate sounds into game flow**
-   - After successful user move: play sound based on move flags
+   - **Both move paths:** Sound must be triggered in BOTH `onDrop` (drag-and-drop, ~line 252-329) AND `onSquareClick` (click-to-move, ~line 332-382) handlers - both call `chess.move()` and need sound after success
+   - After successful `chess.move()`: play sound based on move result flags
+   - **Sound trigger point:** Tie sound to the `chess.move()` success, NOT to `setGame()` calls (which also fire on game load, engine responses, etc.)
    - Promotion: currently auto-queens (no promotion picker yet). Play promotion sound immediately. If promotion picker is added later, play after piece selection completes
    - On game over: play appropriate win/loss/draw sound
    - **No sound on initial game load** - when loading a game in progress, render board silently (only play on new moves)
    - **No sound on failed optimistic update** - if API call fails and move reverts, sound already played is acceptable (too fast to matter)
-   - **Acceptance:** Correct sound plays for each event type, no sound on page load
+   - **Acceptance:** Correct sound plays for each event type, no sound on page load, both drag-and-drop and click-to-move produce sounds
 
 8. **Engine move sound detection**
    - Backend returns `engineMove.san` but not flags
@@ -121,8 +132,8 @@ Add chess sound effects for moves, captures, check, castling, promotion, and gam
      ```
    - Use same `determineSoundType()` function as user moves
    - Play sound when engine response arrives and board updates (not when API call starts)
-   - **Debounce:** If user sound played within last 200ms, delay engine sound by 100ms to avoid clashing
-   - **Coordinate with react-chessboard animation timing** - play sound at animation start, not before
+   - **No debounce initially** - engine response typically arrives 200ms+ after user move (network + compute), so sounds naturally don't clash. Add debounce only if testing reveals actual overlap
+   - **Animation timing:** Sound plays at the same point as `setGame(result.game)` which triggers the board position update - this is naturally aligned with animation start. No special coordination needed
    - **Acceptance:** Engine moves produce correct sounds, no audio clashing with user moves
 
 9. **Add low-time warning sound**
@@ -142,20 +153,21 @@ Add chess sound effects for moves, captures, check, castling, promotion, and gam
 11. **WCAG 2.1 AA compliance**
     - Sounds are supplementary (all events have visual feedback already)
     - Mute control is keyboard accessible (Tab to focus, Enter/Space to toggle)
-    - Volume slider has `aria-label="Volume"` and `aria-valuenow`
+    - Volume slider: use native `<input type="range">` which provides `aria-label`, `aria-valuenow`, `aria-valuemin`, `aria-valuemax`, and arrow key support for free. Arrow keys adjust by 10%, Home/End for min/max
     - Screen reader announces mute state change ("Sound enabled" / "Sound muted")
     - No sound auto-plays before user interaction (autoplay policy)
-    - **Acceptance:** All visual feedback works with sound muted
+    - **Acceptance:** All visual feedback works with sound muted, volume slider fully keyboard-operable
 
 12. **Unit tests**
-    - `determineSoundType()` pure function tests (all flag combinations, priority order)
-    - `useSound` hook tests: mock `HTMLAudioElement` / `AudioContext`
+    - `determineSoundType()` pure function tests (all flag combinations, priority order including promotion+capture)
+    - `useSound` hook tests: mock `HTMLAudioElement` (primary audio approach)
     - Test play(), setVolume(), toggleMute()
     - Test volume/mute persistence in localStorage
     - Test SSR guard (no errors when window undefined)
     - Test first-interaction gating
     - Test tab visibility suppression
-    - Test cleanup on unmount (no lingering AudioContext/listeners)
+    - Test audio load failure (onerror handler, graceful degradation)
+    - Test cleanup on unmount (no lingering listeners, audio pool cleared)
     - **Acceptance:** All tests pass, no memory leaks
 
 13. **Playwright UI tests**
@@ -188,6 +200,8 @@ Add chess sound effects for moves, captures, check, castling, promotion, and gam
 - Fully keyboard accessible sound controls
 - No sounds during replay mode
 - Works on iOS Safari (after first interaction)
+- Total audio assets < 150KB (acceptable for mobile data)
+- Audio memory stays stable in long sessions (no leaks)
 
 ## Ignored Low-Priority Items
 
@@ -195,13 +209,16 @@ Add chess sound effects for moves, captures, check, castling, promotion, and gam
 - SAN-based fallback for sound detection (chess.js replay is more reliable)
 - SoundContext provider (hook approach is sufficient for single-page usage)
 - Sound file naming convention docs (obvious during implementation)
-- Offline support / graceful audio load failure (try-catch covers this)
 - Performance metrics measurement (verify during implementation)
 - Predictive preloading on "New Game" hover (minor optimization)
+- Per-sound volume control (master volume + mute is sufficient for MVP)
+- Sound preview/test button in settings (add post-launch if users request)
+- Concurrent game tabs playing sounds (tab visibility check handles the common case; two visible tabs both playing is acceptable edge case)
+- Low-time warning 2s dwell time (unnecessary complexity - simple threshold crossing is sufficient)
 
 ## Dependencies
 
-- No new npm packages (use native `HTMLAudioElement` pool; `AudioContext` only for unlock-on-first-interaction if needed)
+- No new npm packages (use native `HTMLAudioElement` pool for playback; `AudioContext` only as one-time iOS Safari unlock mechanism if needed)
 - Sound asset files (CC0 licensed from freesound.org) + `LICENSE.txt`
 - chess.js move flags for sound type detection (user moves)
 - chess.js SAN replay for engine move sound detection
