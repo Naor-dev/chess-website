@@ -1,6 +1,6 @@
 # WCAG 2.1 AA Compliance - Implementation Plan
 
-**Last Updated:** 2026-02-16 (v4 - addresses Opus/Sonnet review feedback)
+**Last Updated:** 2026-02-16 (v5 - addresses 3rd round Opus review)
 
 ## Executive Summary
 
@@ -11,7 +11,7 @@ Perform a comprehensive accessibility audit and remediation across the entire ch
 ### What's Already in Place
 - `lang="en"` set on root HTML element in `layout.tsx`
 - Replay controls have `aria-label` attributes
-- Error pages use `role="img"` with `aria-label` (semantically questionable - review needed)
+- Error pages use `role="img"` with `aria-label` (correct WCAG pattern for emoji characters)
 - Keyboard shortcuts for replay mode (Arrow keys, Home, End)
 - **Global `*:focus-visible` rule exists** in `globals.css:222-225` (emerald outline on all elements). Error page buttons override with `:focus` (fires on mouse click too — should use `:focus-visible`)
 - Dark mode with semantic colors
@@ -88,7 +88,9 @@ Perform a comprehensive accessibility audit and remediation across the entire ch
    - **Known issues:**
      - Game page (`/game/[id]`) has no `<h1>` heading — add one
      - Home page jumps from `<h1>` directly to `<h3>` (feature cards) — skips `<h2>`, violates WCAG 1.3.1
-   - **All pages already have `<main>`** landmark (home, new game, game, history) - no work needed for `<main>` tags
+   - **`<main>` landmark audit:** Main pages (home, new game, game, history) have `<main>`. **Missing from:** auth callback (`/auth/callback`), auth error (`/auth/error`), and all 4 error boundaries (`error.tsx`, `global-error.tsx`, `game/[id]/error.tsx`, `history/error.tsx`). Add `<main>` to all of these
+   - **Error boundary headings:** All 4 error boundaries start with `<h2>` and have no `<h1>`. Since error boundaries replace page content (the parent `<h1>` is gone), change to `<h1>`
+   - **`global-error.tsx` special case:** Replaces the entire `<html>` and `<body>`, so it won't inherit root layout's `lang="en"`, skip-to-content, or ARIA live regions. Must include its own `lang="en"` on the `<html>` tag. Skip-to-content and live regions are acceptable omissions for a fatal error page
    - Add `<aside>`, `<header>` landmark regions where missing
    - **Acceptance:** Heading hierarchy is sequential on all pages, no skipped levels
 
@@ -118,17 +120,22 @@ Perform a comprehensive accessibility audit and remediation across the entire ch
    - Define where focus goes after: making a move, resign/save, game over, page navigation
    - **Verify global `*:focus-visible` rule** works on all interactive elements (some CSS may override it)
    - **Fix error pages:** Change `:focus` overrides to `:focus-visible` (currently fires on mouse click via `focus:outline-none focus:ring-2` — should be `focus-visible:ring-2`)
+   - **Fix `global-error.tsx` buttons:** Have **zero focus styles** (no `focus:ring`, no `focus:outline`). Since this component replaces the entire HTML (renders outside normal layout), the global `*:focus-visible` rule may not apply. Must add explicit focus-visible styles
    - Audit for any other components that suppress the global focus ring
    - **Note:** Strategy may need revision after Phase 3 react-chessboard spike
    - **Acceptance:** Focus strategy documented, global rule verified working, error pages fixed
 
 9. **Add `aria-hidden="true"` to all decorative SVG icons**
-   - Systematic issue: DifficultyStars, ResultIcon, navigation arrows, inline SVGs throughout codebase all read by screen readers
+   - Systematic issue: DifficultyStars, ResultIcon, `DifficultyBadge` (game page header), navigation arrows, inline SVGs throughout codebase all read by screen readers
    - Add `aria-hidden="true"` to decorative SVGs, proper `<title>` to meaningful ones
    - **Acceptance:** Decorative SVGs hidden from screen readers, meaningful SVGs labeled
 
 10. **Add loading state accessibility**
-    - Spinner on new game page (line ~88-95) and "Creating Game..." state (line ~286-289) have no `role="status"` or `aria-live`
+    - Inaccessible spinner pattern (animated `<div>` with no `role="status"`) exists in **4 locations:**
+      - New game page spinners (line ~88-95) and "Creating Game..." state (line ~286-289)
+      - Game page loading state (lines ~441-447)
+      - History page loading state (lines ~295-301)
+      - Home page loading state (lines ~138-141)
     - Add `role="status"` and `aria-live="polite"` to all loading/spinner elements across all pages
     - **Acceptance:** Screen readers announce loading states
 
@@ -196,7 +203,10 @@ Perform a comprehensive accessibility audit and remediation across the entire ch
       - **Assertive (interrupts):** Game over (checkmate, timeout, resignation), critical errors
       - **Polite (queued):** Moves, check announcements, engine thinking
       - **Debounced:** Clock updates only at thresholds (:30s, :10s)
-    - **Security:** Validate move notation before announcing (`/^[a-h][1-8][a-h][1-8][qrbn]?$/` or SAN pattern) — never render unvalidated content in live regions
+    - **Security:** Validate move notation before announcing — never render unvalidated content in live regions. Two regex patterns needed:
+      - Coordinate notation: `/^[a-h][1-8][a-h][1-8][qrbn]?$/`
+      - SAN notation (primary format, per task 22): `/^[KQRBN]?[a-h]?[1-8]?x?[a-h][1-8](=[QRBN])?[+#]?$|^O-O(-O)?[+#]?$/`
+      - Alternative: Use chess.js validation instead of raw regex (chess.js already validates moves)
     - **Acceptance:** Architecture documented, hook interface defined
 
 17b. **Implement ARIA live region coordination**
@@ -325,7 +335,7 @@ Perform a comprehensive accessibility audit and remediation across the entire ch
 
 - [ ] Run Phase 1 color contrast audit (expanded scope: hover, focus, overlays) before committing to design
 - [ ] Complete react-chessboard v5 a11y spike (timeboxed 2 days) with Plan B before Phase 3
-- [x] ~~Audit which pages have `<main>` landmark~~ - all pages already have `<main>`
+- [ ] Add `<main>` landmark to auth pages and all 4 error boundaries (they lack `<main>`, `<h1>`, and `global-error.tsx` needs own `lang="en"`)
 - [x] ~~Review error page `role="img"` usage~~ - correct WCAG pattern for emoji characters
 - [ ] Set up Playwright infrastructure in Phase 1 (moved from Phase 2c dependency)
 - [ ] Verify touch targets >= 44x44px on mobile for all interactive elements
@@ -363,3 +373,14 @@ Changes from Opus/Sonnet review on PR #153:
 21. **Added ARIA XSS security** — Validate move notation before announcing
 22. **Updated effort estimates** — Phase 1: M (was S-M), Phase 2c: S (Playwright done), Phase 4: M-L (was M)
 23. **Estimated total: 3-4 weeks** (was 2-3 weeks)
+
+### v5 — 3rd Round Opus Review
+
+24. **[CRITICAL] Fixed `<main>` landmark claim** — Auth pages and all 4 error boundaries lack `<main>`. Unchecked pre-implementation item, added to task 5
+25. **[HIGH] Added `global-error.tsx` focus styles** — Buttons have zero focus styles, must add explicit `focus-visible` since global rule may not apply (renders outside layout)
+26. **[HIGH] Fixed error boundary headings** — All start at `<h2>` with no `<h1>`. Changed to `<h1>` since they replace page content
+27. **[HIGH] Added `global-error.tsx` `lang="en"`** — Replaces entire HTML, needs own `lang` attribute. Skip-to-content/live regions omitted (fatal error page)
+28. **[MEDIUM] Documented all loading spinner locations** — 4 locations (new game, game, history, home), not just new game page
+29. **[MEDIUM] Added DifficultyBadge to SVG audit** — Missing from task 9 component list
+30. **[MEDIUM] Added SAN regex for ARIA validation** — Coordinate regex alone insufficient. Added SAN pattern + chess.js validation alternative
+31. **[LOW] Fixed `role="img"` qualifier** — Removed "semantically questionable" (review concluded it's correct WCAG pattern)
