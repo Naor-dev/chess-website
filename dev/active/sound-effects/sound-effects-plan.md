@@ -1,6 +1,6 @@
 # Sound Effects - Implementation Plan
 
-**Last Updated:** 2026-02-16 (v5 - addressing 3rd round Opus review)
+**Last Updated:** 2026-02-16 (v6 - addressing 4th round Sonnet must-fix items)
 
 ## Executive Summary
 
@@ -69,7 +69,7 @@ Add chess sound effects for moves, captures, check, castling, promotion, and gam
      // AudioContext ONLY for iOS Safari unlock - not for playback
      ```
    - **Preload timing:** In `useEffect` after game data loads (avoid blocking initial render). Not on app-wide mount - only on game page visit
-   - **Audio load failure handling:** If MP3 file fails to load (404, network error), handle `onerror` on HTMLAudioElement, log to Sentry (not console.error), mark that sound as unavailable, continue silently
+   - **Audio load failure handling:** If MP3 file fails to load (404, network error), handle `onerror` on HTMLAudioElement, log to Sentry (not console.error), mark that sound as unavailable in an `availableSounds: Set<SoundType>` ref, continue silently. The `play()` function checks `availableSounds.has(type)` before attempting playback — skips silently if unavailable
    - Handle volume and mute state
    - Persist preferences in localStorage with SSR guard (`typeof window !== 'undefined'`)
    - Handle Safari private mode localStorage errors
@@ -124,16 +124,19 @@ Add chess sound effects for moves, captures, check, castling, promotion, and gam
 
 8. **Engine move sound detection**
    - Backend returns `engineMove.san` but not flags
-   - **Code change required:** `result.engineMove` is currently **unused** on the frontend - `setGame(result.game)` at line ~314 is the only action taken on API response. Must add code to read `result.engineMove.san` from the API response and replay it client-side:
+   - **Code change required:** `result.engineMove` is currently **unused** on the frontend - `setGame(result.game)` at line ~314 is the only action taken on API response. Must add code to read `result.engineMove.san` from the API response and replay it client-side
+   - **FEN race condition fix:** Capture `newFen` (the FEN after user's move, line ~292) into a local variable `userMoveFen` **before** the API call. This is the FEN before the engine's move. Do NOT use `result.game.fen` (that's after the engine moved) or `game.currentFen` (stale due to optimistic update):
      ```typescript
-     // In the .then() handler after move API call:
+     // BEFORE API call - capture FEN after user move
+     const userMoveFen = newFen; // from testChess.fen() at line ~292
+
+     // In the .then() handler:
      if (result.engineMove?.san) {
-       const tempChess = new Chess(result.game.fen); // FEN after engine move
-       // Actually need FEN BEFORE engine move - use the FEN after user move
-       const preEngineFen = /* FEN from user's move */;
-       const tempChess = new Chess(preEngineFen);
+       const tempChess = new Chess(userMoveFen); // FEN BEFORE engine move
        const engineResult = tempChess.move(result.engineMove.san);
-       play(determineSoundType(engineResult, tempChess.inCheck()));
+       if (engineResult) {
+         play(determineSoundType(engineResult, tempChess.inCheck()));
+       }
      }
      ```
    - Use same `determineSoundType()` function as user moves
@@ -178,7 +181,7 @@ Add chess sound effects for moves, captures, check, castling, promotion, and gam
 13. **Playwright UI tests**
     - Verify sound controls render and toggle
     - Verify mute state persists across page reload
-    - Test HTMLAudioElement state changes via `page.evaluate()` (played, volume, muted)
+    - Test HTMLAudioElement state changes via `page.evaluate()` — use `.paused` (boolean) and `.currentTime` (number > 0 means played), NOT `.played` (which is a `TimeRanges` object, not a boolean). Also test `.volume` and `.muted`
     - **Acceptance:** Controls render, toggle, persist; audio element state verifiable
 
 ## Risk Assessment
