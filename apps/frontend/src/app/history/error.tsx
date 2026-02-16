@@ -30,7 +30,10 @@ export default function HistoryError({
   }, [error]);
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-gray-900 to-gray-800 px-4">
+    <main
+      id="main-content"
+      className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-gray-900 to-gray-800 px-4"
+    >
       <div className="max-w-md text-center">
         {/* Chess-themed error icon */}
         <div className="mb-6 text-6xl">
@@ -39,7 +42,7 @@ export default function HistoryError({
           </span>
         </div>
 
-        <h2 className="mb-4 text-2xl font-bold text-white">Could not load game history</h2>
+        <h1 className="mb-4 text-2xl font-bold text-white">Could not load game history</h1>
 
         <p className="mb-6 text-gray-400">
           We encountered an error while loading your games. This might be a temporary issue.
@@ -79,6 +82,6 @@ export default function HistoryError({
           </Link>
         </div>
       </div>
-    </div>
+    </main>
   );
 }

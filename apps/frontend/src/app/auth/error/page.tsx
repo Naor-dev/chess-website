@@ -17,7 +17,10 @@ function AuthErrorContent() {
   const message = errorMessages[error] || errorMessages.unknown_error;
 
   return (
-    <div className="flex min-h-screen items-center justify-center gradient-bg chess-pattern">
+    <main
+      id="main-content"
+      className="flex min-h-screen items-center justify-center gradient-bg chess-pattern"
+    >
       <div className="max-w-md rounded-2xl bg-white/80 px-8 py-10 text-center backdrop-blur-sm dark:bg-zinc-900/80 shadow-xl fade-in">
         {/* Icon */}
         <div className="mb-6 flex justify-center">
@@ -74,7 +77,7 @@ function AuthErrorContent() {
           If this keeps happening, try clearing your browser cookies or using a different browser.
         </p>
       </div>
-    </div>
+    </main>
   );
 }
 
@@ -86,12 +89,15 @@ export default function AuthErrorPage() {
   return (
     <Suspense
       fallback={
-        <div className="flex min-h-screen items-center justify-center gradient-bg chess-pattern">
+        <main
+          id="main-content"
+          className="flex min-h-screen items-center justify-center gradient-bg chess-pattern"
+        >
           <div className="flex items-center gap-3 rounded-2xl bg-white/80 p-8 backdrop-blur-sm dark:bg-zinc-900/80">
             <div className="h-6 w-6 animate-spin rounded-full border-2 border-emerald-200 border-t-emerald-600 dark:border-emerald-900 dark:border-t-emerald-500" />
             <span className="text-zinc-600 dark:text-zinc-400">Loading...</span>
           </div>
-        </div>
+        </main>
       }
     >
       <AuthErrorContent />

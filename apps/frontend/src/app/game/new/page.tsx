@@ -103,7 +103,7 @@ export default function NewGamePage() {
         <div className="absolute -left-20 bottom-20 h-[300px] w-[300px] rounded-full bg-emerald-500/5 blur-3xl" />
       </div>
 
-      <main className="relative mx-auto max-w-2xl px-6 py-8">
+      <main id="main-content" className="relative mx-auto max-w-2xl px-6 py-8">
         {/* Header */}
         <div className="mb-8 fade-in">
           <button

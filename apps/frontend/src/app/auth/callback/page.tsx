@@ -25,7 +25,10 @@ export default function AuthCallbackPage() {
   }, [refreshUser, router]);
 
   return (
-    <div className="flex min-h-screen items-center justify-center gradient-bg chess-pattern">
+    <main
+      id="main-content"
+      className="flex min-h-screen items-center justify-center gradient-bg chess-pattern"
+    >
       <div className="rounded-2xl bg-white/80 p-10 text-center backdrop-blur-sm dark:bg-zinc-900/80 shadow-xl fade-in">
         {/* Animated logo */}
         <div className="mb-6 flex justify-center">
@@ -62,6 +65,6 @@ export default function AuthCallbackPage() {
           Just a moment while we set things up
         </p>
       </div>
-    </div>
+    </main>
   );
 }

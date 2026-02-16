@@ -32,7 +32,10 @@ export default function GlobalError({
   return (
     <html lang="en">
       <body className="bg-gray-900">
-        <div className="flex min-h-screen flex-col items-center justify-center px-4">
+        <main
+          id="main-content"
+          className="flex min-h-screen flex-col items-center justify-center px-4"
+        >
           <div className="max-w-md text-center">
             {/* Critical error icon */}
             <div className="mb-6 text-6xl">
@@ -41,7 +44,7 @@ export default function GlobalError({
               </span>
             </div>
 
-            <h2 className="mb-4 text-2xl font-bold text-white">Critical Error</h2>
+            <h1 className="mb-4 text-2xl font-bold text-white">Critical Error</h1>
 
             <p className="mb-6 text-gray-400">
               The application encountered a critical error. Please try refreshing the page.
@@ -61,19 +64,19 @@ export default function GlobalError({
             <div className="flex flex-col gap-3 sm:flex-row sm:justify-center">
               <button
                 onClick={reset}
-                className="rounded-lg bg-emerald-600 px-6 py-3 font-semibold text-white transition-colors hover:bg-emerald-700"
+                className="rounded-lg bg-emerald-600 px-6 py-3 font-semibold text-white transition-colors hover:bg-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
               >
                 Try again
               </button>
               <button
                 onClick={() => (window.location.href = '/')}
-                className="rounded-lg border border-gray-600 px-6 py-3 font-semibold text-gray-300 transition-colors hover:bg-gray-800"
+                className="rounded-lg border border-gray-600 px-6 py-3 font-semibold text-gray-300 transition-colors hover:bg-gray-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-500 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
               >
                 Reload App
               </button>
             </div>
           </div>
-        </div>
+        </main>
       </body>
     </html>
   );
