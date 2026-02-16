@@ -14,7 +14,10 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'Chess Website',
+  title: {
+    default: 'Chess Website',
+    template: '%s | Chess Website',
+  },
   description: 'Play chess against AI with various difficulty levels',
 };
 
@@ -26,6 +29,12 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 focus:rounded-md focus:bg-emerald-600 focus:px-4 focus:py-2 focus:text-white focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:ring-offset-2"
+        >
+          Skip to main content
+        </a>
         <AuthProvider>{children}</AuthProvider>
       </body>
     </html>

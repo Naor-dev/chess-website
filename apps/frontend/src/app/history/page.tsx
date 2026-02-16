@@ -194,7 +194,7 @@ function EmptyState({ onNewGame }: { onNewGame: () => void }) {
           <path d="M3 9h18M9 21V9" />
         </svg>
       </div>
-      <h3 className="mb-2 text-lg font-semibold text-zinc-900 dark:text-zinc-100">No games yet</h3>
+      <h2 className="mb-2 text-lg font-semibold text-zinc-900 dark:text-zinc-100">No games yet</h2>
       <p className="mb-6 text-sm text-zinc-600 dark:text-zinc-400">
         Start playing to see your game history here
       </p>
@@ -314,7 +314,7 @@ export default function HistoryPage() {
         <div className="absolute -left-20 bottom-20 h-[300px] w-[300px] rounded-full bg-emerald-500/5 blur-3xl" />
       </div>
 
-      <main className="relative mx-auto max-w-2xl px-6 py-8">
+      <main id="main-content" className="relative mx-auto max-w-2xl px-6 py-8">
         {/* Header */}
         <div className="mb-8 fade-in">
           <button
@@ -438,9 +438,9 @@ export default function HistoryPage() {
                 <path d="M21 21l-4.35-4.35" />
               </svg>
             </div>
-            <h3 className="mb-2 text-lg font-semibold text-zinc-900 dark:text-zinc-100">
+            <h2 className="mb-2 text-lg font-semibold text-zinc-900 dark:text-zinc-100">
               No matching games
-            </h3>
+            </h2>
             <p className="mb-4 text-sm text-zinc-600 dark:text-zinc-400">
               Try adjusting your filters to see more games
             </p>
