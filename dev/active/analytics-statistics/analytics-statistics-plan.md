@@ -1,6 +1,6 @@
 # Analytics & Statistics - Implementation Plan
 
-**Last Updated:** 2026-02-09 (v3)
+**Last Updated:** 2026-02-16 (v4 - addresses Opus/Sonnet review feedback)
 
 ## Executive Summary
 
@@ -19,8 +19,9 @@ Add a player statistics dashboard showing win rate, games played, average game l
 - `/stats` page with player statistics dashboard
 - Backend endpoint `GET /api/users/stats` with aggregated data
 - Statistics: total games, win/loss/draw counts, win rate, avg moves per game, performance by difficulty, favorite time control
-- Visual charts (bar chart for difficulty distribution, pie chart for results)
+- Visual charts (bar chart for difficulty distribution, CSS-based — no pie chart for MVP)
 - Accessible data tables as alternative to charts
+- Stats are private (only accessible to the owning user)
 - Responsive layout (cards on mobile, grid on desktop)
 
 ## Implementation Phases
@@ -35,42 +36,54 @@ Add a player statistics dashboard showing win rate, games played, average game l
 
 2. **Create `StatsRepository`** in `apps/backend/src/repositories/`
    - Extend `BaseRepository`, use `executeWithErrorHandling()` for ALL methods
+   - **Input validation:** Validate `userId` is a valid UUID format before passing to any query
    - Aggregation queries using Prisma `groupBy` and `aggregate`
    - **Filter:** Only count `FINISHED` games (exclude `ACTIVE` and `ABANDONED`)
-   - **`movesHistory` array length:** Use tagged template (auto-parameterized, safe from SQL injection):
+   - **`movesHistory` array length:** Use tagged template (auto-parameterized, safe from SQL injection).
+     **CRITICAL: Use Prisma `@map` column/table names in raw SQL (not Prisma model names):**
      ```typescript
-     const result = await this.prisma.$queryRaw<[{ avg: number }]>`
-       SELECT AVG(COALESCE(array_length("movesHistory", 1), 0)) as avg
-       FROM "Game"
-       WHERE "userId" = ${userId} AND "status" = 'FINISHED'
+     const result = await this.prisma.$queryRaw<[{ avg: bigint | Decimal | null }]>`
+       SELECT AVG(COALESCE(array_length("moves_history", 1), 0)) as avg
+       FROM "games"
+       WHERE "user_id" = ${userId} AND "status" = 'FINISHED'
      `;
+     // IMPORTANT: $queryRaw returns bigint/Decimal, NOT number
+     // Must explicitly convert: Number(result[0].avg) ?? 0
      ```
-   - **NEVER use `$queryRawUnsafe` or string concatenation**
+     Column name mappings (Prisma → PostgreSQL): `movesHistory` → `moves_history`, `userId` → `user_id`, `difficultyLevel` → `difficulty_level`, `timeControlType` → `time_control_type`. Table: `Game` model → `games` table.
+   - **NEVER use `$queryRawUnsafe` or string concatenation — explicit ban**
    - **Result type mapping** (document explicitly to prevent bugs):
      - Wins: `user_win_checkmate`, `user_win_timeout`
      - Losses: `engine_win_checkmate`, `engine_win_timeout`, `user_resigned`
      - Draws: `draw_stalemate`, `draw_repetition`, `draw_fifty_moves`, `draw_insufficient_material`
-   - **Streak calculation:** Fetch recent finished games ordered by `updatedAt`, compute streak in service layer
+   - **Streak calculation:** Fetch recent finished games ordered by `updatedAt` **with `take: 50` limit** (unbounded query is wasteful — streaks beyond 50 are statistically irrelevant), compute streak in service layer
    - Methods: `getUserStats(userId)`, `getStatsByDifficulty(userId)`, `getStatsByTimeControl(userId)`, `getAvgMoves(userId)`
-   - **Acceptance:** Returns all aggregated data correctly, ABANDONED excluded, SQL injection safe
+   - **Acceptance:** Returns all aggregated data correctly, ABANDONED excluded, SQL injection safe, userId validated as UUID
 
 3. **Create `StatsService`** in `apps/backend/src/services/`
    - Constructor receives `StatsRepository` via dependency injection (same pattern as `GameService`)
    - Business logic for stats calculation
+   - **Type coercion:** All `$queryRaw` numeric results must be explicitly converted via `Number()` before returning (PostgreSQL returns `bigint`/`Decimal`, not JS `number`)
    - Win rate: `totalFinished > 0 ? (wins / totalFinished) * 100 : 0` (guard division by zero)
-   - Average moves per game: from raw SQL query result (step 2), use `?? 0` for nullish coalescing
+   - Average moves per game: from raw SQL query result (step 2), convert via `Number(result) ?? 0`
    - Streak calculation: iterate recent finished games ordered by completion time, count consecutive same-result games (wins or losses only, draws break the streak)
+   - **Edge case:** User with only abandoned games should show 0 finished games (not error)
+   - **Error handling:** All errors logged to Sentry, generic messages to users (never expose DB structure, query details, or internal state). Use `BaseController.handleError()` pattern
    - Add Sentry breadcrumb: `Sentry.addBreadcrumb({ category: 'stats', message: 'Calculated user statistics', data: { userId, totalGames } })`
-   - **Acceptance:** Correct calculations with edge cases (0 games, all wins, all draws, etc.)
+   - **No disposal needed:** `StatsService` and `StatsRepository` don't hold resources — no `dispose()` method required (unlike `EngineService`)
+   - **Acceptance:** Correct calculations with edge cases (0 games, all wins, all draws, only abandoned games, etc.)
 
 4. **Create `StatsController`** in `apps/backend/src/controllers/`
    - Extend `BaseController`
    - `GET /api/users/stats` endpoint
-   - **Authorization:** Users can only access their own stats (`req.userId` - NOT `req.user.id`)
-   - **Rate limiting:** Apply rate limiter (20 req/15min - stats don't change frequently)
+   - **Controller pattern:** Import `services.statsService` from ServiceContainer singleton (same as `GameController` — controllers do NOT use constructor injection, only services do)
+   - **Authorization:** Users can only access their own stats (`req.userId` - NOT `req.user.id`). Return **404** for unauthorized access (not 403 — prevents information disclosure about other users' existence)
+   - **Rate limiting:** Apply `generalLimiter` (100 req/15min) — this is a read-only GET endpoint, 20/15min is too restrictive (auto-refresh or back/forth navigation could easily hit it)
+   - **CSRF:** GET endpoint — CSRF validation not required (read-only, no state mutation)
+   - **Caching:** Consider `Cache-Control: private, max-age=60` header (stats don't change frequently, 1-minute client-side cache reduces server load)
    - Response via `handleSuccess()`
    - Sentry breadcrumbs
-   - **Acceptance:** Returns structured stats response, 401 for unauthenticated
+   - **Acceptance:** Returns structured stats response, 401 for unauthenticated, 404 for unauthorized
 
 5. **Wire up backend plumbing**
    - **Register in ServiceContainer:**
@@ -88,14 +101,19 @@ Add a player statistics dashboard showing win rate, games played, average game l
    - API tests for `StatsController` (authenticated, unauthenticated, no games)
    - Edge cases: user with 0 games, user with only active/abandoned games, all wins, all draws
    - Test raw SQL query for movesHistory average (including empty arrays)
-   - **Test authorization:** User cannot access other user's statistics
+   - **Test authorization:** User cannot access other user's statistics (returns 404, not 403)
+   - **Security tests:**
+     - Unauthenticated request returns 401
+     - Invalid userId format returns 400
+     - SQL injection attempts are safely parameterized
    - **Acceptance:** Full coverage, 80%+ test coverage for stats module
 
 ### Phase 2: Frontend Statistics Page (Effort: L)
 
 7. **Create stats API client** in `apps/frontend/src/lib/`
    - `getUserStats()` function using apiClient
-   - **Note:** TanStack Query `queryClient.ts` exists but NO components use it - the codebase uses `useEffect` + `useState` for data fetching. Use the same pattern for consistency, or introduce TanStack Query (would be first usage, requires verifying `QueryClientProvider` is wired up)
+   - **Decision:** Use `useEffect` + `useState` for data fetching (consistent with existing codebase). `QueryClientProvider` is NOT wired up, and no components use TanStack Query — introducing it here would be the first usage and adds complexity. Stick with existing pattern.
+   - **Frontend validation:** Validate all numeric stats are finite numbers before display (prevent NaN/Infinity display bugs from malformed API responses)
    - **Acceptance:** Data fetches correctly via proxy
 
 8. **Create `/stats` page** in `apps/frontend/src/app/stats/`
@@ -146,8 +164,13 @@ Add a player statistics dashboard showing win rate, games played, average game l
 | Risk | Likelihood | Impact | Mitigation |
 |------|-----------|--------|------------|
 | Prisma can't aggregate array length | High | High | Use `prisma.$queryRaw` with `array_length()` for movesHistory |
-| Slow aggregation queries on large datasets | Low (few users) | Medium | Use Prisma `groupBy`, add indexes if needed |
+| Raw SQL column name mismatch | High | Critical | Use `@map` names (`moves_history`, `user_id`, `games` table) — NOT Prisma model names |
+| `$queryRaw` returns bigint/Decimal | High | Medium | Explicit `Number()` conversion in service layer |
+| Slow aggregation queries on large datasets | Low (few users) | Medium | Use Prisma `groupBy`, add composite index on `(user_id, status)` |
 | Incorrect stat calculations | Medium | High | Write tests alongside service code (Phase 1), not deferred |
+| Information disclosure via error messages | Medium | High | Use `BaseController.handleError()`, generic messages to users |
+| Unauthorized access to stats | Low | High | JWT middleware + ownership check + UUID validation + 404 response |
+| SQL injection | Low | Critical | Tagged templates, validate userId format, NO `$queryRawUnsafe` |
 | Chart accessibility | Medium | Medium | CSS bar charts + accessible data table alternatives |
 | Empty state (new user) | Medium | Low | Show encouraging message with 0 games |
 | Proxy allowlist missing `users` path | Medium | Medium | Verify and add to `ALLOWED_PATHS` in proxy route |
@@ -162,22 +185,43 @@ Add a player statistics dashboard showing win rate, games played, average game l
 
 ## Ignored Low-Priority Items
 
-- Backend caching (Redis/in-memory) - fine for MVP, add post-launch if needed
+- Backend caching (Redis/in-memory) - fine for MVP, Cache-Control header provides basic client caching
 - Loading skeleton/state design - follow existing history page pattern during implementation
 - CORS considerations - already handled by existing middleware
-- Database indexing optimization - verify during implementation, not a plan item
 - Accessibility color contrast specific values - determine during implementation
 - Chart library decision - CSS bars for MVP, no pie chart
+- `movesHistory` interpretation (player moves only vs all moves) - verify during implementation and label accordingly
 
 ## Dependencies
 
-- Existing game data in database (no schema changes needed)
+- Existing game data in database (schema change: add composite index on `(user_id, status)` for stats queries)
 - Shared types package (add new `UserStatsResponse` type; note existing `UserProfile` type)
 - No chart library in MVP (CSS-based bars only, pie chart deferred)
 - `prisma.$queryRaw` tagged template for `movesHistory` array length aggregation
 - ServiceContainer registration for new repository and service
 - Route file and registration in `routes/index.ts`
 - Proxy allowlist: `users` already in `ALLOWED_PATH_PREFIXES` - no change needed
+- JWT verification middleware (existing pattern)
+- `generalLimiter` rate limiter (existing pattern, 100 req/15min)
+
+## Review Feedback Addressed (v4)
+
+Changes from Opus/Sonnet review on PR #152:
+
+1. **[CRITICAL] Fixed raw SQL column names** — Use `@map` names (`moves_history`, `user_id`, `games`) not Prisma model names
+2. **[CRITICAL] Added `$queryRawUnsafe` explicit ban** — Was implied, now stated explicitly
+3. **[HIGH] Added `$queryRaw` type coercion** — Returns `bigint`/`Decimal`, must convert via `Number()`
+4. **[HIGH] Added streak query `LIMIT 50`** — Prevents unbounded query for users with thousands of games
+5. **[HIGH] Resolved TanStack Query ambiguity** — Decision: use `useEffect`/`useState` (consistent with codebase)
+6. **[MEDIUM] Fixed controller pattern** — Controllers import from ServiceContainer singleton, not constructor injection
+7. **[MEDIUM] Changed rate limiter** — From 20/15min to `generalLimiter` (100/15min) for read-only GET
+8. **[MEDIUM] Removed pie chart from Future State** — Was contradicting MVP scope
+9. **[MEDIUM] Added no-dispose note** — StatsService/Repository don't hold resources
+10. **Added security measures** — userId UUID validation, 404 for unauthorized (not 403), error handling strategy
+11. **Added caching** — `Cache-Control: private, max-age=60` header
+12. **Added composite index** — `(user_id, status)` for stats query performance
+13. **Added security tests** — Auth, invalid UUID, SQL injection tests
+14. **Added frontend validation** — Numeric stats checked for finite values
 
 
 
