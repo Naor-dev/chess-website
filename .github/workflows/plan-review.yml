@@ -55,8 +55,19 @@ jobs:
             ACTIVE_PLANS=""
           fi
 
-          # Combine and dedupe
-          ALL_PLANS=$(echo -e "${CHANGED_FILES}\n${ACTIVE_PLANS}" | sort -u | grep -v '^$' | head -5)
+          # Combine, dedupe, and filter to files that actually exist on disk
+          # (diff may include files from earlier commits that were since deleted)
+          CANDIDATE_PLANS=$(echo -e "${CHANGED_FILES}\n${ACTIVE_PLANS}" | sort -u | grep -v '^$' | head -10)
+          ALL_PLANS=""
+          while IFS= read -r f; do
+            [ -z "$f" ] && continue
+            if [ -f "$f" ]; then
+              ALL_PLANS="${ALL_PLANS:+$ALL_PLANS
+}$f"
+            else
+              echo "[$(date -u +%H:%M:%S)] SKIP: $f (not on disk, deleted in later commit)"
+            fi
+          done <<< "$CANDIDATE_PLANS"
 
           if [ -z "$ALL_PLANS" ]; then
             echo "[$(date -u +%H:%M:%S)] No plan files found"
