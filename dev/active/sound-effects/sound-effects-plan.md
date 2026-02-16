@@ -1,6 +1,6 @@
 # Sound Effects - Implementation Plan
 
-**Last Updated:** 2026-02-16 (v4 - addressing Opus/Sonnet review feedback)
+**Last Updated:** 2026-02-16 (v5 - addressing 3rd round Opus review)
 
 ## Executive Summary
 
@@ -113,27 +113,32 @@ Add chess sound effects for moves, captures, check, castling, promotion, and gam
    - **Acceptance:** Move flags available for sound selection after every move
 
 7. **Integrate sounds into game flow**
-   - **Both move paths:** Sound must be triggered in BOTH `onDrop` (drag-and-drop, ~line 252-329) AND `onSquareClick` (click-to-move, ~line 332-382) handlers - both call `chess.move()` and need sound after success
-   - After successful `chess.move()`: play sound based on move result flags
-   - **Sound trigger point:** Tie sound to the `chess.move()` success, NOT to `setGame()` calls (which also fire on game load, engine responses, etc.)
+   - **Single integration point: `onDrop`** - `onSquareClick` (line ~355) delegates to `onDrop`, so adding sound in `onDrop` covers both drag-and-drop AND click-to-move. Do NOT add sound in `onSquareClick` separately (would cause duplicate sounds)
+   - **User move sound:** Play at the optimistic update point (line ~300, before API call), using the `testChess.move()` result which has flags. Use `testChess.inCheck()` (not main `chess`) for check detection since `testChess` reflects the post-move state
    - Promotion: currently auto-queens (no promotion picker yet). Play promotion sound immediately. If promotion picker is added later, play after piece selection completes
-   - On game over: play appropriate win/loss/draw sound
-   - **No sound on initial game load** - when loading a game in progress, render board silently (only play on new moves)
+   - **Game-over sound:** Play only when a live game ends during play (checkmate, stalemate, timeout). Do NOT play game-over sounds when loading/navigating to a previously finished game
+   - **No sound on initial game load** - when loading a game in progress or a finished game, render board silently
    - **No sound on failed optimistic update** - if API call fails and move reverts, sound already played is acceptable (too fast to matter)
-   - **Acceptance:** Correct sound plays for each event type, no sound on page load, both drag-and-drop and click-to-move produce sounds
+   - **Note:** Adding the `play` function to `onDrop`'s dependency array (`[game, chess, gameId, isMoving]`) is required - use a ref for `play` to keep it stable and avoid stale closures
+   - **Acceptance:** Correct sound plays for each event type, no sound on page load or when viewing finished games
 
 8. **Engine move sound detection**
    - Backend returns `engineMove.san` but not flags
-   - Strategy: replay engine SAN on client-side chess instance to get flags:
+   - **Code change required:** `result.engineMove` is currently **unused** on the frontend - `setGame(result.game)` at line ~314 is the only action taken on API response. Must add code to read `result.engineMove.san` from the API response and replay it client-side:
      ```typescript
-     const tempChess = new Chess(currentFen);
-     const engineResult = tempChess.move(engineMove.san);
-     // engineResult now has .captured, .flags, etc.
+     // In the .then() handler after move API call:
+     if (result.engineMove?.san) {
+       const tempChess = new Chess(result.game.fen); // FEN after engine move
+       // Actually need FEN BEFORE engine move - use the FEN after user move
+       const preEngineFen = /* FEN from user's move */;
+       const tempChess = new Chess(preEngineFen);
+       const engineResult = tempChess.move(result.engineMove.san);
+       play(determineSoundType(engineResult, tempChess.inCheck()));
+     }
      ```
    - Use same `determineSoundType()` function as user moves
-   - Play sound when engine response arrives and board updates (not when API call starts)
-   - **No debounce initially** - engine response typically arrives 200ms+ after user move (network + compute), so sounds naturally don't clash. Add debounce only if testing reveals actual overlap
-   - **Animation timing:** Sound plays at the same point as `setGame(result.game)` which triggers the board position update - this is naturally aligned with animation start. No special coordination needed
+   - Play sound when engine response arrives (in the `.then()` handler), alongside `setGame(result.game)`
+   - **No debounce initially** - user sound plays at optimistic update (~line 300), engine sound plays when API responds (200ms+ later). Natural gap prevents clashing. Add debounce only if testing reveals actual overlap
    - **Acceptance:** Engine moves produce correct sounds, no audio clashing with user moves
 
 9. **Add low-time warning sound**
