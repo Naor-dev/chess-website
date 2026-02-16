@@ -1,6 +1,6 @@
 # Sound Effects - Implementation Plan
 
-**Last Updated:** 2026-02-16 (v7 - addressing 4th round review feedback, all non-low items resolved)
+**Last Updated:** 2026-02-16 (v8 - addressing 5th round Opus HIGH/MEDIUM items)
 
 ## Executive Summary
 
@@ -68,7 +68,7 @@ Add chess sound effects for moves, captures, check, castling, promotion, and gam
      const audioPool = useRef<Map<SoundType, HTMLAudioElement>>();
      // AudioContext ONLY for iOS Safari unlock - not for playback
      ```
-   - **Preload timing:** In `useEffect` after game data loads (avoid blocking initial render). Not on app-wide mount - only on game page visit
+   - **Preload timing:** In `useEffect` after game data loads (avoid blocking initial render). Not on app-wide mount - only on game page visit. Guard against React StrictMode double-invoke with an `initialized` ref (`if (initialized.current) return`)
    - **Audio load failure handling:** If MP3 file fails to load (404, network error), handle `onerror` on HTMLAudioElement, log to Sentry (not console.error), mark that sound as unavailable in an `availableSounds: Set<SoundType>` ref, continue silently. The `play()` function checks `availableSounds.has(type)` before attempting playback — skips silently if unavailable
    - Handle volume and mute state
    - Persist preferences in localStorage with SSR guard (`typeof window !== 'undefined'`)
@@ -117,10 +117,21 @@ Add chess sound effects for moves, captures, check, castling, promotion, and gam
    - **Single integration point: `onDrop`** - `onSquareClick` (line ~355) delegates to `onDrop`, so adding sound in `onDrop` covers both drag-and-drop AND click-to-move. Do NOT add sound in `onSquareClick` separately (would cause duplicate sounds)
    - **User move sound:** Play at the optimistic update point (line ~300, before API call), using the `testChess.move()` result which has flags. Use `testChess.inCheck()` (not main `chess`) for check detection since `testChess` reflects the post-move state
    - **Promotion sound timing:** Currently auto-queens (no promotion picker yet) — play promotion sound immediately at the optimistic update point. When the promotion picker UI is added (PR #150), sound must move to fire **after** piece selection completes (not on pawn drop to last rank). The `determineSoundType()` call stays the same; only the trigger timing changes
-   - **Game-over sound:** Play only when a live game ends during play (checkmate, stalemate, timeout). Do NOT play game-over sounds when loading/navigating to a previously finished game
+   - **Game-over sound — 3 trigger paths:**
+     1. **Checkmate/stalemate via makeMove:** In `.then()` handler (line ~313), check `result.game.isGameOver && !previousGame.isGameOver`
+     2. **Timeout via fetchGame:** When clock hits 0, `fetchGame()` (line ~199) updates state via `setGame(gameData)` — detect game-over in this path too
+     3. **Resign:** Resign API response sets `isGameOver` — needs game-over sound
+   - **Consolidated approach:** Use a `wasGameOverOnLoad` ref, set to `game.isGameOver` on initial `fetchGame()` response. Then a single `useEffect` watching `game?.isGameOver` gates all game-over sounds: only play if `!wasGameOverOnLoad.current && game.isGameOver`. This handles all 3 paths cleanly without duplicating sound logic
+   - Do NOT play game-over sounds when loading/navigating to a previously finished game (the ref guard prevents this)
    - **No sound on initial game load** - when loading a game in progress or a finished game, render board silently
    - **No sound on failed optimistic update** - if API call fails and move reverts, sound already played is acceptable (too fast to matter)
-   - **Note:** Adding the `play` function to `onDrop`'s dependency array (`[game, chess, gameId, isMoving]`) is required - use a ref for `play` to keep it stable and avoid stale closures
+   - **`play` ref pattern:** Do NOT add `play` to `onDrop`'s dependency array. Instead, use a stable ref:
+     ```typescript
+     const playRef = useRef(play);
+     playRef.current = play; // update on each render
+     // In onDrop: playRef.current(soundType) — no dependency array change needed
+     ```
+     This keeps the existing `[game, chess, gameId, isMoving]` deps unchanged
    - **Acceptance:** Correct sound plays for each event type, no sound on page load or when viewing finished games
 
 8. **Engine move sound detection**
@@ -148,7 +159,7 @@ Add chess sound effects for moves, captures, check, castling, promotion, and gam
 9. **Add low-time warning sound**
    - Trigger when player clock reaches 10 seconds (separate from existing `isLowTime` visual indicator at 30s in `page.tsx:485`)
    - Play once per game (use `hasPlayedWarning` ref)
-   - For games WITH increment: reset `hasPlayedWarning` in a `useEffect` that watches player time — when a move adds time above 10s (increment applied), set `hasPlayedWarning = false` so it can fire again if time drops back below 10s
+   - For games WITH increment: reset `hasPlayedWarning` in a `useEffect` that watches `displayTimeUser` (the client-side ticking value, NOT `game.timeLeftUser` which only updates on API responses) — when a move adds time above 10s (increment applied), set `hasPlayedWarning = false` so it can fire again if time drops back below 10s
    - For games WITHOUT increment: play once, never reset (clock only decreases)
    - Only for player's clock (not engine)
    - **Acceptance:** Warning plays once at 10 seconds, only resets if increment pushes clock above threshold
