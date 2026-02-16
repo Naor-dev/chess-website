@@ -1,6 +1,6 @@
 # Analytics & Statistics - Implementation Plan
 
-**Last Updated:** 2026-02-16 (v4 - addresses Opus/Sonnet review feedback)
+**Last Updated:** 2026-02-16 (v5 - addresses 3rd round Opus review)
 
 ## Executive Summary
 
@@ -56,7 +56,8 @@ Add a player statistics dashboard showing win rate, games played, average game l
      - Wins: `user_win_checkmate`, `user_win_timeout`
      - Losses: `engine_win_checkmate`, `engine_win_timeout`, `user_resigned`
      - Draws: `draw_stalemate`, `draw_repetition`, `draw_fifty_moves`, `draw_insufficient_material`
-   - **Streak calculation:** Fetch recent finished games ordered by `updatedAt` **with `take: 50` limit** (unbounded query is wasteful — streaks beyond 50 are statistically irrelevant), compute streak in service layer
+   - **`result` field is `String?` (nullable):** Active/abandoned games may have `result = null`. The `WHERE status = 'FINISHED'` filter mitigates this since finished games should always have a result, but add defensive `IS NOT NULL` as belt-and-suspenders
+   - **Streak calculation:** Fetch recent finished games ordered by `updatedAt` **with `take: 50` limit** (unbounded query is wasteful — streaks beyond 50 are statistically irrelevant). Compute in service layer: count consecutive wins from most recent game backwards (losses break streak; draws break streak). Display as "Current Win Streak: N" (or "Current Losing Streak" if negative)
    - Methods: `getUserStats(userId)`, `getStatsByDifficulty(userId)`, `getStatsByTimeControl(userId)`, `getAvgMoves(userId)`
    - **Acceptance:** Returns all aggregated data correctly, ABANDONED excluded, SQL injection safe, userId validated as UUID
 
@@ -76,7 +77,7 @@ Add a player statistics dashboard showing win rate, games played, average game l
 4. **Create `StatsController`** in `apps/backend/src/controllers/`
    - Extend `BaseController`
    - `GET /api/users/stats` endpoint
-   - **Controller pattern:** Import `services.statsService` from ServiceContainer singleton (same as `GameController` — controllers do NOT use constructor injection, only services do)
+   - **Controller pattern:** Use `GameController` pattern — direct property initializer `private statsService = services.statsService` (NOT constructor injection like `AuthController`). This is simpler for a single-dependency controller
    - **Authorization:** Users can only access their own stats (`req.userId` - NOT `req.user.id`). Return **404** for unauthorized access (not 403 — prevents information disclosure about other users' existence)
    - **Rate limiting:** Apply `generalLimiter` (100 req/15min) — this is a read-only GET endpoint, 20/15min is too restrictive (auto-refresh or back/forth navigation could easily hit it)
    - **CSRF:** GET endpoint — CSRF validation not required (read-only, no state mutation)
@@ -92,7 +93,7 @@ Add a player statistics dashboard showing win rate, games played, average game l
      this.statsService = new StatsService(this.statsRepository);
      ```
    - **Create route file:** `apps/backend/src/routes/statsRoutes.ts` - instantiate controller in route file (per `gameRoutes.ts` pattern)
-   - **Register routes:** Add `router.use('/users', statsRoutes)` in `routes/index.ts` (new route prefix)
+   - **Register routes:** Add `router.use('/users', statsRoutes)` in `routes/index.ts`. **Note:** This establishes the `/users` route namespace for the first time (currently only `/health`, `/auth`, `/games` exist). Using `/users/stats` semantically groups user-level data. Alternative considered: `/games/stats` — but stats span multiple game dimensions (difficulty, time control, streaks) and are user-scoped, not game-scoped
    - **Proxy allowlist:** `'users'` already exists in `ALLOWED_PATH_PREFIXES` - no change needed. Only update `ALLOWED_QUERY_PARAMS` if adding filter params later
    - **Acceptance:** `GET /api/users/stats` is accessible through the BFF proxy
 
@@ -110,7 +111,7 @@ Add a player statistics dashboard showing win rate, games played, average game l
 
 ### Phase 2: Frontend Statistics Page (Effort: L)
 
-7. **Create stats API client** in `apps/frontend/src/lib/`
+7. **Create `statsApi.ts`** in `apps/frontend/src/lib/` (follows `gameApi.ts`, `authApi.ts` naming convention)
    - `getUserStats()` function using apiClient
    - **Decision:** Use `useEffect` + `useState` for data fetching (consistent with existing codebase). `QueryClientProvider` is NOT wired up, and no components use TanStack Query — introducing it here would be the first usage and adds complexity. Stick with existing pattern.
    - **Frontend validation:** Validate all numeric stats are finite numbers before display (prevent NaN/Infinity display bugs from malformed API responses)
@@ -121,7 +122,9 @@ Add a player statistics dashboard showing win rate, games played, average game l
    - Results breakdown: Wins/Losses/Draws with visual proportions
    - Performance by difficulty: **CSS-based bar charts** (no chart library for MVP - drop pie chart, too complex in pure CSS)
    - Time control preferences: distribution display
-   - **Acceptance:** All stats display correctly, loading and error states
+   - **Empty state (0 games):** Show all stat cards with zero values, plus a call-to-action: "Play your first game to see statistics!" with a link to `/game/new`. Don't show an empty page or error — zeros are valid stats
+   - **Auth guard:** Check `!authLoading && isAuthenticated` before fetching (same pattern as history page)
+   - **Acceptance:** All stats display correctly, loading/error/empty states handled
 
 9. **Add `stats/error.tsx` Sentry error boundary**
    - Follow existing pattern from `game/[id]/error.tsx` and `history/error.tsx`
@@ -166,7 +169,7 @@ Add a player statistics dashboard showing win rate, games played, average game l
 | Prisma can't aggregate array length | High | High | Use `prisma.$queryRaw` with `array_length()` for movesHistory |
 | Raw SQL column name mismatch | High | Critical | Use `@map` names (`moves_history`, `user_id`, `games` table) — NOT Prisma model names |
 | `$queryRaw` returns bigint/Decimal | High | Medium | Explicit `Number()` conversion in service layer |
-| Slow aggregation queries on large datasets | Low (few users) | Medium | Use Prisma `groupBy`, add composite index on `(user_id, status)` |
+| Slow aggregation queries on large datasets | Low (few users) | Medium | Use Prisma `groupBy`, composite index `(user_id, status)` already exists |
 | Incorrect stat calculations | Medium | High | Write tests alongside service code (Phase 1), not deferred |
 | Information disclosure via error messages | Medium | High | Use `BaseController.handleError()`, generic messages to users |
 | Unauthorized access to stats | Low | High | JWT middleware + ownership check + UUID validation + 404 response |
@@ -190,11 +193,11 @@ Add a player statistics dashboard showing win rate, games played, average game l
 - CORS considerations - already handled by existing middleware
 - Accessibility color contrast specific values - determine during implementation
 - Chart library decision - CSS bars for MVP, no pie chart
-- `movesHistory` interpretation (player moves only vs all moves) - verify during implementation and label accordingly
+- ~~`movesHistory` interpretation~~ — **Decided:** `movesHistory` stores every half-move (ply) for both players. A 30-move game has ~60 entries. Display as **full moves** (`array_length / 2`, rounded up) and label "Avg. Moves per Game" in the UI. This matches standard chess notation convention
 
 ## Dependencies
 
-- Existing game data in database (schema change: add composite index on `(user_id, status)` for stats queries)
+- Existing game data in database (composite index `@@index([userId, status])` already exists in Prisma schema — no migration needed)
 - Shared types package (add new `UserStatsResponse` type; note existing `UserProfile` type)
 - No chart library in MVP (CSS-based bars only, pie chart deferred)
 - `prisma.$queryRaw` tagged template for `movesHistory` array length aggregation
@@ -223,6 +226,16 @@ Changes from Opus/Sonnet review on PR #152:
 13. **Added security tests** — Auth, invalid UUID, SQL injection tests
 14. **Added frontend validation** — Numeric stats checked for finite values
 
+### v5 — 3rd Round Opus Review
 
+15. **[HIGH] Clarified controller injection pattern** — Direct property initializer (GameController pattern), not constructor injection
+16. **[HIGH] Documented `/users` namespace establishment** — First route under `/users` prefix, rationale for `/users/stats` vs `/games/stats`
+17. **[MEDIUM] Fixed composite index in dependencies** — Already exists in Prisma schema, no migration needed
+18. **[MEDIUM] Decided movesHistory semantics** — Display as full moves (plies / 2), labeled in UI accordingly
+19. **[MEDIUM] Specified empty-state UX** — Zero-value cards + "Play your first game" CTA
+20. **[MEDIUM] Named API client file** — `statsApi.ts` (follows `gameApi.ts`/`authApi.ts` convention)
+21. **[MEDIUM] Clarified streak semantics** — Current consecutive wins from most recent game, draws break streak
+22. **[MEDIUM] Added `result` nullable handling** — Defensive `IS NOT NULL` alongside status filter
+23. **[MEDIUM] Added auth guard pattern** — `!authLoading && isAuthenticated` before fetching
 
 
