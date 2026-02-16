@@ -1,6 +1,6 @@
 # Sound Effects - Implementation Plan
 
-**Last Updated:** 2026-02-16 (v6 - addressing 4th round Sonnet must-fix items)
+**Last Updated:** 2026-02-16 (v7 - addressing 4th round Sonnet should-fix + Opus medium items)
 
 ## Executive Summary
 
@@ -82,6 +82,7 @@ Add chess sound effects for moves, captures, check, castling, promotion, and gam
    - **Acceptance:** Hook plays sounds without lag, respects user preferences, works in SSR, no memory leaks
 
 4. **Create `SoundControl` component** in `apps/frontend/src/app/game/[id]/components/`
+   - **Placement:** Render in the `GameInfo` panel area (below clocks, alongside existing game controls like resign/save buttons). Compact layout — mute toggle icon + volume slider on hover/focus
    - Volume slider (0-100%)
    - Mute/unmute toggle button
    - Speaker icon changes based on volume level
@@ -115,7 +116,7 @@ Add chess sound effects for moves, captures, check, castling, promotion, and gam
 7. **Integrate sounds into game flow**
    - **Single integration point: `onDrop`** - `onSquareClick` (line ~355) delegates to `onDrop`, so adding sound in `onDrop` covers both drag-and-drop AND click-to-move. Do NOT add sound in `onSquareClick` separately (would cause duplicate sounds)
    - **User move sound:** Play at the optimistic update point (line ~300, before API call), using the `testChess.move()` result which has flags. Use `testChess.inCheck()` (not main `chess`) for check detection since `testChess` reflects the post-move state
-   - Promotion: currently auto-queens (no promotion picker yet). Play promotion sound immediately. If promotion picker is added later, play after piece selection completes
+   - **Promotion sound timing:** Currently auto-queens (no promotion picker yet) — play promotion sound immediately at the optimistic update point. When the promotion picker UI is added (PR #150), sound must move to fire **after** piece selection completes (not on pawn drop to last rank). The `determineSoundType()` call stays the same; only the trigger timing changes
    - **Game-over sound:** Play only when a live game ends during play (checkmate, stalemate, timeout). Do NOT play game-over sounds when loading/navigating to a previously finished game
    - **No sound on initial game load** - when loading a game in progress or a finished game, render board silently
    - **No sound on failed optimistic update** - if API call fails and move reverts, sound already played is acceptable (too fast to matter)
@@ -147,7 +148,7 @@ Add chess sound effects for moves, captures, check, castling, promotion, and gam
 9. **Add low-time warning sound**
    - Trigger when player clock reaches 10 seconds (separate from existing `isLowTime` visual indicator at 30s in `page.tsx:485`)
    - Play once per game (use `hasPlayedWarning` ref)
-   - For games WITH increment: reset `hasPlayedWarning` after a move adds time above 10s
+   - For games WITH increment: reset `hasPlayedWarning` in a `useEffect` that watches player time — when a move adds time above 10s (increment applied), set `hasPlayedWarning = false` so it can fire again if time drops back below 10s
    - For games WITHOUT increment: play once, never reset (clock only decreases)
    - Only for player's clock (not engine)
    - **Acceptance:** Warning plays once at 10 seconds, only resets if increment pushes clock above threshold
@@ -182,7 +183,8 @@ Add chess sound effects for moves, captures, check, castling, promotion, and gam
     - Verify sound controls render and toggle
     - Verify mute state persists across page reload
     - Test HTMLAudioElement state changes via `page.evaluate()` — use `.paused` (boolean) and `.currentTime` (number > 0 means played), NOT `.played` (which is a `TimeRanges` object, not a boolean). Also test `.volume` and `.muted`
-    - **Acceptance:** Controls render, toggle, persist; audio element state verifiable
+    - **Verify no CSP errors:** After triggering audio playback, check browser console for CSP violation messages (`page.on('console')` filtering for `Content-Security-Policy`)
+    - **Acceptance:** Controls render, toggle, persist; audio element state verifiable; zero CSP violations
 
 ## Risk Assessment
 
