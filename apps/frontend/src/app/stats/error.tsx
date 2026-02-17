@@ -24,7 +24,10 @@ export default function StatsError({
   }, [error]);
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-gray-900 to-gray-800 px-4">
+    <main
+      id="main-content"
+      className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-gray-900 to-gray-800 px-4"
+    >
       <div className="max-w-md text-center">
         <div className="mb-6 text-6xl">
           <span role="img" aria-label="chart">
@@ -32,7 +35,7 @@ export default function StatsError({
           </span>
         </div>
 
-        <h2 className="mb-4 text-2xl font-bold text-white">Could not load statistics</h2>
+        <h1 className="mb-4 text-2xl font-bold text-white">Could not load statistics</h1>
 
         <p className="mb-6 text-gray-300">
           We encountered an error while loading your statistics. This might be a temporary issue.
@@ -51,19 +54,19 @@ export default function StatsError({
         <div className="flex flex-col gap-3">
           <button
             onClick={reset}
-            className="w-full rounded-lg bg-emerald-600 px-6 py-3 font-semibold text-white transition-colors hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 focus:ring-offset-gray-900"
+            className="w-full rounded-lg bg-emerald-600 px-6 py-3 font-semibold text-white transition-colors hover:bg-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
           >
             Try again
           </button>
 
           <Link
             href="/"
-            className="w-full rounded-lg border border-gray-600 px-6 py-3 font-semibold text-gray-300 transition-colors hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 focus:ring-offset-gray-900"
+            className="w-full rounded-lg border border-gray-600 px-6 py-3 font-semibold text-gray-300 transition-colors hover:bg-gray-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-500 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
           >
             Go Home
           </Link>
         </div>
       </div>
-    </div>
+    </main>
   );
 }

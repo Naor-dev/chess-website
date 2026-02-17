@@ -2,12 +2,14 @@
 
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { Chessboard } from 'react-chessboard';
 import { Chess, Square } from 'chess.js';
 import { useAuth } from '@/contexts/AuthContext';
 import { gameApi } from '@/lib/gameApi';
 import { useBoardSize } from '@/hooks/useBoardSize';
 import { useMoveReplay } from '@/hooks/useMoveReplay';
+import { useAriaLiveAnnouncer, sanitizeMoveNotation } from '@/hooks/useAriaLiveAnnouncer';
 import { MoveReplayControls } from '@/components/MoveReplayControls';
 import type { GameResponse, MakeMoveRequest } from '@chess-website/shared';
 import {
@@ -24,6 +26,7 @@ export default function GamePage() {
   const { isAuthenticated, isLoading: authLoading } = useAuth();
   const gameId = params.id as string;
   const { boardSize } = useBoardSize();
+  const { announce } = useAriaLiveAnnouncer();
 
   const [game, setGame] = useState<GameResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -151,6 +154,55 @@ export default function GamePage() {
 
     return () => clearInterval(intervalId);
   }, [game, isMoving]);
+
+  // Track previous move count to announce new moves
+  const prevMoveCountRef = useRef<number>(0);
+
+  // Announce game state changes (moves, check, game over)
+  useEffect(() => {
+    if (!game) return;
+
+    const moveHistory = game.movesHistory ?? [];
+    const moveCount = moveHistory.length;
+
+    // Announce new moves
+    if (moveCount > prevMoveCountRef.current && prevMoveCountRef.current > 0) {
+      const lastMove = moveHistory[moveCount - 1];
+      if (lastMove) {
+        // Validate move notation before announcing (security: prevent XSS via live regions)
+        const sanitized = sanitizeMoveNotation(lastMove);
+        if (sanitized) {
+          const moveNumber = Math.ceil(moveCount / 2);
+          const isBlackMove = moveCount % 2 === 0;
+          const prefix = isBlackMove ? `${moveNumber}... ` : `${moveNumber}. `;
+          announce(`${prefix}${sanitized}`);
+        }
+      }
+    }
+    prevMoveCountRef.current = moveCount;
+
+    // Announce check
+    if (chess?.isCheck() && !chess.isCheckmate()) {
+      announce('Check');
+    }
+
+    // Announce game over (assertive — interrupts)
+    if (game.isGameOver && game.result) {
+      const resultMessages: Record<string, string> = {
+        user_win_checkmate: 'Checkmate! You win!',
+        user_win_timeout: 'Engine ran out of time. You win!',
+        engine_win_checkmate: 'Checkmate. Engine wins.',
+        engine_win_timeout: 'You ran out of time. Engine wins.',
+        draw_stalemate: 'Stalemate. Game is a draw.',
+        draw_repetition: 'Draw by repetition.',
+        draw_fifty_moves: 'Draw by fifty-move rule.',
+        draw_insufficient_material: 'Draw by insufficient material.',
+        user_resigned: 'You resigned. Engine wins.',
+      };
+      const message = resultMessages[game.result] || 'Game over.';
+      announce(message, 'assertive');
+    }
+  }, [game, chess, announce]);
 
   // Show game over modal when game ends
   useEffect(() => {
@@ -439,8 +491,15 @@ export default function GamePage() {
   if (authLoading || isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center gradient-bg chess-pattern">
-        <div className="flex items-center gap-3 rounded-2xl bg-white/80 p-8 backdrop-blur-sm dark:bg-zinc-900/80 shadow-xl">
-          <div className="h-6 w-6 animate-spin rounded-full border-2 border-emerald-200 border-t-emerald-600 dark:border-emerald-900 dark:border-t-emerald-500" />
+        <div
+          className="flex items-center gap-3 rounded-2xl bg-white/80 p-8 backdrop-blur-sm dark:bg-zinc-900/80 shadow-xl"
+          role="status"
+          aria-live="polite"
+        >
+          <div
+            className="h-6 w-6 animate-spin rounded-full border-2 border-emerald-200 border-t-emerald-600 dark:border-emerald-900 dark:border-t-emerald-500"
+            aria-hidden="true"
+          />
           <span className="text-zinc-600 dark:text-zinc-400">Loading game...</span>
         </div>
       </div>
@@ -453,6 +512,7 @@ export default function GamePage() {
         <div className="rounded-2xl bg-white/80 p-8 text-center backdrop-blur-sm dark:bg-zinc-900/80 shadow-xl">
           <div className="mb-4 flex h-16 w-16 mx-auto items-center justify-center rounded-full bg-red-100 dark:bg-red-900/40">
             <svg
+              aria-hidden="true"
               className="h-8 w-8 text-red-600 dark:text-red-400"
               viewBox="0 0 24 24"
               fill="none"
@@ -469,12 +529,12 @@ export default function GamePage() {
           <p className="text-zinc-600 dark:text-zinc-400 mb-6">
             {error || 'This game may have been deleted or you may not have access.'}
           </p>
-          <button
-            onClick={() => router.push('/')}
-            className="rounded-xl bg-zinc-900 px-6 py-3 font-medium text-white transition-all hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
+          <Link
+            href="/"
+            className="inline-block rounded-xl bg-zinc-900 px-6 py-3 font-medium text-white transition-all hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
           >
             Back to Home
-          </button>
+          </Link>
         </div>
       </div>
     );
@@ -490,12 +550,14 @@ export default function GamePage() {
       {/* Header */}
       <header className="sticky top-0 z-10 border-b border-zinc-200/50 bg-white/80 backdrop-blur-md dark:border-zinc-800/50 dark:bg-zinc-900/80">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3">
-          <div className="flex items-center gap-1 sm:gap-2">
-            <button
-              onClick={() => router.push('/')}
+          <nav aria-label="Site navigation" className="flex items-center gap-1 sm:gap-2">
+            <Link
+              href="/"
+              aria-label="Home"
               className="flex items-center gap-2 rounded-lg px-3 py-2 text-zinc-600 transition-all hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
             >
               <svg
+                aria-hidden="true"
                 className="h-5 w-5"
                 viewBox="0 0 24 24"
                 fill="none"
@@ -506,12 +568,14 @@ export default function GamePage() {
                 <polyline points="9,22 9,12 15,12 15,22" />
               </svg>
               <span className="hidden sm:inline">Home</span>
-            </button>
-            <button
-              onClick={() => router.push('/history')}
+            </Link>
+            <Link
+              href="/history"
+              aria-label="My Games"
               className="flex items-center gap-2 rounded-lg px-3 py-2 text-zinc-600 transition-all hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
             >
               <svg
+                aria-hidden="true"
                 className="h-5 w-5"
                 viewBox="0 0 24 24"
                 fill="none"
@@ -522,8 +586,8 @@ export default function GamePage() {
                 <polyline points="12,6 12,12 16,14" />
               </svg>
               <span className="hidden sm:inline">My Games</span>
-            </button>
-          </div>
+            </Link>
+          </nav>
 
           <DifficultyBadge level={game.difficultyLevel} />
 
@@ -544,6 +608,7 @@ export default function GamePage() {
               <div className="h-4 w-4 animate-spin rounded-full border-2 border-emerald-300 border-t-emerald-700 dark:border-emerald-600 dark:border-t-emerald-300" />
             ) : saveMessage === 'Game saved!' ? (
               <svg
+                aria-hidden="true"
                 className="h-4 w-4"
                 viewBox="0 0 24 24"
                 fill="none"
@@ -554,6 +619,7 @@ export default function GamePage() {
               </svg>
             ) : (
               <svg
+                aria-hidden="true"
                 className="h-4 w-4"
                 viewBox="0 0 24 24"
                 fill="none"
@@ -613,7 +679,10 @@ export default function GamePage() {
 
           {/* Move error message */}
           {moveError && (
-            <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-center text-sm text-red-600 dark:border-red-800 dark:bg-red-950/40 dark:text-red-400">
+            <div
+              role="alert"
+              className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-center text-sm text-red-600 dark:border-red-800 dark:bg-red-950/40 dark:text-red-400"
+            >
               {moveError}
             </div>
           )}
@@ -648,18 +717,18 @@ export default function GamePage() {
           {/* Action Buttons (when game is over but modal dismissed) */}
           {game.isGameOver && !showGameOverModal && (
             <div className="flex gap-3 pt-2">
-              <button
-                onClick={() => router.push('/game/new')}
-                className="flex-1 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-500 px-6 py-3 font-semibold text-white shadow-lg shadow-emerald-500/25 transition-all hover:shadow-xl hover:shadow-emerald-500/30 active:scale-[0.98]"
+              <Link
+                href="/game/new"
+                className="flex-1 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-500 px-6 py-3 text-center font-semibold text-white shadow-lg shadow-emerald-500/25 transition-all hover:shadow-xl hover:shadow-emerald-500/30 active:scale-[0.98]"
               >
                 New Game
-              </button>
-              <button
-                onClick={() => router.push('/')}
+              </Link>
+              <Link
+                href="/"
                 className="rounded-xl bg-zinc-200 px-6 py-3 font-medium text-zinc-700 transition-colors hover:bg-zinc-300 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
               >
                 Home
-              </button>
+              </Link>
             </div>
           )}
 
@@ -678,7 +747,12 @@ export default function GamePage() {
                 {isResigning ? (
                   <div className="h-4 w-4 animate-spin rounded-full border-2 border-zinc-300 border-t-zinc-600 dark:border-zinc-600 dark:border-t-zinc-300" />
                 ) : (
-                  <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+                  <svg
+                    aria-hidden="true"
+                    className="h-4 w-4"
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
+                  >
                     <path d="M14.4 6L14 4H5v17h2v-7h5.6l.4 2h7V6z" />
                   </svg>
                 )}
