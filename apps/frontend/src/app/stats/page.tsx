@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { statsApi } from '@/lib/statsApi';
 import type { UserStatsResponse } from '@chess-website/shared';
@@ -273,9 +274,13 @@ export default function StatsPage() {
       <div className="flex min-h-screen items-center justify-center gradient-bg chess-pattern">
         <div
           className="flex items-center gap-3 rounded-2xl bg-white/80 p-8 backdrop-blur-sm dark:bg-zinc-900/80"
+          role="status"
           aria-live="polite"
         >
-          <div className="h-6 w-6 animate-spin rounded-full border-2 border-emerald-200 border-t-emerald-600 dark:border-emerald-900 dark:border-t-emerald-500" />
+          <div
+            className="h-6 w-6 animate-spin rounded-full border-2 border-emerald-200 border-t-emerald-600 dark:border-emerald-900 dark:border-t-emerald-500"
+            aria-hidden="true"
+          />
           <span className="text-zinc-600 dark:text-zinc-400">Loading statistics...</span>
         </div>
       </div>
@@ -293,21 +298,24 @@ export default function StatsPage() {
       <main className="relative mx-auto max-w-2xl px-6 py-8">
         {/* Header */}
         <div className="mb-8 fade-in">
-          <button
-            onClick={() => router.push('/')}
-            className="mb-6 flex items-center gap-2 rounded-lg px-3 py-2 text-zinc-600 transition-all hover:bg-white/50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800/50 dark:hover:text-zinc-100"
-          >
-            <svg
-              className="h-5 w-5"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
+          <nav aria-label="Breadcrumb">
+            <Link
+              href="/"
+              className="mb-6 inline-flex items-center gap-2 rounded-lg px-3 py-2 text-zinc-600 transition-all hover:bg-white/50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800/50 dark:hover:text-zinc-100"
             >
-              <path d="M19 12H5M12 19l-7-7 7-7" />
-            </svg>
-            Back to Home
-          </button>
+              <svg
+                aria-hidden="true"
+                className="h-5 w-5"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
+                <path d="M19 12H5M12 19l-7-7 7-7" />
+              </svg>
+              Back to Home
+            </Link>
+          </nav>
 
           <h1 className="mb-2 text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
             Statistics
@@ -336,15 +344,20 @@ export default function StatsPage() {
                 <p className="mb-3 text-zinc-600 dark:text-zinc-400">
                   Play your first game to see statistics!
                 </p>
-                <button
-                  onClick={() => router.push('/game/new')}
+                <Link
+                  href="/game/new"
                   className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-500 px-6 py-3 font-semibold text-white shadow-lg shadow-emerald-500/25 transition-all hover:shadow-xl hover:shadow-emerald-500/30 active:scale-[0.98]"
                 >
-                  <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
+                  <svg
+                    aria-hidden="true"
+                    className="h-5 w-5"
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
+                  >
                     <path d="M8 5v14l11-7z" />
                   </svg>
                   Start New Game
-                </button>
+                </Link>
               </div>
             )}
 

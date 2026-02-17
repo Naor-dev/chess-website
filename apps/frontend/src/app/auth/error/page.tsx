@@ -26,6 +26,7 @@ function AuthErrorContent() {
         <div className="mb-6 flex justify-center">
           <div className="flex h-20 w-20 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900/30">
             <svg
+              aria-hidden="true"
               className="h-10 w-10 text-amber-600 dark:text-amber-400"
               fill="none"
               viewBox="0 0 24 24"
@@ -54,6 +55,7 @@ function AuthErrorContent() {
             className="flex h-12 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-500 px-6 font-semibold text-white shadow-lg shadow-emerald-500/25 transition-all hover:shadow-xl hover:shadow-emerald-500/30 active:scale-[0.98]"
           >
             <svg
+              aria-hidden="true"
               className="h-5 w-5"
               viewBox="0 0 24 24"
               fill="none"
@@ -93,8 +95,15 @@ export default function AuthErrorPage() {
           id="main-content"
           className="flex min-h-screen items-center justify-center gradient-bg chess-pattern"
         >
-          <div className="flex items-center gap-3 rounded-2xl bg-white/80 p-8 backdrop-blur-sm dark:bg-zinc-900/80">
-            <div className="h-6 w-6 animate-spin rounded-full border-2 border-emerald-200 border-t-emerald-600 dark:border-emerald-900 dark:border-t-emerald-500" />
+          <div
+            className="flex items-center gap-3 rounded-2xl bg-white/80 p-8 backdrop-blur-sm dark:bg-zinc-900/80"
+            role="status"
+            aria-live="polite"
+          >
+            <div
+              className="h-6 w-6 animate-spin rounded-full border-2 border-emerald-200 border-t-emerald-600 dark:border-emerald-900 dark:border-t-emerald-500"
+              aria-hidden="true"
+            />
             <span className="text-zinc-600 dark:text-zinc-400">Loading...</span>
           </div>
         </main>

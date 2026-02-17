@@ -5,7 +5,7 @@ export function EngineThinkingOverlay() {
         {/* Animated chess piece */}
         <div className="relative">
           <div className="h-10 w-10 animate-bounce">
-            <svg viewBox="0 0 45 45" className="h-full w-full">
+            <svg aria-hidden="true" viewBox="0 0 45 45" className="h-full w-full">
               <g
                 fill="none"
                 fillRule="evenodd"
