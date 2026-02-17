@@ -184,6 +184,21 @@ export default function Home() {
                   Game History
                 </button>
                 <button
+                  className="group flex h-12 items-center justify-center gap-2 rounded-xl border border-zinc-300 px-8 font-medium text-zinc-600 transition-all hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-700 dark:border-zinc-700 dark:text-zinc-400 dark:hover:border-emerald-800 dark:hover:bg-emerald-950/30 dark:hover:text-emerald-400"
+                  onClick={() => router.push('/stats')}
+                >
+                  <svg
+                    className="h-5 w-5"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  >
+                    <path d="M18 20V10M12 20V4M6 20v-6" />
+                  </svg>
+                  Statistics
+                </button>
+                <button
                   className="flex h-12 items-center justify-center rounded-xl border border-zinc-300 px-8 font-medium text-zinc-600 transition-all hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-800"
                   onClick={logout}
                 >

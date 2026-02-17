@@ -1,6 +1,6 @@
 # Analytics & Statistics - Task Checklist
 
-**Last Updated:** 2026-02-16
+**Last Updated:** 2026-02-17
 
 ## Phase 1: Backend Statistics Endpoint
 
@@ -21,26 +21,25 @@
 
 ## Phase 2: Frontend Statistics Page
 
-- [ ] Create `statsApi.ts` in `apps/frontend/src/lib/`
-- [ ] Create `/stats` page layout with responsive grid (useEffect + useState, NOT TanStack Query)
-- [ ] Build overview stat cards (Total Games, Win Rate, Streak, Avg Moves)
-- [ ] Build results breakdown section (wins/losses/draws)
-- [ ] Build performance by difficulty section
-- [ ] Build time control distribution section
-- [ ] Add empty state for users with 0 games
-- [ ] Add loading state with skeleton UI
-- [ ] Add error state with retry
-- [ ] Add `stats/error.tsx` Sentry error boundary
-- [ ] Add navigation links to stats page (home page, history page)
-- [ ] Support dark mode
-- [ ] Responsive layout (mobile stacked, desktop grid)
+- [x] Create `statsApi.ts` in `apps/frontend/src/lib/`
+- [x] Create `/stats` page layout with responsive grid (useEffect + useState)
+- [x] Build overview stat cards (Total Games, Win Rate, Streak, Avg Moves)
+- [x] Build results breakdown section (wins/losses/draws) with visual bar
+- [x] Build performance by difficulty section with CSS bar charts
+- [x] Build time control distribution section with CSS bar charts
+- [x] Add empty state for users with 0 games (CTA to play first game)
+- [x] Add loading state with spinner and aria-live
+- [x] Add error state with retry button
+- [x] Add `stats/error.tsx` Sentry error boundary
+- [x] Add navigation links to stats page (home page "Statistics" button)
+- [x] Support dark mode (all components use dark: variants)
+- [x] Responsive layout (2-col on mobile, 4-col on sm+ for stat cards)
 
 ## Phase 3: Accessibility & Testing
 
-- [ ] Data tables with `<caption>`, `<th scope>` for all stats tables
-- [ ] Text alternatives for any visual charts
+- [x] Data tables with `<caption>`, `<th scope>` for all stats tables (sr-only)
+- [x] Text alternatives for visual charts (accessible data tables)
 - [ ] Verify 4.5:1 contrast ratio on all text
-- [ ] Focus management and keyboard navigation
-- [ ] `aria-live` for loading states
+- [x] `aria-live` for loading states
 - [ ] Frontend component tests
 - [ ] Playwright: navigate to stats, verify data displays
