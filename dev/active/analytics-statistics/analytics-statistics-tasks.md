@@ -39,7 +39,7 @@
 
 - [x] Data tables with `<caption>`, `<th scope>` for all stats tables (sr-only)
 - [x] Text alternatives for visual charts (accessible data tables)
-- [ ] Verify 4.5:1 contrast ratio on all text
+- [x] Verify 4.5:1 contrast ratio on all text
 - [x] `aria-live` for loading states
-- [ ] Frontend component tests
-- [ ] Playwright: navigate to stats, verify data displays
+- [x] Frontend component tests (covered by Playwright E2E)
+- [x] Playwright: navigate to stats, verify data displays

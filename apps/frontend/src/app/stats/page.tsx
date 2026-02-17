@@ -36,9 +36,9 @@ function StatCard({
 }) {
   return (
     <div className="rounded-xl border border-zinc-200/50 bg-white/60 p-4 backdrop-blur-sm dark:border-zinc-800/50 dark:bg-zinc-900/40">
-      <p className="text-sm font-medium text-zinc-500 dark:text-zinc-500">{label}</p>
+      <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400">{label}</p>
       <p className="mt-1 text-2xl font-bold text-zinc-900 dark:text-zinc-100">{value}</p>
-      {sublabel && <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-500">{sublabel}</p>}
+      {sublabel && <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">{sublabel}</p>}
     </div>
   );
 }
@@ -131,7 +131,7 @@ function DifficultyChart({ data }: { data: UserStatsResponse['byDifficulty'] }) 
                 <span className="font-medium text-zinc-700 dark:text-zinc-300">
                   {DIFFICULTY_LABELS[d.level] || `Level ${d.level}`}
                 </span>
-                <span className="text-zinc-500 dark:text-zinc-500">
+                <span className="text-zinc-500 dark:text-zinc-400">
                   {d.wins}W / {d.losses}L / {d.draws}D
                 </span>
               </div>
@@ -191,7 +191,7 @@ function TimeControlChart({ data }: { data: UserStatsResponse['byTimeControl'] }
                 <span className="font-medium text-zinc-700 dark:text-zinc-300">
                   {TIME_CONTROL_LABELS[d.type] || d.type}
                 </span>
-                <span className="text-zinc-500 dark:text-zinc-500">
+                <span className="text-zinc-500 dark:text-zinc-400">
                   {d.total} game{d.total !== 1 ? 's' : ''} ({d.wins} won)
                 </span>
               </div>
