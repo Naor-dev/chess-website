@@ -231,24 +231,6 @@ function TimeControlChart({ data }: { data: UserStatsResponse['byTimeControl'] }
   );
 }
 
-function StreakBadge({ streak }: { streak: UserStatsResponse['currentStreak'] }) {
-  if (streak.type === 'none' || streak.count === 0) {
-    return <span className="text-zinc-500 dark:text-zinc-500">-</span>;
-  }
-
-  const isWin = streak.type === 'win';
-  return (
-    <span
-      className={`inline-flex items-center gap-1 ${
-        isWin ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'
-      }`}
-    >
-      {streak.count} {isWin ? 'Win' : 'Loss'}
-      {streak.count !== 1 ? (isWin ? 's' : 'es') : ''}
-    </span>
-  );
-}
-
 export default function StatsPage() {
   const router = useRouter();
   const { isAuthenticated, isLoading: authLoading } = useAuth();
