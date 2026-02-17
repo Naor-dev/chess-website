@@ -1,6 +1,11 @@
 export function EngineThinkingOverlay() {
   return (
-    <div className="absolute inset-0 flex items-center justify-center bg-black/30 backdrop-blur-[2px]">
+    <div
+      className="absolute inset-0 flex items-center justify-center bg-black/30 backdrop-blur-[2px]"
+      role="status"
+      aria-live="polite"
+      aria-label="Engine is thinking"
+    >
       <div className="flex flex-col items-center gap-3 rounded-2xl bg-white/95 px-6 py-5 shadow-xl dark:bg-zinc-800/95">
         {/* Animated chess piece */}
         <div className="relative">

@@ -9,6 +9,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { gameApi } from '@/lib/gameApi';
 import { useBoardSize } from '@/hooks/useBoardSize';
 import { useMoveReplay } from '@/hooks/useMoveReplay';
+import { useAriaLiveAnnouncer, sanitizeMoveNotation } from '@/hooks/useAriaLiveAnnouncer';
 import { MoveReplayControls } from '@/components/MoveReplayControls';
 import type { GameResponse, MakeMoveRequest } from '@chess-website/shared';
 import {
@@ -25,6 +26,7 @@ export default function GamePage() {
   const { isAuthenticated, isLoading: authLoading } = useAuth();
   const gameId = params.id as string;
   const { boardSize } = useBoardSize();
+  const { announce } = useAriaLiveAnnouncer();
 
   const [game, setGame] = useState<GameResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -152,6 +154,55 @@ export default function GamePage() {
 
     return () => clearInterval(intervalId);
   }, [game, isMoving]);
+
+  // Track previous move count to announce new moves
+  const prevMoveCountRef = useRef<number>(0);
+
+  // Announce game state changes (moves, check, game over)
+  useEffect(() => {
+    if (!game) return;
+
+    const moveHistory = game.movesHistory ?? [];
+    const moveCount = moveHistory.length;
+
+    // Announce new moves
+    if (moveCount > prevMoveCountRef.current && prevMoveCountRef.current > 0) {
+      const lastMove = moveHistory[moveCount - 1];
+      if (lastMove) {
+        // Validate move notation before announcing (security: prevent XSS via live regions)
+        const sanitized = sanitizeMoveNotation(lastMove);
+        if (sanitized) {
+          const moveNumber = Math.ceil(moveCount / 2);
+          const isBlackMove = moveCount % 2 === 0;
+          const prefix = isBlackMove ? `${moveNumber}... ` : `${moveNumber}. `;
+          announce(`${prefix}${sanitized}`);
+        }
+      }
+    }
+    prevMoveCountRef.current = moveCount;
+
+    // Announce check
+    if (chess?.isCheck() && !chess.isCheckmate()) {
+      announce('Check');
+    }
+
+    // Announce game over (assertive — interrupts)
+    if (game.isGameOver && game.result) {
+      const resultMessages: Record<string, string> = {
+        user_win_checkmate: 'Checkmate! You win!',
+        user_win_timeout: 'Engine ran out of time. You win!',
+        engine_win_checkmate: 'Checkmate. Engine wins.',
+        engine_win_timeout: 'You ran out of time. Engine wins.',
+        draw_stalemate: 'Stalemate. Game is a draw.',
+        draw_repetition: 'Draw by repetition.',
+        draw_fifty_moves: 'Draw by fifty-move rule.',
+        draw_insufficient_material: 'Draw by insufficient material.',
+        user_resigned: 'You resigned. Engine wins.',
+      };
+      const message = resultMessages[game.result] || 'Game over.';
+      announce(message, 'assertive');
+    }
+  }, [game, chess, announce]);
 
   // Show game over modal when game ends
   useEffect(() => {
@@ -628,7 +679,10 @@ export default function GamePage() {
 
           {/* Move error message */}
           {moveError && (
-            <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-center text-sm text-red-600 dark:border-red-800 dark:bg-red-950/40 dark:text-red-400">
+            <div
+              role="alert"
+              className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-center text-sm text-red-600 dark:border-red-800 dark:bg-red-950/40 dark:text-red-400"
+            >
               {moveError}
             </div>
           )}

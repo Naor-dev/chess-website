@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import './globals.css';
 import { AuthProvider } from '@/contexts/AuthContext';
+import { AriaLiveProvider } from '@/hooks/useAriaLiveAnnouncer';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -35,7 +36,9 @@ export default function RootLayout({
         >
           Skip to main content
         </a>
-        <AuthProvider>{children}</AuthProvider>
+        <AriaLiveProvider>
+          <AuthProvider>{children}</AuthProvider>
+        </AriaLiveProvider>
       </body>
     </html>
   );
