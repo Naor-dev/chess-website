@@ -486,6 +486,7 @@ export default function GamePage() {
 
   return (
     <div className="flex min-h-screen flex-col gradient-bg chess-pattern">
+      <h1 className="sr-only">Chess Game</h1>
       {/* Header */}
       <header className="sticky top-0 z-10 border-b border-zinc-200/50 bg-white/80 backdrop-blur-md dark:border-zinc-800/50 dark:bg-zinc-900/80">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3">
@@ -570,7 +571,10 @@ export default function GamePage() {
       </header>
 
       {/* Main Game Area */}
-      <main className="flex flex-1 flex-col items-center justify-center gap-3 sm:gap-4 p-3 sm:p-4 md:p-6 lg:p-8">
+      <main
+        id="main-content"
+        className="flex flex-1 flex-col items-center justify-center gap-3 sm:gap-4 p-3 sm:p-4 md:p-6 lg:p-8"
+      >
         <div className="w-full space-y-3 sm:space-y-4" style={{ maxWidth: boardSize + 48 }}>
           {/* Engine Clock (top) */}
           {showClocks && (

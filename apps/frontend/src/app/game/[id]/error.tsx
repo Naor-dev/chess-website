@@ -30,7 +30,10 @@ export default function GameError({
   }, [error]);
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-gray-900 to-gray-800 px-4">
+    <main
+      id="main-content"
+      className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-gray-900 to-gray-800 px-4"
+    >
       <div className="max-w-md text-center">
         {/* Chess-themed error display - toppled king */}
         <div className="mb-6">
@@ -40,7 +43,7 @@ export default function GameError({
           <span className="ml-2 text-4xl text-red-500">!</span>
         </div>
 
-        <h2 className="mb-4 text-2xl font-bold text-white">Game Error</h2>
+        <h1 className="mb-4 text-2xl font-bold text-white">Game Error</h1>
 
         <p className="mb-6 text-gray-400">
           Something went wrong while loading your game. Your progress has been automatically saved.
@@ -80,6 +83,6 @@ export default function GameError({
           </Link>
         </div>
       </div>
-    </div>
+    </main>
   );
 }

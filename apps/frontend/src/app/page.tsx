@@ -92,7 +92,7 @@ function FeatureCard({
       <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-100 dark:bg-emerald-900/40">
         {icon}
       </div>
-      <h3 className="font-semibold text-zinc-900 dark:text-zinc-100">{title}</h3>
+      <h2 className="font-semibold text-zinc-900 dark:text-zinc-100">{title}</h2>
       <p className="text-center text-sm text-zinc-600 dark:text-zinc-400">{description}</p>
     </div>
   );
@@ -111,7 +111,10 @@ export default function Home() {
         <div className="absolute left-1/2 top-0 h-[300px] w-[300px] md:h-[400px] md:w-[400px] lg:h-[500px] lg:w-[500px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-emerald-500/10 blur-3xl dark:bg-emerald-500/5" />
       </div>
 
-      <main className="relative flex min-h-screen flex-col items-center justify-center px-4 py-10 sm:px-6 sm:py-12 md:py-16">
+      <main
+        id="main-content"
+        className="relative flex min-h-screen flex-col items-center justify-center px-4 py-10 sm:px-6 sm:py-12 md:py-16"
+      >
         {/* Logo Section */}
         <div className="mb-8 float">
           <div className="relative">

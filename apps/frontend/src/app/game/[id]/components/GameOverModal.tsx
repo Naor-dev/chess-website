@@ -177,7 +177,14 @@ export function GameOverModal({ result, onNewGame, onGoHome }: GameOverModalProp
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-in fade-in duration-300">
       {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onGoHome} />
+      <div
+        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        role="presentation"
+        onClick={onGoHome}
+        onKeyDown={(e) => {
+          if (e.key === 'Escape') onGoHome();
+        }}
+      />
 
       {/* Modal */}
       <div className="relative z-10 w-full max-w-[calc(100vw-2rem)] sm:max-w-sm animate-in zoom-in-95 slide-in-from-bottom-4 duration-300">
