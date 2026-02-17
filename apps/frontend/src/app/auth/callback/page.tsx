@@ -35,7 +35,12 @@ export default function AuthCallbackPage() {
           <div className="relative">
             <div className="absolute inset-0 rounded-full bg-emerald-500/20 blur-xl animate-pulse" />
             <div className="relative flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 shadow-lg">
-              <svg aria-hidden="true" className="h-8 w-8 text-white" viewBox="0 0 45 45" fill="currentColor">
+              <svg
+                aria-hidden="true"
+                className="h-8 w-8 text-white"
+                viewBox="0 0 45 45"
+                fill="currentColor"
+              >
                 <g fillRule="evenodd" strokeLinecap="round" strokeLinejoin="round">
                   <path
                     d="M 22,10 C 32.5,11 38.5,18 38,39 L 15,39 C 15,30 25,32.5 23,18"

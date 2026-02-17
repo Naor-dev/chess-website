@@ -46,7 +46,12 @@ export function MoveReplayControls({
           title="Go to start"
           aria-label="Go to start"
         >
-          <svg aria-hidden="true" className="h-4 w-4 sm:h-5 sm:w-5" viewBox="0 0 24 24" fill="currentColor">
+          <svg
+            aria-hidden="true"
+            className="h-4 w-4 sm:h-5 sm:w-5"
+            viewBox="0 0 24 24"
+            fill="currentColor"
+          >
             <path d="M6 6h2v12H6zm3.5 6l8.5 6V6z" />
           </svg>
         </button>
@@ -63,7 +68,12 @@ export function MoveReplayControls({
           title="Previous move"
           aria-label="Previous move"
         >
-          <svg aria-hidden="true" className="h-4 w-4 sm:h-5 sm:w-5" viewBox="0 0 24 24" fill="currentColor">
+          <svg
+            aria-hidden="true"
+            className="h-4 w-4 sm:h-5 sm:w-5"
+            viewBox="0 0 24 24"
+            fill="currentColor"
+          >
             <path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z" />
           </svg>
         </button>
@@ -80,7 +90,12 @@ export function MoveReplayControls({
           title="Next move"
           aria-label="Next move"
         >
-          <svg aria-hidden="true" className="h-4 w-4 sm:h-5 sm:w-5" viewBox="0 0 24 24" fill="currentColor">
+          <svg
+            aria-hidden="true"
+            className="h-4 w-4 sm:h-5 sm:w-5"
+            viewBox="0 0 24 24"
+            fill="currentColor"
+          >
             <path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z" />
           </svg>
         </button>
@@ -97,7 +112,12 @@ export function MoveReplayControls({
           title="Go to end"
           aria-label="Go to end"
         >
-          <svg aria-hidden="true" className="h-4 w-4 sm:h-5 sm:w-5" viewBox="0 0 24 24" fill="currentColor">
+          <svg
+            aria-hidden="true"
+            className="h-4 w-4 sm:h-5 sm:w-5"
+            viewBox="0 0 24 24"
+            fill="currentColor"
+          >
             <path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z" />
           </svg>
         </button>
