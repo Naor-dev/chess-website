@@ -1,6 +1,6 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 
 /**
@@ -8,7 +8,7 @@ import { useAuth } from '@/contexts/AuthContext';
  */
 function GoogleIcon() {
   return (
-    <svg className="h-5 w-5" viewBox="0 0 24 24">
+    <svg aria-hidden="true" className="h-5 w-5" viewBox="0 0 24 24">
       <path
         fill="#4285F4"
         d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -35,6 +35,7 @@ function GoogleIcon() {
 function ChessKnightIcon() {
   return (
     <svg
+      aria-hidden="true"
       className="h-14 w-14 sm:h-16 sm:w-16 md:h-20 md:w-20 text-emerald-600 dark:text-emerald-500 drop-shadow-lg"
       viewBox="0 0 45 45"
       fill="currentColor"
@@ -69,7 +70,13 @@ function ChessKnightIcon() {
  */
 function DecorativePawn({ className }: { className?: string }) {
   return (
-    <svg className={className} viewBox="0 0 45 45" fill="currentColor" opacity="0.05">
+    <svg
+      aria-hidden="true"
+      className={className}
+      viewBox="0 0 45 45"
+      fill="currentColor"
+      opacity="0.05"
+    >
       <path d="M22.5,9c-2.21,0-4,1.79-4,4c0,0.89,0.29,1.71,0.78,2.38C17.33,16.5,16,18.59,16,21c0,2.03,0.94,3.84,2.41,5.03C15.41,27.09,11,31.58,11,39.5H34c0-7.92-4.41-12.41-7.41-13.47C28.06,24.84,29,23.03,29,21c0-2.41-1.33-4.5-3.28-5.62c0.49-0.67,0.78-1.49,0.78-2.38C26.5,10.79,24.71,9,22.5,9z" />
     </svg>
   );
@@ -99,7 +106,6 @@ function FeatureCard({
 }
 
 export default function Home() {
-  const router = useRouter();
   const { user, isLoading, isAuthenticated, login, logout } = useAuth();
 
   return (
@@ -138,8 +144,15 @@ export default function Home() {
         {/* Auth Section */}
         <div className="w-full max-w-md fade-in" style={{ animationDelay: '0.2s' }}>
           {isLoading ? (
-            <div className="flex items-center justify-center gap-3 rounded-2xl bg-white/80 p-8 backdrop-blur-sm dark:bg-zinc-900/80 border border-zinc-200/50 dark:border-zinc-800/50">
-              <div className="h-6 w-6 animate-spin rounded-full border-2 border-emerald-200 border-t-emerald-600 dark:border-emerald-900 dark:border-t-emerald-500" />
+            <div
+              className="flex items-center justify-center gap-3 rounded-2xl bg-white/80 p-8 backdrop-blur-sm dark:bg-zinc-900/80 border border-zinc-200/50 dark:border-zinc-800/50"
+              role="status"
+              aria-live="polite"
+            >
+              <div
+                className="h-6 w-6 animate-spin rounded-full border-2 border-emerald-200 border-t-emerald-600 dark:border-emerald-900 dark:border-t-emerald-500"
+                aria-hidden="true"
+              />
               <span className="text-zinc-600 dark:text-zinc-400">Loading...</span>
             </div>
           ) : isAuthenticated ? (
@@ -156,12 +169,13 @@ export default function Home() {
                 </div>
               </div>
 
-              <div className="flex flex-col gap-3">
-                <button
+              <nav aria-label="Main navigation" className="flex flex-col gap-3">
+                <Link
+                  href="/game/new"
                   className="group flex h-14 items-center justify-center gap-3 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-500 px-8 font-semibold text-white shadow-lg shadow-emerald-500/25 transition-all hover:shadow-xl hover:shadow-emerald-500/30 active:scale-[0.98]"
-                  onClick={() => router.push('/game/new')}
                 >
                   <svg
+                    aria-hidden="true"
                     className="h-5 w-5 transition-transform group-hover:scale-110"
                     viewBox="0 0 24 24"
                     fill="currentColor"
@@ -169,12 +183,13 @@ export default function Home() {
                     <path d="M8 5v14l11-7z" />
                   </svg>
                   Start New Game
-                </button>
-                <button
+                </Link>
+                <Link
+                  href="/history"
                   className="group flex h-12 items-center justify-center gap-2 rounded-xl border border-zinc-300 px-8 font-medium text-zinc-600 transition-all hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-700 dark:border-zinc-700 dark:text-zinc-400 dark:hover:border-emerald-800 dark:hover:bg-emerald-950/30 dark:hover:text-emerald-400"
-                  onClick={() => router.push('/history')}
                 >
                   <svg
+                    aria-hidden="true"
                     className="h-5 w-5"
                     viewBox="0 0 24 24"
                     fill="none"
@@ -185,12 +200,13 @@ export default function Home() {
                     <polyline points="12,6 12,12 16,14" />
                   </svg>
                   Game History
-                </button>
-                <button
+                </Link>
+                <Link
+                  href="/stats"
                   className="group flex h-12 items-center justify-center gap-2 rounded-xl border border-zinc-300 px-8 font-medium text-zinc-600 transition-all hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-700 dark:border-zinc-700 dark:text-zinc-400 dark:hover:border-emerald-800 dark:hover:bg-emerald-950/30 dark:hover:text-emerald-400"
-                  onClick={() => router.push('/stats')}
                 >
                   <svg
+                    aria-hidden="true"
                     className="h-5 w-5"
                     viewBox="0 0 24 24"
                     fill="none"
@@ -200,14 +216,14 @@ export default function Home() {
                     <path d="M18 20V10M12 20V4M6 20v-6" />
                   </svg>
                   Statistics
-                </button>
+                </Link>
                 <button
                   className="flex h-12 items-center justify-center rounded-xl border border-zinc-300 px-8 font-medium text-zinc-600 transition-all hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-800"
                   onClick={logout}
                 >
                   Sign Out
                 </button>
-              </div>
+              </nav>
             </div>
           ) : (
             <div className="rounded-2xl bg-white/80 p-8 backdrop-blur-sm dark:bg-zinc-900/80 border border-zinc-200/50 dark:border-zinc-800/50 shadow-xl">
@@ -230,6 +246,7 @@ export default function Home() {
           <FeatureCard
             icon={
               <svg
+                aria-hidden="true"
                 className="h-6 w-6 text-emerald-600 dark:text-emerald-400"
                 viewBox="0 0 24 24"
                 fill="none"
@@ -245,6 +262,7 @@ export default function Home() {
           <FeatureCard
             icon={
               <svg
+                aria-hidden="true"
                 className="h-6 w-6 text-emerald-600 dark:text-emerald-400"
                 viewBox="0 0 24 24"
                 fill="none"
@@ -261,6 +279,7 @@ export default function Home() {
           <FeatureCard
             icon={
               <svg
+                aria-hidden="true"
                 className="h-6 w-6 text-emerald-600 dark:text-emerald-400"
                 viewBox="0 0 24 24"
                 fill="none"

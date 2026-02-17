@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { gameApi } from '@/lib/gameApi';
 import type { GameListItem } from '@chess-website/shared';
@@ -39,6 +40,7 @@ function DifficultyStars({ level }: { level: number }) {
     <div className="flex gap-0.5">
       {[1, 2, 3, 4, 5].map((star) => (
         <svg
+          aria-hidden="true"
           key={star}
           className={`h-3 w-3 ${star <= level ? 'text-amber-500' : 'text-zinc-300 dark:text-zinc-700'}`}
           viewBox="0 0 24 24"
@@ -90,15 +92,15 @@ function getResultInfo(result?: string): { text: string; color: string } | null 
   }
 }
 
-function GameCard({ game, onClick }: { game: GameListItem; onClick: () => void }) {
+function GameCard({ game, href }: { game: GameListItem; href: string }) {
   const isActive = game.status === 'active';
   const resultInfo = getResultInfo(game.result);
   const timeColor = TIME_CONTROL_COLORS[game.timeControlType] || 'zinc';
 
   return (
-    <button
-      onClick={onClick}
-      className="group w-full rounded-xl border-2 p-4 text-left transition-all border-zinc-200/50 bg-white/60 hover:border-emerald-300 hover:bg-white/80 hover:shadow-lg dark:border-zinc-800/50 dark:bg-zinc-900/40 dark:hover:border-emerald-700 dark:hover:bg-zinc-900/60 backdrop-blur-sm"
+    <Link
+      href={href}
+      className="group block w-full rounded-xl border-2 p-4 text-left transition-all border-zinc-200/50 bg-white/60 hover:border-emerald-300 hover:bg-white/80 hover:shadow-lg dark:border-zinc-800/50 dark:bg-zinc-900/40 dark:hover:border-emerald-700 dark:hover:bg-zinc-900/60 backdrop-blur-sm"
     >
       <div className="flex items-start justify-between gap-4">
         <div className="flex-1">
@@ -165,6 +167,7 @@ function GameCard({ game, onClick }: { game: GameListItem; onClick: () => void }
         {/* Arrow indicator */}
         <div className="flex h-8 w-8 items-center justify-center rounded-full bg-zinc-100 transition-colors group-hover:bg-emerald-100 dark:bg-zinc-800 dark:group-hover:bg-emerald-900/40">
           <svg
+            aria-hidden="true"
             className="h-4 w-4 text-zinc-400 transition-colors group-hover:text-emerald-600 dark:text-zinc-500 dark:group-hover:text-emerald-400"
             viewBox="0 0 24 24"
             fill="none"
@@ -175,15 +178,16 @@ function GameCard({ game, onClick }: { game: GameListItem; onClick: () => void }
           </svg>
         </div>
       </div>
-    </button>
+    </Link>
   );
 }
 
-function EmptyState({ onNewGame }: { onNewGame: () => void }) {
+function EmptyState() {
   return (
     <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-zinc-200 bg-white/40 p-12 text-center dark:border-zinc-800 dark:bg-zinc-900/20">
       <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-zinc-100 dark:bg-zinc-800">
         <svg
+          aria-hidden="true"
           className="h-8 w-8 text-zinc-400 dark:text-zinc-500"
           viewBox="0 0 24 24"
           fill="none"
@@ -198,15 +202,15 @@ function EmptyState({ onNewGame }: { onNewGame: () => void }) {
       <p className="mb-6 text-sm text-zinc-600 dark:text-zinc-400">
         Start playing to see your game history here
       </p>
-      <button
-        onClick={onNewGame}
+      <Link
+        href="/game/new"
         className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-500 px-6 py-3 font-semibold text-white shadow-lg shadow-emerald-500/25 transition-all hover:shadow-xl hover:shadow-emerald-500/30 active:scale-[0.98]"
       >
-        <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
+        <svg aria-hidden="true" className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
           <path d="M8 5v14l11-7z" />
         </svg>
         Start New Game
-      </button>
+      </Link>
     </div>
   );
 }
@@ -293,8 +297,15 @@ export default function HistoryPage() {
   if (authLoading || isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center gradient-bg chess-pattern">
-        <div className="flex items-center gap-3 rounded-2xl bg-white/80 p-8 backdrop-blur-sm dark:bg-zinc-900/80">
-          <div className="h-6 w-6 animate-spin rounded-full border-2 border-emerald-200 border-t-emerald-600 dark:border-emerald-900 dark:border-t-emerald-500" />
+        <div
+          className="flex items-center gap-3 rounded-2xl bg-white/80 p-8 backdrop-blur-sm dark:bg-zinc-900/80"
+          role="status"
+          aria-live="polite"
+        >
+          <div
+            className="h-6 w-6 animate-spin rounded-full border-2 border-emerald-200 border-t-emerald-600 dark:border-emerald-900 dark:border-t-emerald-500"
+            aria-hidden="true"
+          />
           <span className="text-zinc-600 dark:text-zinc-400">Loading games...</span>
         </div>
       </div>
@@ -317,21 +328,24 @@ export default function HistoryPage() {
       <main id="main-content" className="relative mx-auto max-w-2xl px-6 py-8">
         {/* Header */}
         <div className="mb-8 fade-in">
-          <button
-            onClick={() => router.push('/')}
-            className="mb-6 flex items-center gap-2 rounded-lg px-3 py-2 text-zinc-600 transition-all hover:bg-white/50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800/50 dark:hover:text-zinc-100"
-          >
-            <svg
-              className="h-5 w-5"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
+          <nav aria-label="Breadcrumb">
+            <Link
+              href="/"
+              className="mb-6 inline-flex items-center gap-2 rounded-lg px-3 py-2 text-zinc-600 transition-all hover:bg-white/50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800/50 dark:hover:text-zinc-100"
             >
-              <path d="M19 12H5M12 19l-7-7 7-7" />
-            </svg>
-            Back to Home
-          </button>
+              <svg
+                aria-hidden="true"
+                className="h-5 w-5"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
+                <path d="M19 12H5M12 19l-7-7 7-7" />
+              </svg>
+              Back to Home
+            </Link>
+          </nav>
 
           <h1 className="mb-2 text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
             Game History
@@ -423,11 +437,12 @@ export default function HistoryPage() {
         )}
 
         {games.length === 0 ? (
-          <EmptyState onNewGame={() => router.push('/game/new')} />
+          <EmptyState />
         ) : hasNoFilterResults ? (
           <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-zinc-200 bg-white/40 p-12 text-center dark:border-zinc-800 dark:bg-zinc-900/20">
             <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-zinc-100 dark:bg-zinc-800">
               <svg
+                aria-hidden="true"
                 className="h-8 w-8 text-zinc-400 dark:text-zinc-500"
                 viewBox="0 0 24 24"
                 fill="none"
@@ -469,11 +484,7 @@ export default function HistoryPage() {
                 </div>
                 <div className="grid gap-3">
                   {activeGames.map((game) => (
-                    <GameCard
-                      key={game.id}
-                      game={game}
-                      onClick={() => router.push(`/game/${game.id}`)}
-                    />
+                    <GameCard key={game.id} game={game} href={`/game/${game.id}`} />
                   ))}
                 </div>
               </div>
@@ -485,6 +496,7 @@ export default function HistoryPage() {
                 <div className="mb-4 flex items-center gap-2">
                   <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-zinc-100 dark:bg-zinc-800">
                     <svg
+                      aria-hidden="true"
                       className="h-4 w-4 text-zinc-600 dark:text-zinc-400"
                       viewBox="0 0 24 24"
                       fill="none"
@@ -501,11 +513,7 @@ export default function HistoryPage() {
                 </div>
                 <div className="grid gap-3">
                   {completedGames.map((game) => (
-                    <GameCard
-                      key={game.id}
-                      game={game}
-                      onClick={() => router.push(`/game/${game.id}`)}
-                    />
+                    <GameCard key={game.id} game={game} href={`/game/${game.id}`} />
                   ))}
                 </div>
               </div>
@@ -519,15 +527,15 @@ export default function HistoryPage() {
             className="fixed bottom-8 left-1/2 -translate-x-1/2 fade-in"
             style={{ animationDelay: '0.3s' }}
           >
-            <button
-              onClick={() => router.push('/game/new')}
+            <Link
+              href="/game/new"
               className="flex items-center gap-2 rounded-full bg-gradient-to-r from-emerald-600 to-emerald-500 px-6 py-3 font-semibold text-white shadow-lg shadow-emerald-500/25 transition-all hover:shadow-xl hover:shadow-emerald-500/30 active:scale-[0.98]"
             >
-              <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
+              <svg aria-hidden="true" className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M12 4v16m8-8H4" />
               </svg>
               New Game
-            </button>
+            </Link>
           </div>
         )}
       </main>
