@@ -96,10 +96,16 @@ function GameCard({ game, href }: { game: GameListItem; href: string }) {
   const isActive = game.status === 'active';
   const resultInfo = getResultInfo(game.result);
   const timeColor = TIME_CONTROL_COLORS[game.timeControlType] || 'zinc';
+  const difficulty = DIFFICULTY_LABELS[game.difficultyLevel] || `Level ${game.difficultyLevel}`;
+  const timeControl = TIME_CONTROL_LABELS[game.timeControlType] || game.timeControlType;
+  const statusText = isActive
+    ? `Active, ${game.currentTurn === 'w' ? 'your turn' : 'engine turn'}`
+    : resultInfo?.text || 'Finished';
 
   return (
     <Link
       href={href}
+      aria-label={`${statusText} - ${difficulty}, ${timeControl} - ${formatTimeAgo(game.updatedAt)}`}
       className="group block w-full rounded-xl border-2 p-4 text-left transition-all border-zinc-200/50 bg-white/60 hover:border-emerald-300 hover:bg-white/80 hover:shadow-lg dark:border-zinc-800/50 dark:bg-zinc-900/40 dark:hover:border-emerald-700 dark:hover:bg-zinc-900/60 backdrop-blur-sm"
     >
       <div className="flex items-start justify-between gap-4">
@@ -108,7 +114,10 @@ function GameCard({ game, href }: { game: GameListItem; href: string }) {
           <div className="mb-2 flex items-center gap-2">
             {isActive ? (
               <>
-                <div className="h-2.5 w-2.5 animate-pulse rounded-full bg-emerald-500" />
+                <div
+                  aria-hidden="true"
+                  className="h-2.5 w-2.5 animate-pulse rounded-full bg-emerald-500"
+                />
                 <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">
                   Active - {game.currentTurn === 'w' ? 'Your turn' : 'Engine turn'}
                 </span>
@@ -359,12 +368,26 @@ export default function HistoryPage() {
 
         {/* Filter Controls */}
         {games.length > 0 && (
-          <div className="mb-6 flex flex-wrap items-center gap-3 rounded-xl border border-zinc-200/50 bg-white/60 p-4 backdrop-blur-sm dark:border-zinc-800/50 dark:bg-zinc-900/40 fade-in">
+          <div
+            className="mb-6 flex flex-wrap items-center gap-3 rounded-xl border border-zinc-200/50 bg-white/60 p-4 backdrop-blur-sm dark:border-zinc-800/50 dark:bg-zinc-900/40 fade-in"
+            aria-label="Filter and sort games"
+          >
             {/* Sort Order */}
             <div className="flex items-center gap-2">
-              <span className="text-xs font-medium text-zinc-500 dark:text-zinc-500">Sort:</span>
-              <div className="flex rounded-lg bg-zinc-100 p-0.5 dark:bg-zinc-800">
+              <span
+                id="sort-label"
+                className="text-xs font-medium text-zinc-500 dark:text-zinc-500"
+              >
+                Sort:
+              </span>
+              <div
+                role="radiogroup"
+                aria-labelledby="sort-label"
+                className="flex rounded-lg bg-zinc-100 p-0.5 dark:bg-zinc-800"
+              >
                 <button
+                  role="radio"
+                  aria-checked={sortOrder === 'newest'}
                   onClick={() => setSortOrder('newest')}
                   className={`rounded-md px-3 py-1.5 text-xs font-medium transition-all ${
                     sortOrder === 'newest'
@@ -375,6 +398,8 @@ export default function HistoryPage() {
                   Newest
                 </button>
                 <button
+                  role="radio"
+                  aria-checked={sortOrder === 'oldest'}
                   onClick={() => setSortOrder('oldest')}
                   className={`rounded-md px-3 py-1.5 text-xs font-medium transition-all ${
                     sortOrder === 'oldest'
@@ -389,11 +414,22 @@ export default function HistoryPage() {
 
             {/* Status Filter */}
             <div className="flex items-center gap-2">
-              <span className="text-xs font-medium text-zinc-500 dark:text-zinc-500">Status:</span>
-              <div className="flex rounded-lg bg-zinc-100 p-0.5 dark:bg-zinc-800">
+              <span
+                id="status-filter-label"
+                className="text-xs font-medium text-zinc-500 dark:text-zinc-500"
+              >
+                Status:
+              </span>
+              <div
+                role="radiogroup"
+                aria-labelledby="status-filter-label"
+                className="flex rounded-lg bg-zinc-100 p-0.5 dark:bg-zinc-800"
+              >
                 {(['all', 'active', 'completed'] as const).map((status) => (
                   <button
                     key={status}
+                    role="radio"
+                    aria-checked={statusFilter === status}
                     onClick={() => setStatusFilter(status)}
                     className={`rounded-md px-3 py-1.5 text-xs font-medium capitalize transition-all ${
                       statusFilter === status
@@ -409,11 +445,22 @@ export default function HistoryPage() {
 
             {/* Result Filter */}
             <div className="flex items-center gap-2">
-              <span className="text-xs font-medium text-zinc-500 dark:text-zinc-500">Result:</span>
-              <div className="flex rounded-lg bg-zinc-100 p-0.5 dark:bg-zinc-800">
+              <span
+                id="result-filter-label"
+                className="text-xs font-medium text-zinc-500 dark:text-zinc-500"
+              >
+                Result:
+              </span>
+              <div
+                role="radiogroup"
+                aria-labelledby="result-filter-label"
+                className="flex rounded-lg bg-zinc-100 p-0.5 dark:bg-zinc-800"
+              >
                 {(['all', 'wins', 'losses', 'draws'] as const).map((result) => (
                   <button
                     key={result}
+                    role="radio"
+                    aria-checked={resultFilter === result}
                     onClick={() => setResultFilter(result)}
                     className={`rounded-md px-3 py-1.5 text-xs font-medium capitalize transition-all ${
                       resultFilter === result
@@ -431,10 +478,18 @@ export default function HistoryPage() {
 
         {/* Error message */}
         {error && (
-          <div className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4 text-center text-red-700 dark:border-red-900 dark:bg-red-950/30 dark:text-red-400">
+          <div
+            role="alert"
+            className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4 text-center text-red-700 dark:border-red-900 dark:bg-red-950/30 dark:text-red-400"
+          >
             {error}
           </div>
         )}
+
+        {/* Screen reader announcement for filter results */}
+        <div aria-live="polite" aria-atomic="true" className="sr-only">
+          {games.length > 0 && `Showing ${filteredAndSortedGames.length} of ${games.length} games`}
+        </div>
 
         {games.length === 0 ? (
           <EmptyState />
@@ -476,7 +531,10 @@ export default function HistoryPage() {
               <div className="mb-8 fade-in" style={{ animationDelay: '0.1s' }}>
                 <div className="mb-4 flex items-center gap-2">
                   <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-900/40">
-                    <div className="h-3 w-3 animate-pulse rounded-full bg-emerald-500" />
+                    <div
+                      aria-hidden="true"
+                      className="h-3 w-3 animate-pulse rounded-full bg-emerald-500"
+                    />
                   </div>
                   <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
                     Active Games ({activeGames.length})
