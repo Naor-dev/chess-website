@@ -34,7 +34,7 @@ export default function StatsError({
 
         <h2 className="mb-4 text-2xl font-bold text-white">Could not load statistics</h2>
 
-        <p className="mb-6 text-gray-400">
+        <p className="mb-6 text-gray-300">
           We encountered an error while loading your statistics. This might be a temporary issue.
         </p>
 
