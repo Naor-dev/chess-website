@@ -1,6 +1,6 @@
 # Sound Effects - Implementation Plan
 
-**Last Updated:** 2026-02-18 (v11 - addressing v10 Opus HIGH/MEDIUM + Sonnet HIGH/MEDIUM)
+**Last Updated:** 2026-02-18 (v12 - addressing v11 Opus CRITICAL/HIGH + Sonnet HIGH/MEDIUM)
 
 ## Executive Summary
 
@@ -68,6 +68,7 @@ Add chess sound effects for moves, captures, check, castling, promotion, and gam
      ```typescript
      // Pool: one element per sound type (9 total)
      const audioPool = useRef<Map<SoundType, HTMLAudioElement>>();
+     // On creation: audio.preload = 'auto' (ensures browsers buffer the audio)
      ```
    - **Preload timing:** In `useEffect` after game data loads (avoid blocking initial render). Not on app-wide mount - only on game page visit. Guard against React StrictMode double-invoke with an `initialized` ref (`if (initialized.current) return`)
    - **Audio load failure handling:** If MP3 file fails to load (404, network error), handle `onerror` on HTMLAudioElement, log to Sentry (not console.error), mark that sound as unavailable in an `availableSounds: Set<SoundType>` ref, continue silently. The `play()` function checks `availableSounds.has(type)` before attempting playback — skips silently if unavailable
@@ -79,7 +80,7 @@ Add chess sound effects for moves, captures, check, castling, promotion, and gam
    - **All `audio.play()` calls must use `.catch(() => {})`** — `play()` returns a Promise that rejects with `AbortError` when interrupted (e.g., rapid `pause()` then `play()`). A synchronous try-catch does NOT catch async Promise rejections. Pattern: `audio.play().catch(() => {})` to suppress unhandled rejection warnings
    - Sound interruption: `audio.pause(); audio.currentTime = 0;` before each `play()` (reuse pool, limit active Audio objects)
    - **Tab visibility:** Suppress sounds when `document.visibilityState !== 'visible'` (listen to `visibilitychange` event)
-   - **Cleanup on unmount:** Pause all audio elements, clear their `src`, remove event listeners, clear the audio pool Map. **StrictMode note:** Cleanup must set `initialized.current = false` so the second mount re-initializes. Without clearing `src` on the first mount's elements, they'd be orphaned (not GC'd while holding a network resource)
+   - **Cleanup on unmount:** Pause all audio elements, clear their `src`, remove event listeners, clear the audio pool Map. **StrictMode note:** Cleanup must set `initialized.current = false` so the second mount re-initializes. Without clearing `src` on the first mount's elements, they'd be orphaned (not GC'd while holding a network resource). **Ref cleanup behaviors differ by purpose:** `initialized` resets to `false` on cleanup (must re-run init on StrictMode remount), but `wasGameOverOnLoad` (Step 7) must NOT reset (it's a one-time snapshot of initial game state that must survive StrictMode remount). Document this asymmetry with comments in both locations
    - **`prefers-reduced-motion`:** Audio is NOT suppressed by `prefers-reduced-motion` — sounds are not motion/animation. Users who want silence should use the mute control. Low-time warning is the only sound that could be argued as disruptive, but it's a functional alert, not decorative
    - **Acceptance:** Hook plays sounds without lag, respects user preferences, works in SSR, no memory leaks
 
@@ -109,8 +110,10 @@ Add chess sound effects for moves, captures, check, castling, promotion, and gam
      - **Sound priority** (when multiple flags): check > promotion > capture > castling > move
        - **Promotion + capture:** Plays promotion sound (promotion is the rarer, more significant event)
        - **Promotion + check:** Plays check sound (check takes highest priority always)
-   - **`determineGameOverSoundType(result: GameResult): SoundType`** — co-located in same file. Use an **exhaustive `Record<GameResult, SoundType>` map** (not `startsWith` matching) for compile-time safety — adding a new `GameResult` variant will produce a TS error instead of silently falling through:
+   - **`determineGameOverSoundType(result: GameResult): SoundType`** — co-located in same file. `GameResult` imported from `@chess-website/shared` (`packages/shared/src/types/game.ts`). Use an **exhaustive `Record<GameResult, SoundType>` map** (not `startsWith` matching) for compile-time safety — adding a new `GameResult` variant will produce a TS error instead of silently falling through:
      ```typescript
+     import type { GameResult } from '@chess-website/shared';
+
      const GAME_OVER_SOUND_MAP: Record<GameResult, SoundType> = {
        user_win_checkmate: 'gameOverWin',
        user_win_timeout: 'gameOverWin',
@@ -119,7 +122,7 @@ Add chess sound effects for moves, captures, check, castling, promotion, and gam
        user_resigned: 'gameOverLoss',
        draw_stalemate: 'gameOverDraw',
        draw_insufficient_material: 'gameOverDraw',
-       draw_threefold_repetition: 'gameOverDraw',
+       draw_repetition: 'gameOverDraw',
        draw_fifty_moves: 'gameOverDraw',
      } satisfies Record<GameResult, SoundType>;
      ```
@@ -136,7 +139,7 @@ Add chess sound effects for moves, captures, check, castling, promotion, and gam
      - `onSquareClick` delegates to `onDrop`, so `onDrop` covers drag-and-drop AND click-to-move
      - **`onKeyboardMove` is a separate, independent code path** with its own `testChess.move()`, optimistic update, and `gameApi.makeMove()` call. It does NOT delegate to `onDrop`. Both paths must have sound integration
      - Do NOT add sound in `onSquareClick` (would cause duplicate sounds with `onDrop`)
-   - **User move sound (both paths):** Play at the optimistic update point (before API call), using the `testChess.move()` result which has flags. Use `testChess.inCheck()` (not main `chess`) for check detection since `testChess` reflects the post-move state. **Variable scoping note:** `testChess` and `moveResult` are declared inside a `try` block — sound code must be placed inside that same `try` block (after `testChess.move()` succeeds, before the API call). All sound-related code uses only locally-scoped variables within the handler — no new state or context dependencies are introduced
+   - **User move sound (both paths):** Play at the optimistic update point (before API call), using the `testChess.move()` result which has flags. Use `testChess.inCheck()` (not main `chess`) for check detection since `testChess` reflects the post-move state. **Variable scoping note:** `testChess` and `moveResult` are declared inside a `try` block — sound code MUST be placed inside that same `try` block (after the `if (!moveResult) return false` guard, before the API call). `onDrop` returns `boolean` (react-chessboard contract): `false` for invalid moves, `true` at the end. Sound code must not interfere with this return flow — since `playRef.current()` is fire-and-forget (`.catch(() => {})` internally), it cannot throw or prevent `return true`. All sound-related code uses only locally-scoped variables within the handler — no new state or context dependencies are introduced
    - **Promotion sound timing:** Currently auto-queens (no promotion picker yet) — play promotion sound immediately at the optimistic update point. When the promotion picker UI is added (PR #150), sound must move to fire **after** piece selection completes (not on pawn drop to last rank). The `determineSoundType()` call stays the same; only the trigger timing changes
    - **Game-over sound — 3 trigger paths:**
      1. **Checkmate/stalemate via makeMove:** In `.then()` handler, check `result.game.isGameOver && !previousGame.isGameOver`
@@ -156,10 +159,16 @@ Add chess sound effects for moves, captures, check, castling, promotion, and gam
 8. **Engine move sound detection**
    - Backend returns `engineMove.san` but not flags
    - **Code change required in BOTH `onDrop` and `onKeyboardMove`:** `result.engineMove` is currently **unused** on the frontend - `setGame(result.game)` is the only action taken on API response. Must add code to read `result.engineMove.san` and replay it client-side
-   - **FEN race condition fix (both paths):** Capture `userMoveFen` AFTER the try/catch block (where `newFen` is assigned via `testChess.fen()`) and BEFORE the `gameApi.makeMove()` call. `newFen` is `let`-declared before the try block so it's accessible. Do NOT use `result.game.fen` (that's after the engine moved) or `game.currentFen` (stale due to optimistic update):
+   - **Explicit `onKeyboardMove` sub-checklist** (independent code path, easy to forget):
+     - [ ] Capture `userMoveFen` after valid move (same pattern as `onDrop`)
+     - [ ] Play user move sound via `playRef.current()` inside `try` block
+     - [ ] Add engine move sound replay in `.then()` handler
+     - [ ] Verify return flow is not affected (onKeyboardMove returns void, simpler than onDrop)
+   - **FEN race condition fix (both paths):** Capture `userMoveFen` AFTER a successful `testChess.move()` but BEFORE the `gameApi.makeMove()` call. **Guard:** Only capture `userMoveFen` when `moveResult` is non-null (i.e., after the `if (!moveResult) return` guard passes). `newFen` is `let`-declared before the `try` block so it's accessible outside. Do NOT use `result.game.fen` (that's after the engine moved) or `game.currentFen` (stale due to optimistic update):
      ```typescript
-     // AFTER try/catch, BEFORE API call (in BOTH onDrop and onKeyboardMove)
-     const userMoveFen = newFen; // newFen was assigned inside try via testChess.fen()
+     // AFTER moveResult validation, BEFORE API call (in BOTH onDrop and onKeyboardMove)
+     // newFen was assigned inside try via testChess.fen() — only valid if moveResult is non-null
+     const userMoveFen = newFen;
 
      // In the .then() handler (same pattern for both paths):
      if (result.engineMove?.san) {
@@ -211,7 +220,7 @@ Add chess sound effects for moves, captures, check, castling, promotion, and gam
     - Create `apps/frontend/vitest.config.ts` with jsdom environment and `@` path alias matching `tsconfig.json`
     - Add `"test": "vitest run"` script to `apps/frontend/package.json`
     - **Scope:** Keep minimal — only configure enough to test pure functions (`determineSoundType`) and the `useSound` hook with mocked `HTMLAudioElement`. Do NOT attempt to test full page components (App Router `'use client'` directives, React Server Components) — leave that to Playwright
-    - **CI integration:** CI uses `pnpm -r test` (not turbo) which runs the `test` script in all workspaces that have one. Adding `"test": "vitest run"` to frontend's `package.json` is sufficient — no `turbo.json` changes needed. Run `pnpm deps:check` locally after adding vitest to catch outdated/deprecated warnings before pushing
+    - **CI integration:** CI uses `pnpm -r test` (not turbo) which runs the `test` script in all workspaces that have one. Adding `"test": "vitest run"` to frontend's `package.json` is sufficient — no `turbo.json` changes needed. **Vitest vs Jest compatibility:** Both exit with code 1 on failure, which is what CI checks. Vitest uses a different output format but `pnpm -r test` reports pass/fail per workspace regardless. Run `pnpm deps:check` locally after adding vitest to catch outdated/deprecated warnings before pushing
     - **Acceptance:** `cd apps/frontend && pnpm test` runs and finds test files; CI pipeline runs them
 
 13. **Unit tests**
@@ -282,6 +291,12 @@ Add chess sound effects for moves, captures, check, castling, promotion, and gam
 - Resign sound type correctness — `user_resigned` maps to `gameOverLoss` in exhaustive Record (Opus LOW v11 - confirmed correct)
 - Game page missing from axe-core spec (Sonnet v11 - out of scope for sound PR; tracked separately)
 - React 19 batching assumption for `wasGameOverOnLoad` (Sonnet v11 - valid in React 19; documented as assumption)
+- `onSquareClick` delegation to `onDrop` — verify during implementation (Opus LOW v12 - reasonable assumption with react-chessboard v5)
+- `playRef` pattern confirmed sound (Opus LOW v12 - stable ref avoids dep array pollution, no new deps)
+- Volume slider `step="10"` label phrasing — "10 percentage points" vs "10%" (Sonnet LOW v12 - functionally identical, cosmetic)
+- Phase 1 smoke test may need temporary button if SoundControl not wired yet (Sonnet LOW v12 - implementation detail)
+- Service Worker / PWA interference with audio caching (Sonnet v12 - future concern; no SW exists currently)
+- Mid-play tab hiding for long sounds (Sonnet v12 - sounds are <1s clips, negligible)
 
 ## Dependencies
 

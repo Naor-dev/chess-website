@@ -1,6 +1,6 @@
 # Sound Effects - Task Checklist
 
-**Last Updated:** 2026-02-18 (aligned with plan v9)
+**Last Updated:** 2026-02-18 (aligned with plan v12)
 
 ## Phase 1: Audio Infrastructure
 
@@ -10,10 +10,12 @@
 - [ ] 3. Create `useSound.ts` hook with HTMLAudioElement pool
 - [ ] 3. Preload audio on game page visit (StrictMode-safe with `initialized` ref)
 - [ ] 3. Handle volume/mute state + localStorage persistence (SSR guard + Safari private mode)
-- [ ] 3. First-interaction unlock for iOS Safari (AudioContext create+resume+close)
+- [ ] 3. First-interaction unlock for iOS Safari (silent `.play()` on pool element at zero volume)
 - [ ] 3. Tab visibility suppression (`document.visibilityState`)
 - [ ] 3. Audio load failure -> mark unavailable in `availableSounds` Set, report to Sentry
+- [ ] 3. Set `audio.preload = 'auto'` on pool element creation
 - [ ] 3. Cleanup on unmount (clear pool, listeners, `initialized.current = false`)
+- [ ] 3. Document ref cleanup asymmetry: `initialized` resets, `wasGameOverOnLoad` does NOT
 - [ ] 4. Create `SoundControl.tsx` (mute toggle + volume slider)
 - [ ] 4. Place after `<GameInfo>`, before resign/save controls
 - [ ] 4. Speaker icon changes by volume level (muted, low, medium, high)
@@ -24,18 +26,24 @@
 ## Phase 2: Game Event Integration
 
 - [ ] 5. Create `determineSoundType()` in `soundUtils.ts` (priority: check > promotion > capture > castling > move)
-- [ ] 5. Create `determineGameOverSoundType()` (GameResult -> gameOverWin/Loss/Draw)
+- [ ] 5. Create `determineGameOverSoundType()` with exhaustive `Record<GameResult, SoundType>` map
+- [ ] 5. Use `import type { GameResult } from '@chess-website/shared'` (explicit import source)
+- [ ] 5. Use `draw_repetition` (NOT `draw_threefold_repetition`) as variant name
 - [ ] 6. Retain `testChess.move()` result flags in `onDrop` for sound selection
 - [ ] 6. Retain `testChess.move()` result flags in `onKeyboardMove` for sound selection
 - [ ] 7. Add `playRef` pattern (`useRef(play)` + sync useEffect)
-- [ ] 7. Play user move sound in `onDrop` (at optimistic update, before API call)
-- [ ] 7. Play user move sound in `onKeyboardMove` (same pattern)
-- [ ] 7. Add `wasGameOverOnLoad` ref, set on initial `fetchGame()`
+- [ ] 7. Play user move sound in `onDrop` (inside `try` block, after `!moveResult` guard, before API call)
+- [ ] 7. Verify `onDrop` return flow unaffected (`playRef.current()` is fire-and-forget)
+- [ ] 7. Play user move sound in `onKeyboardMove` (same pattern, inside `try` block)
+- [ ] 7. Add `wasGameOverOnLoad` + `hasSetInitialGameOver` refs
 - [ ] 7. Add game-over useEffect (watch `game?.isGameOver`, gate with `wasGameOverOnLoad`)
-- [ ] 8. Capture `userMoveFen` before API call in `onDrop`
-- [ ] 8. Capture `userMoveFen` before API call in `onKeyboardMove`
+- [ ] 8. Capture `userMoveFen` after moveResult non-null guard in `onDrop`
 - [ ] 8. Play engine move sound in `onDrop` `.then()` (replay SAN on temp Chess)
-- [ ] 8. Play engine move sound in `onKeyboardMove` `.then()` (same pattern)
+- [ ] 8. `onKeyboardMove` sub-checklist:
+  - [ ] Capture `userMoveFen` after valid move (same pattern as `onDrop`)
+  - [ ] Play user move sound via `playRef.current()` inside `try` block
+  - [ ] Add engine move sound replay in `.then()` handler
+  - [ ] Verify return flow not affected (returns void, simpler than onDrop)
 - [ ] 9. Add low-time warning sound (10s threshold)
 - [ ] 9. Add 5s cooldown guard (`lastWarningTime` ref) for increment games
 - [ ] 9. Reset `hasPlayedWarning` when time rises above 10s
@@ -50,7 +58,8 @@
 - [ ] 11. Verify volume slider keyboard accessible (arrows, Home/End)
 - [ ] 12. Set up vitest + @testing-library/react + jsdom (frontend has zero test infra)
 - [ ] 12. Add `vitest.config.ts` with jsdom env + `@` path alias
-- [ ] 12. Add `"test": "vitest run"` to `package.json`
+- [ ] 12. Add `"test": "vitest run"` to `package.json` (CI compatible — both Vitest/Jest exit code 1 on failure)
+- [ ] 12. Run `pnpm deps:check` locally after adding vitest
 - [ ] 13. Unit tests: `determineSoundType()` all flag combos + priority
 - [ ] 13. Unit tests: `determineGameOverSoundType()` all GameResult variants
 - [ ] 13. Unit tests: `useSound` play/setVolume/toggleMute

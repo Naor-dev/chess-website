@@ -1,6 +1,6 @@
 # Sound Effects - Context
 
-**Last Updated:** 2026-02-18 (aligned with plan v9)
+**Last Updated:** 2026-02-18 (aligned with plan v12)
 
 ## Key Files
 
@@ -22,14 +22,17 @@
 
 ## Key Decisions
 
-1. **HTMLAudioElement pool** (primary) - no AudioContext needed for playback. AudioContext only as one-time iOS Safari unlock
+1. **HTMLAudioElement pool** (primary) - one element per SoundType (9 total), `audio.preload = 'auto'`. No AudioContext needed for playback. iOS Safari unlock uses silent `.play()` on pool element (not AudioContext create/resume/close)
 2. **CC0 sounds from freesound.org** - NOT Lichess (AGPL). MP3 only, 64kbps mono, <50KB each
-3. **Two integration points**: `onDrop` (drag + click-to-move) AND `onKeyboardMove` (keyboard input) - they are independent code paths
+3. **Two integration points**: `onDrop` (drag + click-to-move) AND `onKeyboardMove` (keyboard input) - independent code paths, both need identical sound integration
 4. **Preferences**: localStorage keys `chessSound.volume` (default 0.7), `chessSound.muted` (default false)
 5. **No backend changes**: All sound logic is frontend-only
 6. **No new npm deps** for audio (vitest + testing-library for tests only)
-7. **playRef pattern**: Stable ref avoids polluting dependency arrays
+7. **playRef pattern**: Stable ref avoids polluting dependency arrays — `onDrop` dep array stays `[game, chess, gameId, isMoving]`
 8. **prefers-reduced-motion**: Audio NOT suppressed - sounds aren't motion. Users use mute control
+9. **Ref cleanup asymmetry**: `initialized` resets on cleanup (StrictMode remount), `wasGameOverOnLoad` does NOT (one-time snapshot)
+10. **Variable scoping**: Sound code MUST be inside `try` block (after `if (!moveResult) return` guard, before API call)
+11. **`onDrop` return flow**: Returns `boolean` (react-chessboard contract). `playRef.current()` is fire-and-forget, cannot interfere
 
 ## Sound Type Detection
 
@@ -38,16 +41,18 @@
 function determineSoundType(moveResult: Move, isInCheck: boolean): SoundType
 // Priority: check > promotion > capture/enPassant > castling > move
 
-// Game-over mapping in soundUtils.ts
+// Game-over mapping in soundUtils.ts (import type { GameResult } from '@chess-website/shared')
 function determineGameOverSoundType(result: GameResult): SoundType
+// Exhaustive Record<GameResult, SoundType> map — compile-time safe
 // user_win_* -> gameOverWin, draw_* -> gameOverDraw, else -> gameOverLoss
+// Note: variant is `draw_repetition` (NOT `draw_threefold_repetition`)
 ```
 
-**Engine moves**: Backend returns `engineMove.san` but no flags. Replay SAN on temp `Chess(userMoveFen)` client-side to get flags. `userMoveFen` captured BEFORE API call (not from response).
+**Engine moves**: Backend returns `engineMove.san` but no flags. Replay SAN on temp `Chess(userMoveFen)` client-side to get flags. `userMoveFen` captured AFTER `moveResult` validation (non-null guard) but BEFORE API call. Do NOT use `result.game.fen` or `game.currentFen`.
 
 ## Critical Edge Cases
 
-- **onKeyboardMove**: Separate path from onDrop, both need identical sound integration
+- **onKeyboardMove**: Separate path from onDrop, has its own `testChess.move()`, optimistic update, and API call. Explicit sub-checklist in plan Step 8: capture userMoveFen, play user move sound, add engine move sound replay, verify return flow (returns void, simpler than onDrop)
 - **Game-over vs modal timing**: Sound fires immediately via useEffect, modal has 500ms delay (intentional)
 - **Tab visibility re-fetch**: Game ending while tab hidden -> sound plays on return (correct behavior)
 - **Low-time warning cooldown**: 5s cooldown prevents spam with small increments (e.g., bullet_2min 1s increment)
@@ -67,9 +72,15 @@ function determineGameOverSoundType(result: GameResult): SoundType
 ## Browser Autoplay Policy
 
 - Chrome/Safari block audio until user gesture
-- One-time click/keydown listener creates+resumes+closes AudioContext for iOS Safari
+- First-interaction: silent `.play()` on pool element at zero volume (simpler than AudioContext create/resume/close)
 - Graceful degradation: if blocked, show mute indicator, no retry spam
 - `document.visibilityState !== 'visible'` suppresses sounds in background tabs
+
+## CI/Testing Notes
+
+- Frontend test infra: Vitest + @testing-library/react + jsdom (zero test infra currently exists)
+- CI uses `pnpm -r test` — both Vitest and Jest exit with code 1 on failure, compatible
+- Run `pnpm deps:check` locally after adding vitest to catch outdated/deprecated warnings
 
 ## Existing Code to Reuse
 
