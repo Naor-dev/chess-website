@@ -1,12 +1,15 @@
 # Sound Effects - Task Checklist
 
-**Last Updated:** 2026-02-18 (aligned with plan v12)
+**Last Updated:** 2026-02-18 (aligned with plan v13)
 
 ## Phase 1: Audio Infrastructure
 
 - [ ] 1. Source/create 9 CC0 licensed MP3 sound files (or generate placeholders via ffmpeg)
+- [ ] 1. Peak normalize to -1dB, then manual QA listening test for perceived loudness consistency
+- [ ] 1. Document any per-file gain adjustments in `LICENSE.txt`
 - [ ] 1. Add files to `apps/frontend/public/sounds/` + `LICENSE.txt`
 - [ ] 2. Add `media-src 'self'` to CSP in `next.config.ts`
+- [ ] 2. Verify CSP via `curl -I localhost:3000` or dev tools response headers
 - [ ] 3. Create `useSound.ts` hook with HTMLAudioElement pool
 - [ ] 3. Preload audio on game page visit (StrictMode-safe with `initialized` ref)
 - [ ] 3. Handle volume/mute state + localStorage persistence (SSR guard + Safari private mode)
@@ -38,6 +41,7 @@
 - [ ] 7. Add `wasGameOverOnLoad` + `hasSetInitialGameOver` refs
 - [ ] 7. Add game-over useEffect (watch `game?.isGameOver`, gate with `wasGameOverOnLoad`)
 - [ ] 8. Capture `userMoveFen` after moveResult non-null guard in `onDrop`
+- [ ] 8. Add stale `gameId` guard in `.then()` handler before playing engine sound
 - [ ] 8. Play engine move sound in `onDrop` `.then()` (replay SAN on temp Chess)
 - [ ] 8. `onKeyboardMove` sub-checklist:
   - [ ] Capture `userMoveFen` after valid move (same pattern as `onDrop`)
@@ -56,11 +60,12 @@
 - [ ] 11. Verify all sounds supplementary to visual feedback
 - [ ] 11. Verify mute button keyboard accessible (Tab, Enter/Space)
 - [ ] 11. Verify volume slider keyboard accessible (arrows, Home/End)
+- [ ] 11. Verify audio errors don't trigger page error boundary (`game/[id]/error.tsx`)
 - [ ] 12. Set up vitest + @testing-library/react + jsdom (frontend has zero test infra)
 - [ ] 12. Add `vitest.config.ts` with jsdom env + `@` path alias
 - [ ] 12. Add `"test": "vitest run"` to `package.json` (CI compatible — both Vitest/Jest exit code 1 on failure)
 - [ ] 12. Run `pnpm deps:check` locally after adding vitest
-- [ ] 13. Unit tests: `determineSoundType()` all flag combos + priority
+- [ ] 13. Unit tests: `determineSoundType()` all flag combos + priority (include impossible combo test)
 - [ ] 13. Unit tests: `determineGameOverSoundType()` all GameResult variants
 - [ ] 13. Unit tests: `useSound` play/setVolume/toggleMute
 - [ ] 13. Unit tests: localStorage persistence + SSR guard
@@ -71,6 +76,7 @@
 - [ ] 14. Playwright: mute state persists across reload
 - [ ] 14. Playwright: audio element state after move (`.paused`, `.currentTime`)
 - [ ] 14. Playwright: no CSP violations
+- [ ] 14. Playwright: simulate audio load failure, verify error boundary NOT triggered
 
 ## Verification
 

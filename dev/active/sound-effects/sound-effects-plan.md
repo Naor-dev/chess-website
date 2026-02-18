@@ -1,6 +1,6 @@
 # Sound Effects - Implementation Plan
 
-**Last Updated:** 2026-02-18 (v12 - addressing v11 Opus CRITICAL/HIGH + Sonnet HIGH/MEDIUM)
+**Last Updated:** 2026-02-18 (v13 - addressing remaining Sonnet CRITICAL/MEDIUM from v10 review)
 
 ## Executive Summary
 
@@ -43,7 +43,7 @@ Add chess sound effects for moves, captures, check, castling, promotion, and gam
    - Game over - draw (neutral)
    - Low time warning (10 seconds remaining)
    - File format: **MP3 only** (universally supported, OGG unnecessary)
-   - Normalize all files to consistent loudness (peak normalize to -1dB via Audacity; -23 LUFS is ideal but requires specialized tooling - peak normalization is acceptable)
+   - **Normalization approach:** Peak normalize to -1dB via Audacity, then manual QA listening test across all 9 sounds to verify consistent perceived loudness. **Trade-off documented:** -23 LUFS (integrated loudness) would guarantee perceptual consistency but requires `ffmpeg-normalize` or similar tooling. Peak normalization is simpler but can result in files with different perceived loudness (e.g., a sharp click vs. a sustained tone). **Mitigation:** After peak normalization, play all 9 sounds at the same volume setting and adjust individual file gains in Audacity until they sound equally loud. Document any per-file gain adjustments in `LICENSE.txt`
    - Create `public/sounds/LICENSE.txt` with per-file CC0 attribution and source URLs
    - Target: MP3 at 64kbps mono, ~5-15KB per file
    - Place in `public/sounds/` directory (static paths only, never user-supplied URLs)
@@ -53,7 +53,7 @@ Add chess sound effects for moves, captures, check, castling, promotion, and gam
 2. **Add `media-src 'self'` to CSP**
    - `media-src` is **not explicitly defined** in `next.config.ts` - `default-src 'self'` already covers same-origin audio, but explicitly add `media-src 'self'` for clarity and future-proofing
    - **Note:** Audio will likely work without this change (covered by `default-src 'self'`), but explicit is better than implicit - don't use this as a debugging red herring if audio doesn't play
-   - **Acceptance:** CSP header includes `media-src 'self'`, audio files load without CSP errors
+   - **Acceptance:** (1) Inspect response headers in dev tools or `curl -I localhost:3000` to confirm CSP includes `media-src 'self'`; (2) Playwright test (step 14) verifies no CSP violation console errors when playing sounds
 
 3. **Create `useSound` hook** in `apps/frontend/src/hooks/`
    - Type-safe sound names via TypeScript enum:
@@ -110,6 +110,7 @@ Add chess sound effects for moves, captures, check, castling, promotion, and gam
      - **Sound priority** (when multiple flags): check > promotion > capture > castling > move
        - **Promotion + capture:** Plays promotion sound (promotion is the rarer, more significant event)
        - **Promotion + check:** Plays check sound (check takes highest priority always)
+       - **Defensive note:** The priority chain handles all valid chess flag combinations. If chess.js ever produces unexpected flag combos (e.g., castling + capture — impossible in standard chess), the priority chain still returns the highest-priority match. No special error handling needed — the function always returns a valid `SoundType`. Add a unit test for an impossible flag combo to verify graceful fallback
    - **`determineGameOverSoundType(result: GameResult): SoundType`** — co-located in same file. `GameResult` imported from `@chess-website/shared` (`packages/shared/src/types/game.ts`). Use an **exhaustive `Record<GameResult, SoundType>` map** (not `startsWith` matching) for compile-time safety — adding a new `GameResult` variant will produce a TS error instead of silently falling through:
      ```typescript
      import type { GameResult } from '@chess-website/shared';
@@ -183,13 +184,14 @@ Add chess sound effects for moves, captures, check, castling, promotion, and gam
      ```
    - Use same `determineSoundType()` function as user moves
    - Play sound when engine response arrives (in the `.then()` handler), alongside `setGame(result.game)`
+   - **Stale response guard:** In the `.then()` handler, before playing engine sound, verify `gameId` hasn't changed (user may have navigated away). Compare the `gameId` captured at call time against the current `gameId` from the outer scope. If they differ, skip the engine sound silently (the user is viewing a different game)
    - **No debounce initially** - user sound plays at optimistic update, engine sound plays when API responds (200ms+ later). Natural gap prevents clashing. **Intended UX flow:** user move sound → EngineThinkingOverlay appears → engine move sound → board updates. Add debounce only if testing reveals actual overlap
    - **Tab-hidden engine move:** If the user's tab is hidden when the API response arrives, the engine move sound is suppressed by the visibility check. When the user returns, `fetchGame()` updates the board but no engine sound plays (the `.then()` handler already executed). This is acceptable — a stale engine move sound on tab return would be confusing
    - **Acceptance:** Engine moves produce correct sounds via both input methods, no audio clashing with user moves
 
 9. **Add low-time warning sound**
    - Watch `displayTimeUser` (local state, in **milliseconds**) — the client-side ticking value, NOT `game.timeLeftUser` which only updates on API responses
-   - Trigger when `displayTimeUser < 10_000` (10 seconds), separate from existing `isLowTime` visual indicator at 30s (`< 30000`)
+   - Trigger when `displayTimeUser < 10_000` (10 seconds), separate from existing `isLowTime` visual indicator at 30s (`< 30000`). **UX rationale for different thresholds:** The visual indicator (red clock at 30s) serves as a gentle "heads up" — the player notices time is running low. The audio warning at 10s is an urgent alert — time is critically low and requires immediate action. Two distinct thresholds create a progressive urgency ramp: visual awareness at 30s → audio urgency at 10s. A single threshold would either make the audio too early (annoying at 30s) or the visual too late (useless at 10s)
    - Play once per threshold crossing (use `hasPlayedWarning` ref). **Page load guard:** If the game loads with `displayTimeUser` already below 10s, initialize `hasPlayedWarning.current = true` to prevent a warning sound on page load (violates "no sound on initial game load")
    - For games WITH increment: reset `hasPlayedWarning` when `displayTimeUser` rises above `10_000` (increment applied). **Cooldown guard:** Track `lastWarningTime` ref — suppress re-triggering within 5 seconds of the last warning to prevent spam near the boundary (e.g., `bullet_2min` with 1s increment oscillating around 10s)
    - For games WITHOUT increment: play once, never reset (clock only decreases)
@@ -212,7 +214,8 @@ Add chess sound effects for moves, captures, check, castling, promotion, and gam
     - Volume slider: use native `<input type="range">` which provides `aria-label`, `aria-valuenow`, `aria-valuemin`, `aria-valuemax`, and arrow key support for free. Arrow keys adjust by 10%, Home/End for min/max
     - Screen reader announces mute state change ("Sound enabled" / "Sound muted")
     - No sound auto-plays before user interaction (autoplay policy)
-    - **Acceptance:** All visual feedback works with sound muted, volume slider fully keyboard-operable
+    - **Error boundary isolation:** Verify that audio errors (load failure, playback rejection) do NOT propagate to page-level error boundaries (`game/[id]/error.tsx`). All `audio.play()` calls use `.catch(() => {})`, and `onerror` handlers log to Sentry without throwing. Test in Playwright: simulate audio load failure (e.g., rename sound file), confirm game page still renders and functions without triggering error boundary
+    - **Acceptance:** All visual feedback works with sound muted, volume slider fully keyboard-operable, audio failures never trigger error boundaries
 
 12. **Set up frontend unit test infrastructure (prerequisite)**
     - The frontend currently has **zero unit test infrastructure** — only Playwright E2E tests exist
