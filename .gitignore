@@ -57,8 +57,10 @@ dev/
 # Husky hooks (local only)
 .husky/
 
-# Playwright MCP screenshots
+# Playwright
 .playwright-mcp/
+test-results/
+playwright-report/
 
 # Sentry Config File
 .env.sentry-build-plugin

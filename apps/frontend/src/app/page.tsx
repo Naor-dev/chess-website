@@ -172,7 +172,7 @@ export default function Home() {
               <nav aria-label="Main navigation" className="flex flex-col gap-3">
                 <Link
                   href="/game/new"
-                  className="group flex h-14 items-center justify-center gap-3 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-500 px-8 font-semibold text-white shadow-lg shadow-emerald-500/25 transition-all hover:shadow-xl hover:shadow-emerald-500/30 active:scale-[0.98]"
+                  className="group flex h-14 items-center justify-center gap-3 rounded-xl bg-gradient-to-r from-emerald-700 to-emerald-600 px-8 font-semibold text-white shadow-lg shadow-emerald-500/25 transition-all hover:shadow-xl hover:shadow-emerald-500/30 active:scale-[0.98]"
                 >
                   <svg
                     aria-hidden="true"

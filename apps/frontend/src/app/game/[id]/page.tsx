@@ -719,7 +719,7 @@ export default function GamePage() {
             <div className="flex gap-3 pt-2">
               <Link
                 href="/game/new"
-                className="flex-1 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-500 px-6 py-3 text-center font-semibold text-white shadow-lg shadow-emerald-500/25 transition-all hover:shadow-xl hover:shadow-emerald-500/30 active:scale-[0.98]"
+                className="flex-1 rounded-xl bg-gradient-to-r from-emerald-700 to-emerald-600 px-6 py-3 text-center font-semibold text-white shadow-lg shadow-emerald-500/25 transition-all hover:shadow-xl hover:shadow-emerald-500/30 active:scale-[0.98]"
               >
                 New Game
               </Link>

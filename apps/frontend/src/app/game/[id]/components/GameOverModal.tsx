@@ -223,7 +223,7 @@ export function GameOverModal({ result, onNewGame, onGoHome }: GameOverModalProp
         <div className="flex flex-col gap-3 p-6">
           <button
             onClick={onNewGame}
-            className="w-full rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-500 px-6 py-3.5 font-semibold text-white shadow-lg shadow-emerald-500/25 transition-all hover:shadow-xl hover:shadow-emerald-500/30 active:scale-[0.98]"
+            className="w-full rounded-xl bg-gradient-to-r from-emerald-700 to-emerald-600 px-6 py-3.5 font-semibold text-white shadow-lg shadow-emerald-500/25 transition-all hover:shadow-xl hover:shadow-emerald-500/30 active:scale-[0.98]"
           >
             Play Again
           </button>

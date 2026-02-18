@@ -186,7 +186,7 @@ export default function NewGamePage() {
                   <div
                     className={`flex h-12 w-12 items-center justify-center rounded-xl text-lg font-bold transition-colors ${
                       difficulty === option.value
-                        ? 'bg-emerald-600 text-white'
+                        ? 'bg-emerald-700 text-white'
                         : 'bg-zinc-100 text-zinc-500 group-hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-400 dark:group-hover:bg-zinc-700'
                     }`}
                   >
@@ -205,7 +205,7 @@ export default function NewGamePage() {
                   </div>
                 </div>
                 {difficulty === option.value && (
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-600">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-700">
                     <svg
                       aria-hidden="true"
                       className="h-5 w-5 text-white"
@@ -322,7 +322,7 @@ export default function NewGamePage() {
         <button
           onClick={handleStartGame}
           disabled={isCreating}
-          className="group flex h-14 w-full items-center justify-center gap-3 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-500 font-semibold text-white shadow-lg shadow-emerald-500/25 transition-all hover:shadow-xl hover:shadow-emerald-500/30 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 fade-in"
+          className="group flex h-14 w-full items-center justify-center gap-3 rounded-xl bg-gradient-to-r from-emerald-700 to-emerald-600 font-semibold text-white shadow-lg shadow-emerald-500/25 transition-all hover:shadow-xl hover:shadow-emerald-500/30 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 fade-in"
           style={{ animationDelay: '0.4s' }}
         >
           {isCreating ? (
