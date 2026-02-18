@@ -134,8 +134,9 @@ Key pages:
 - `/auth/error` - Auth error display
 - `/game/new` - New game settings (difficulty, time control)
 - `/game/[id]` - Game board with clocks and status
-- `/game/[id]/components/` - Extracted components (ChessClock, GameInfo, DifficultyBadge, GameOverModal, EngineThinkingOverlay)
+- `/game/[id]/components/` - Extracted components (ChessClock, GameInfo, DifficultyBadge, GameOverModal, EngineThinkingOverlay, BoardDescription, KeyboardMoveInput)
 - `/history` - Game history (active and completed games)
+- `/stats` - Player statistics (win rate, difficulty breakdown, time control charts)
 
 ### Shared Package (packages/shared)
 
@@ -256,10 +257,12 @@ cd apps/backend && npx jest --testNamePattern="createGame"
 apps/backend/src/
 ├── services/__tests__/
 │   ├── gameService.test.ts    # Unit tests (mock repository)
+│   ├── statsService.test.ts   # Stats aggregation tests
 │   └── engineService.test.ts  # Stockfish engine tests
 └── controllers/__tests__/
-    ├── gameController.test.ts # API integration tests (supertest)
-    └── authController.test.ts # Auth API tests
+    ├── gameController.test.ts  # API integration tests (supertest)
+    ├── authController.test.ts  # Auth API tests
+    └── statsController.test.ts # Stats API tests
 ```
 
 **Test patterns:**
@@ -280,7 +283,7 @@ const response = await request(app)
   .send({ difficultyLevel: 3, timeControlType: 'blitz_5min' });
 ```
 
-**Current coverage:** 134 tests (40 gameService + 64 gameController + 24 authController + 6 engineService)
+**Current coverage:** 151 tests (40 gameService + 64 gameController + 24 authController + 6 engineService + 17 statsService/Controller)
 
 ### Playwright UI Testing
 
@@ -294,7 +297,21 @@ const response = await request(app)
    - Verify visual feedback (loading states, error messages, success states)
    - Take screenshots to document the testing
 
-**Example test flow for game features:**
+**Playwright e2e tests** (automated, run in CI):
+
+```bash
+# Run all e2e tests (requires dev servers running)
+cd apps/frontend && npx playwright test
+
+# Run specific e2e test
+cd apps/frontend && npx playwright test accessibility.spec.ts
+cd apps/frontend && npx playwright test stats.spec.ts
+```
+
+- `e2e/accessibility.spec.ts` - axe-core WCAG 2.1 AA checks on all pages
+- `e2e/stats.spec.ts` - Stats page functionality tests
+
+**Example manual test flow for game features:**
 
 ```
 1. Navigate to localhost:3000
@@ -426,6 +443,8 @@ GitHub Actions workflows in `.github/workflows/`:
 - Mobile responsive design, dark mode, animations
 - Input validation with Zod (gameId, email, query params, time bounds)
 - GamePage component extraction (ChessClock, GameInfo, DifficultyBadge, GameOverModal, EngineThinkingOverlay)
+- Player statistics page with charts and SR-only data tables
+- WCAG 2.1 AA accessibility (see Accessibility section below)
 
 ## Authentication Flow (BFF Pattern)
 
@@ -511,6 +530,7 @@ Key files:
 | POST   | /api/games/:gameId/move   | Make a move       |
 | POST   | /api/games/:gameId/resign | Resign game       |
 | POST   | /api/games/:gameId/save   | Save game         |
+| GET    | /api/users/stats          | Player statistics |
 
 **Frontend BFF routes (Next.js API):**
 
@@ -555,6 +575,28 @@ dev/active/[feature-name]/
 **Usage:** Start session with "Read dev/active/[feature]/[feature]-context.md for context"
 
 This preserves knowledge across context resets.
+
+## Accessibility (WCAG 2.1 AA)
+
+Full WCAG 2.1 AA compliance implemented across all pages. Key patterns:
+
+- **Skip-to-content link** - First focusable element on every page
+- **Semantic headings** - h1 > h2 > h3 hierarchy, page-specific `<title>` tags
+- **Landmarks** - `<main>`, `<nav>`, `role="region"` on board
+- **ARIA live regions** - `AriaLiveProvider` in layout, `useAriaLiveAnnouncer` hook for move/status announcements
+- **Board accessibility** - `BoardDescription` (SR-only piece positions + material), `KeyboardMoveInput` (SAN + coordinate notation)
+- **Radio groups** - Difficulty/time control selection with `role="radio"` + `aria-checked`
+- **Native `<dialog>`** - GameOverModal with focus trapping
+- **Contrast** - Minimum 4.5:1 ratio (emerald-700 for interactive elements)
+- **Reduced motion** - `prefers-reduced-motion` respected for animations
+- **axe-core CI gate** - `e2e/accessibility.spec.ts` blocks PRs on new violations
+
+Key files:
+
+- `src/hooks/useAriaLiveAnnouncer.tsx` - Hook for announcing moves/status to screen readers
+- `src/app/game/[id]/components/BoardDescription.tsx` - SR-only board state description
+- `src/app/game/[id]/components/KeyboardMoveInput.tsx` - Text input for moves (SAN + coordinate)
+- `dev/accessibility-testing-guide.md` - Full testing guide (SR, keyboard, zoom, color audit)
 
 ## Design Guidelines
 
