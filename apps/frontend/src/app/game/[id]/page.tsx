@@ -13,11 +13,13 @@ import { useAriaLiveAnnouncer, sanitizeMoveNotation } from '@/hooks/useAriaLiveA
 import { MoveReplayControls } from '@/components/MoveReplayControls';
 import type { GameResponse, MakeMoveRequest } from '@chess-website/shared';
 import {
+  BoardDescription,
   ChessClock,
   DifficultyBadge,
   EngineThinkingOverlay,
   GameInfo,
   GameOverModal,
+  KeyboardMoveInput,
 } from './components';
 
 export default function GamePage() {
@@ -380,6 +382,51 @@ export default function GamePage() {
     [game, chess, gameId, isMoving]
   );
 
+  // Handle keyboard move input (algebraic notation)
+  const onKeyboardMove = useCallback(
+    (from: Square, to: Square, promotion?: string) => {
+      if (!game || !chess || isMoving || game.isGameOver) return;
+
+      // Validate and get new FEN
+      let newFen: string;
+      try {
+        const testChess = new Chess(game.currentFen);
+        const moveResult = testChess.move({ from, to, promotion });
+        if (!moveResult) return;
+        newFen = testChess.fen();
+      } catch {
+        return;
+      }
+
+      // Optimistic update
+      const previousGame = game;
+      setGame((prev) => (prev ? { ...prev, currentFen: newFen, currentTurn: 'b' } : prev));
+      setIsMoving(true);
+      setMoveError(null);
+
+      const move: MakeMoveRequest = {
+        from,
+        to,
+        promotion: promotion as 'q' | 'r' | 'b' | 'n' | undefined,
+      };
+
+      gameApi
+        .makeMove(gameId, move)
+        .then((result) => {
+          setGame(result.game);
+        })
+        .catch((err) => {
+          console.error('Failed to make move:', err);
+          setMoveError('Failed to make move. Please try again.');
+          setGame(previousGame);
+        })
+        .finally(() => {
+          setIsMoving(false);
+        });
+    },
+    [game, chess, gameId, isMoving]
+  );
+
   // Handle square click to show possible moves
   const onSquareClick = useCallback(
     ({ square }: { piece: { pieceType: string } | null; square: string }) => {
@@ -654,6 +701,9 @@ export default function GamePage() {
 
           {/* Chess Board */}
           <div
+            role="region"
+            aria-label="Chess board"
+            aria-describedby="board-description"
             className={`relative mx-auto overflow-hidden rounded-xl sm:rounded-2xl shadow-xl sm:shadow-2xl glow transition-all ${
               invalidMove ? 'animate-shake ring-4 ring-red-500/50' : ''
             }`}
@@ -676,6 +726,7 @@ export default function GamePage() {
             {/* Engine thinking overlay - shown when waiting for engine response */}
             {isMoving && <EngineThinkingOverlay />}
           </div>
+          <BoardDescription fen={displayFen} isGameOver={game.isGameOver} isUserTurn={isUserTurn} />
 
           {/* Move error message */}
           {moveError && (
@@ -685,6 +736,17 @@ export default function GamePage() {
             >
               {moveError}
             </div>
+          )}
+
+          {/* Keyboard move input (accessible alternative to drag-and-drop) */}
+          {!isReplayMode && (
+            <KeyboardMoveInput
+              chess={chess}
+              isUserTurn={isUserTurn}
+              isGameOver={game.isGameOver}
+              isMoving={isMoving}
+              onMove={onKeyboardMove}
+            />
           )}
 
           {/* User Clock (bottom) */}
