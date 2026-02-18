@@ -132,8 +132,8 @@ test.describe('Stats Page', () => {
     // Should show empty state message
     await expect(page.getByText('Play your first game to see statistics!')).toBeVisible();
 
-    // Should show Start New Game button
-    await expect(page.getByRole('button', { name: 'Start New Game' })).toBeVisible();
+    // Should show Start New Game link
+    await expect(page.getByRole('link', { name: 'Start New Game' })).toBeVisible();
 
     // Overview cards should still show zeros
     await expect(page.getByText('Total Games')).toBeVisible();
@@ -186,8 +186,8 @@ test.describe('Stats Page', () => {
     await page.goto('/stats');
     await expect(page.getByText('Loading statistics...')).not.toBeVisible({ timeout: 5000 });
 
-    // Click back button
-    await page.getByRole('button', { name: 'Back to Home' }).click();
+    // Click back link
+    await page.getByRole('link', { name: 'Back to Home' }).click();
 
     await expect(page).toHaveURL('/', { timeout: 5000 });
   });
@@ -227,7 +227,7 @@ test.describe('Stats Page', () => {
     await page.goto('/stats');
     await expect(page.getByText('Loading statistics...')).not.toBeVisible({ timeout: 5000 });
 
-    await page.getByRole('button', { name: 'Start New Game' }).click();
+    await page.getByRole('link', { name: 'Start New Game' }).click();
     await expect(page).toHaveURL('/game/new', { timeout: 5000 });
   });
 });
