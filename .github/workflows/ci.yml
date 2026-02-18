@@ -116,8 +116,8 @@ jobs:
       - name: Install Playwright browsers
         run: pnpm --filter @chess-website/frontend exec playwright install --with-deps chromium
 
-      - name: Build frontend
-        run: pnpm --filter @chess-website/frontend build
+      - name: Build all packages
+        run: pnpm build
 
       - name: Run accessibility tests
         run: pnpm --filter @chess-website/frontend exec playwright test
