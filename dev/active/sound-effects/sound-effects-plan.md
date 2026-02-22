@@ -1,6 +1,6 @@
 # Sound Effects - Implementation Plan
 
-**Last Updated:** 2026-02-22 (v14 - addressing Opus+Sonnet v13 review: 2 HIGH, 3 MEDIUM items)
+**Last Updated:** 2026-02-22 (v15 - fix displayTimeUser initialization race from plan-reviewer)
 
 ## Executive Summary
 
@@ -193,7 +193,7 @@ Add chess sound effects for moves, captures, check, castling, promotion, and gam
 9. **Add low-time warning sound**
    - Watch `displayTimeUser` (local state, in **milliseconds**) — the client-side ticking value, NOT `game.timeLeftUser` which only updates on API responses
    - Trigger when `displayTimeUser < 10_000` (10 seconds), separate from existing `isLowTime` visual indicator at 30s (`< 30000`). **UX rationale for different thresholds:** The visual indicator (red clock at 30s) serves as a gentle "heads up" — the player notices time is running low. The audio warning at 10s is an urgent alert — time is critically low and requires immediate action. Two distinct thresholds create a progressive urgency ramp: visual awareness at 30s → audio urgency at 10s. A single threshold would either make the audio too early (annoying at 30s) or the visual too late (useless at 10s)
-   - Play once per threshold crossing (use `hasPlayedWarning` ref). **Page load guard:** If the game loads with `displayTimeUser` already below 10s, initialize `hasPlayedWarning.current = true` to prevent a warning sound on page load (violates "no sound on initial game load")
+   - Play once per threshold crossing (use `hasPlayedWarning` ref). **Initialization race guard:** `displayTimeUser` is initialized to `0` (page.tsx line 47) before `fetchGame()` populates the real value. Since `0 < 10_000`, the useEffect would incorrectly see "low time" on first render. **Fix:** Add `if (displayTimeUser === 0) return;` as the first guard in the useEffect — this skips the uninitialized state. Real time values are always ≥1ms when a game is active. **Separate page-load guard:** After the zero-check, if the game loads with `displayTimeUser` already genuinely below 10s (e.g., resuming a bullet game), initialize `hasPlayedWarning.current = true` to prevent a warning sound on page load (violates "no sound on initial game load")
    - For games WITH increment: reset `hasPlayedWarning` when `displayTimeUser` rises above `10_000` (increment applied). **Cooldown guard:** Track `lastWarningTime` ref — suppress re-triggering within 5 seconds of the last warning to prevent spam near the boundary (e.g., `bullet_2min` with 1s increment oscillating around 10s)
    - For games WITHOUT increment: play once, never reset (clock only decreases)
    - Only for player's clock (not engine)
