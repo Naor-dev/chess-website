@@ -1,6 +1,6 @@
 # Sound Effects - Implementation Plan
 
-**Last Updated:** 2026-02-22 (v17 - address plan-reviewer v16: 1 HIGH, 2 MEDIUM)
+**Last Updated:** 2026-02-22 (v18 - fix lastWarningTime initialization in page-load guard)
 
 ## Executive Summary
 
@@ -199,7 +199,7 @@ Add chess sound effects for moves, captures, check, castling, promotion, and gam
      1. `if (!game || game.isGameOver) return;` — no warnings when game not loaded or finished
      2. `if (game.timeControlType === 'none') return;` — no warnings for untimed games (where `displayTimeUser` legitimately stays `0`)
      3. `if (displayTimeUser === 0) return;` — skip uninitialized state (page.tsx line 47 initializes to `0` before `fetchGame()` populates real value)
-     4. **First-render detection:** Use `hasReceivedInitialTime` ref (starts `false`). When this guard runs with `displayTimeUser > 0` for the first time, set `hasReceivedInitialTime.current = true`. If `displayTimeUser < 10_000` on this first real render, set `hasPlayedWarning.current = true` silently (page-load guard — prevents warning on resume of a low-time game)
+     4. **First-render detection:** Use `hasReceivedInitialTime` ref (starts `false`). When this guard runs with `displayTimeUser > 0` for the first time, set `hasReceivedInitialTime.current = true`. If `displayTimeUser < 10_000` on this first real render, set `hasPlayedWarning.current = true` AND `lastWarningTime.current = Date.now()` silently (page-load guard — prevents warning on resume of a low-time game, and arms the cooldown so that if increment later pushes above threshold and resets `hasPlayedWarning`, the cooldown still prevents an immediate re-trigger)
      5. `if (displayTimeUser >= 10_000) { /* reset hasPlayedWarning if increment pushed above threshold */ return; }`
      6. Threshold crossed — play warning if `!hasPlayedWarning.current` and cooldown elapsed
    - For games WITH increment: reset `hasPlayedWarning` when `displayTimeUser` rises above `10_000` (increment applied). **Cooldown guard:** Track `lastWarningTime` ref — suppress re-triggering within 5 seconds of the last warning to prevent spam near the boundary (e.g., `bullet_2min` with 1s increment oscillating around 10s)
