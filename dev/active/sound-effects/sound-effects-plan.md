@@ -1,6 +1,6 @@
 # Sound Effects - Implementation Plan
 
-**Last Updated:** 2026-02-22 (v16 - address Opus+Sonnet v15 review: 5 MEDIUM items)
+**Last Updated:** 2026-02-22 (v17 - address plan-reviewer v16: 1 HIGH, 2 MEDIUM)
 
 ## Executive Summary
 
@@ -157,7 +157,7 @@ Add chess sound effects for moves, captures, check, castling, promotion, and gam
    - **No sound on initial game load** - when loading a game in progress or a finished game, render board silently
    - **No sound on failed optimistic update** - if API call fails and move reverts, sound already played is acceptable (too fast to matter)
    - **`playRef` pattern:** `useSound` exposes `playRef` (a stable ref) directly. Use `playRef.current(soundType)` inside `onDrop`/`onKeyboardMove` — no dependency array changes needed. This keeps the existing dependency arrays unchanged
-   - **Page complexity management:** Extract a `useGameSounds(game, displayTimeUser, timeControlType, playRef)` custom hook in `apps/frontend/src/hooks/useGameSounds.ts` that encapsulates: the game-over useEffect (with `wasGameOverOnLoad` + `hasSetInitialGameOver` refs), the low-time warning useEffect (with `hasPlayedWarning` + `lastWarningTime` refs), and the `wasGameOverOnLoad` initialization logic. This keeps page.tsx changes minimal — one hook call + `playRef.current()` calls in `onDrop`/`onKeyboardMove`. **Decision made:** Extract, don't inline. 4 refs + 2 useEffects added to an already-complex page.tsx warrants extraction
+   - **Page complexity management:** Extract a `useGameSounds(game, displayTimeUser, playRef)` custom hook in `apps/frontend/src/hooks/useGameSounds.ts` that encapsulates: the game-over useEffect (with `wasGameOverOnLoad` + `hasSetInitialGameOver` refs), the low-time warning useEffect (with `hasPlayedWarning` + `lastWarningTime` + `hasReceivedInitialTime` refs), and the `wasGameOverOnLoad` initialization logic. **`game` is passed as a single parameter** (not destructured into `timeControlType` etc.) — the hook derives `game?.timeControlType` internally, centralizing null guards. When `game` is `null` (initial load), both useEffects return early. This avoids the caller needing defensive `game?.timeControlType ?? 'none'`. Page.tsx changes: one hook call + `playRef.current()` calls in `onDrop`/`onKeyboardMove`. **Decision made:** Extract, don't inline. 5 refs + 2 useEffects added to an already-complex page.tsx warrants extraction
    - **Acceptance:** Correct sound plays for each event type via both input methods, no sound on page load or when viewing finished games
 
 8. **Engine move sound detection**
@@ -187,7 +187,7 @@ Add chess sound effects for moves, captures, check, castling, promotion, and gam
      ```
    - Use same `determineSoundType()` function as user moves
    - Play sound when engine response arrives (in the `.then()` handler), alongside `setGame(result.game)`
-   - **Stale response guard:** In the `.then()` handler, before playing engine sound, verify `gameId` hasn't changed (user may have navigated away). Compare the `gameId` captured at call time against the current `gameId` from the outer scope. If they differ, skip the engine sound silently (the user is viewing a different game)
+   - **Stale response guard — NOT needed:** `gameId` is derived from `params.id` (page.tsx line 29) and captured in the `useCallback` closure. If the user navigates to a different game, React unmounts and remounts the component (different route), so the `.then()` handler's `setGame` call is a no-op on an unmounted component. No additional guard needed — document this reasoning in a code comment
    - **No debounce initially** - user sound plays at optimistic update, engine sound plays when API responds (200ms+ later). Natural gap prevents clashing. **Intended UX flow:** user move sound → EngineThinkingOverlay appears → engine move sound → board updates. Add debounce only if testing reveals actual overlap
    - **Tab-hidden engine move:** If the user's tab is hidden when the API response arrives, the engine move sound is suppressed by the visibility check. When the user returns, `fetchGame()` updates the board but no engine sound plays (the `.then()` handler already executed). This is acceptable — a stale engine move sound on tab return would be confusing
    - **Acceptance:** Engine moves produce correct sounds via both input methods, no audio clashing with user moves
@@ -196,12 +196,12 @@ Add chess sound effects for moves, captures, check, castling, promotion, and gam
    - Watch `displayTimeUser` (local state, in **milliseconds**) — the client-side ticking value, NOT `game.timeLeftUser` which only updates on API responses
    - Trigger when `displayTimeUser < 10_000` (10 seconds), separate from existing `isLowTime` visual indicator at 30s (`< 30000`). **UX rationale for different thresholds:** The visual indicator (red clock at 30s) serves as a gentle "heads up" — the player notices time is running low. The audio warning at 10s is an urgent alert — time is critically low and requires immediate action. Two distinct thresholds create a progressive urgency ramp: visual awareness at 30s → audio urgency at 10s. A single threshold would either make the audio too early (annoying at 30s) or the visual too late (useless at 10s)
    - Play once per threshold crossing (use `hasPlayedWarning` ref). **Guard order in useEffect (top to bottom):**
-     1. `if (game?.isGameOver || isReplayMode) return;` — no warnings for finished games
-     2. `if (timeControlType === 'none') return;` — no warnings for untimed games (where `displayTimeUser` legitimately stays `0`)
+     1. `if (!game || game.isGameOver) return;` — no warnings when game not loaded or finished
+     2. `if (game.timeControlType === 'none') return;` — no warnings for untimed games (where `displayTimeUser` legitimately stays `0`)
      3. `if (displayTimeUser === 0) return;` — skip uninitialized state (page.tsx line 47 initializes to `0` before `fetchGame()` populates real value)
-     4. `if (displayTimeUser >= 10_000) { /* reset hasPlayedWarning if increment pushed above threshold */ return; }`
-     5. Threshold crossed — play warning if `!hasPlayedWarning.current` and cooldown elapsed
-   - **Separate page-load guard:** After all guards pass, if this is the first render with real time data already below 10s (e.g., resuming a bullet game), initialize `hasPlayedWarning.current = true` to prevent a warning sound on page load (violates "no sound on initial game load")
+     4. **First-render detection:** Use `hasReceivedInitialTime` ref (starts `false`). When this guard runs with `displayTimeUser > 0` for the first time, set `hasReceivedInitialTime.current = true`. If `displayTimeUser < 10_000` on this first real render, set `hasPlayedWarning.current = true` silently (page-load guard — prevents warning on resume of a low-time game)
+     5. `if (displayTimeUser >= 10_000) { /* reset hasPlayedWarning if increment pushed above threshold */ return; }`
+     6. Threshold crossed — play warning if `!hasPlayedWarning.current` and cooldown elapsed
    - For games WITH increment: reset `hasPlayedWarning` when `displayTimeUser` rises above `10_000` (increment applied). **Cooldown guard:** Track `lastWarningTime` ref — suppress re-triggering within 5 seconds of the last warning to prevent spam near the boundary (e.g., `bullet_2min` with 1s increment oscillating around 10s)
    - For games WITHOUT increment: play once, never reset (clock only decreases)
    - Only for player's clock (not engine)
